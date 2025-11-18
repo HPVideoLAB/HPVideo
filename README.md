@@ -1,2 +1,2 @@
 # HPVideo
-HPVIDEO video generation
+Video Large Model Project
