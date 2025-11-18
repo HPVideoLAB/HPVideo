@@ -1,38 +1,36 @@
-# 给他们独立部署 
+# Deploy them independently
 
-# SERVER_HOST：您服务器的IP地址或域名。
-# SERVER_USER：SSH登录用户名。
-# SERVER_PASSWORD：SSH登录密码。（推荐使用SSH密钥对认证代替密码）
+# SERVER_HOST: The IP address or domain name of your server.
+# SERVER_USER: SSH login username.
+# SERVER_PASSWORD: SSH login password. (It is recommended to use SSH key pair authentication instead of password)
 # DOCKER_PASSWORD
 # DOCKER_USERNAME
 
-name: Deploy to Server # 定义工作流程的名称
+name: Deploy to Server # Define the name of the workflow
 
-on: # 定义触发工作流程的事件
-  push: # 当代码被推送时
-    branches: # 指定触发工作流程的分支
-      - main # 只有main分支的推送才会触发此工作流程
+on: # Define the events that trigger the workflow
+  push: # When the code is pushed
+    branches: # Specify the branches that trigger the workflow
+      - main # Only pushes to the main branch will trigger this workflow
 
-jobs: # 定义需要执行的工作
+jobs: # Define the jobs to be executed
   # timeout-minutes: 30
-  build: # 工作的标识符，这里是构建工作
-    runs-on: ubuntu-latest # 指定运行环境为最新版本的Ubuntu虚拟环境
-    steps: # 定义执行的步骤
-      - name: Checkout code # 步骤名称
-        uses: actions/checkout@v2 # 使用GitHub Action官方提供的actions/checkout@v2动作，用于检出仓库代码
+  build: # Job identifier, here is the build job
+    runs-on: ubuntu-latest # Specify the running environment as the latest version of the Ubuntu virtual environment
+    steps: # Define the steps to be executed
+      - name: Checkout code # Step name
+        uses: actions/checkout@v2 # Use the official GitHub Action actions/checkout@v2 to check out the repository code
 
       - name: Log in to Docker Hub
         run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
         # run: docker login -u $DOCKER_USER -p $DOCKER_PASSWORD 
 
 
-      - name: Build and Push Docker image # 步骤名称
-        uses: docker/build-push-action@v5 # 使用docker/build-push-action@v2动作，用于构建并推送Docker镜像
-        with: # 传递给动作的参数
+      - name: Build and Push Docker image # Step name
+        uses: docker/build-push-action@v5 # Use docker/build-push-action@v2 to build and push the Docker image
+        with: # Parameters passed to the action
           # username: ${{ secrets.DOCKER_USERNAME }}
           # password: ${{ secrets.DOCKER_PASSWORD }}
 
-          push: true # 推送镜像到Docker Hub
-          tags: aihpvideo/hpvideo:prod # 设置镜像的标签
-
-
+          push: true # Push the image to Docker Hub
+          tags: aihpvideo/hpvideo:prod # Set the tag of the image
