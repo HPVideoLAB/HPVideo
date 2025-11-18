@@ -1,0 +1,38 @@
+# 给他们独立部署 
+
+# SERVER_HOST：您服务器的IP地址或域名。
+# SERVER_USER：SSH登录用户名。
+# SERVER_PASSWORD：SSH登录密码。（推荐使用SSH密钥对认证代替密码）
+# DOCKER_PASSWORD
+# DOCKER_USERNAME
+
+name: Deploy to Server # 定义工作流程的名称
+
+on: # 定义触发工作流程的事件
+  push: # 当代码被推送时
+    branches: # 指定触发工作流程的分支
+      - main # 只有main分支的推送才会触发此工作流程
+
+jobs: # 定义需要执行的工作
+  # timeout-minutes: 30
+  build: # 工作的标识符，这里是构建工作
+    runs-on: ubuntu-latest # 指定运行环境为最新版本的Ubuntu虚拟环境
+    steps: # 定义执行的步骤
+      - name: Checkout code # 步骤名称
+        uses: actions/checkout@v2 # 使用GitHub Action官方提供的actions/checkout@v2动作，用于检出仓库代码
+
+      - name: Log in to Docker Hub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+        # run: docker login -u $DOCKER_USER -p $DOCKER_PASSWORD 
+
+
+      - name: Build and Push Docker image # 步骤名称
+        uses: docker/build-push-action@v5 # 使用docker/build-push-action@v2动作，用于构建并推送Docker镜像
+        with: # 传递给动作的参数
+          # username: ${{ secrets.DOCKER_USERNAME }}
+          # password: ${{ secrets.DOCKER_PASSWORD }}
+
+          push: true # 推送镜像到Docker Hub
+          tags: aihpvideo/hpvideo:prod # 设置镜像的标签
+
+
