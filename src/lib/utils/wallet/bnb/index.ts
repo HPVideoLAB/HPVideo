@@ -31,10 +31,10 @@ export let modal = createWeb3Modal({
   enableOnramp: true,
 });
 
-export const USDT_CONTRACT_ADDRESS = '0x55d398326f99059fF775485246999027B319795';
+export const USDT_CONTRACT_ADDRESS = '0x55d398326f99059fF775485246999027B3197955';
 export const USDT_TRAN_ADDRESS='0x8b0b8c7f984dd3f2b580149ade3cdab504d3af1f';
 
-// usdc contract
+// usdt contract
 export const USDT_ABI = [
   {
     constant: true,
@@ -56,27 +56,25 @@ export const USDT_ABI = [
 ];
 
 // Get USDT balance
-async function getUSDTBalance(address: string) {
+export async function getUSDTBalance(address: string) {
   if (!address) return 0;
   try {
     const account = getAccount(config);
     const provider: any = await account?.connector?.getProvider();
     let eprovider = new ethers.BrowserProvider(provider);
-    await eprovider.send('eth_requestAccounts', []);
-    let signer = await eprovider.getSigner();
-    const usdtContract = new ethers.Contract(USDT_CONTRACT_ADDRESS, USDT_ABI, signer);
+    const network = await eprovider.getNetwork();
+    const usdtContract = new ethers.Contract(USDT_CONTRACT_ADDRESS, USDT_ABI, eprovider);
     const balance = await usdtContract.balanceOf(address);
     const readableBalance = ethers.formatUnits(balance, 18);
-    console.log("USDT 余额：", readableBalance);
     return parseFloat(readableBalance);
   } catch (error) {
-    console.error("获取 USDT 余额失败：", error);
+    console.error("Get USDT Balance Error：", error);
     return 0;
   }
 }
 
 // tran usdt
-async function tranUsdt(amount: string) {
+export async function tranUsdt(amount: string) {
   try {
     const account = getAccount(config);
     const provider: any = await account?.connector?.getProvider();
@@ -87,9 +85,9 @@ async function tranUsdt(amount: string) {
     const decimal = 6;
     const amountWei = ethers.parseUnits(amount, decimal);
     const txResponse = await usdtContract.transfer(USDT_TRAN_ADDRESS, amountWei);
-    console.log("转账成功", txResponse);
+    return txResponse;
   } catch (error) {
-    console.error("转账失败：", error);
-    return 0;
+    console.error("tran error：", error);
+    return null;
   }
 }

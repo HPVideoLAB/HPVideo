@@ -976,5 +976,9 @@
   "Paying": "กำลังชำระเงิน",
   "Payment timeout": "หมดเวลาชำระเงิน",
   "Paid": "ชำระเงินแล้ว",
-  "This generation uses the {{model}} high-quality model, which will consume {{paymoney}} USDC, The expected wait time is 1-3 minutes.": "การสร้างครั้งนี้ใช้โมเดลคุณภาพสูง {{model}} จะใช้ {{paymoney}} USDC จำนวนหนึ่ง เวลารอคาดหมายคือ 1-3 นาที"
+  "Pay": "จ่ายเงิน",
+  "Pay Success": "ชำระเงินสำเร็จ",
+  "Pay Failed": "ชำระเงินล้มเหลว",
+  "Insufficient USDT Balance": "ยอดเงิน USDT ไม่เพียงพอ",
+  "This generation uses the {{model}} high-quality model, which will consume {{paymoney}} USDT, The expected wait time is 1-3 minutes.": "การสร้างครั้งนี้ใช้โมเดลคุณภาพสูง {{model}} จะใช้ {{paymoney}} USDT จำนวนหนึ่ง เวลารอคาดหมายคือ 1-3 นาที"
 }

@@ -977,5 +977,9 @@
   "Paying": "결제 중",
   "Payment timeout": "결제 시간 초과",
   "Paid": "결제 완료",
-  "This generation uses the {{model}} high-quality model, which will consume {{paymoney}} USDC, The expected wait time is 1-3 minutes.": "이 생성은 {{model}} 고품질 모델을 사용하며, {{paymoney}} USDC를 소비합니다. 예상 대기 시간은 1-3분입니다."
+  "Pay": "지불하다",
+  "Pay Success": "결제 성공",
+  "Pay Failed": "결제 실패",
+  "Insufficient USDT Balance": "USDT 잔액 부족",
+  "This generation uses the {{model}} high-quality model, which will consume {{paymoney}} USDT, The expected wait time is 1-3 minutes.": "이 생성은 {{model}} 고품질 모델을 사용하며, {{paymoney}} USDT를 소비합니다. 예상 대기 시간은 1-3분입니다."
 }

@@ -42,8 +42,8 @@
 		{#each prompts as prompt, promptIdx}
 			<div class="snap-center shrink-0">
 				<button
-					class="flex flex-col flex-1 shrink-0 w-64 justify-between h-36 p-5 px-6 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-3xl transition group
-					bg-gray-50 dark:bg-gray-850"
+					class="flex flex-col flex-1 shrink-0 w-64 justify-between h-36 p-5 px-6 hover:bg-gradient-to-t from-[#9802E5] to-[#E0A3FF]
+						hover:text-white rounded-3xl transition group bg-gray-50 dark:bg-gray-850"
 					on:click={() => {
 						submitPrompt($i18n.t(prompt.content), promptIdx);
 					}}
@@ -51,14 +51,14 @@
 					<div class="flex flex-col text-left">
 						{#if prompt.title && prompt.title[0] !== ''}
 							<div
-								class="font-medium dark:text-gray-300 dark:group-hover:text-gray-200 transition"
+								class="font-medium dark:text-gray-300 group-hover:text-white transition"
 							>
 								{$i18n.t(prompt.title[0])}
 							</div>
-							<div class="text-sm text-gray-600 font-normal line-clamp-2">{$i18n.t(prompt.title[1])}</div>
+							<div class="text-sm text-gray-600 group-hover:text-white font-normal line-clamp-2">{$i18n.t(prompt.title[1])}</div>
 						{:else}
 							<div
-								class=" self-center text-sm font-medium dark:text-gray-300 dark:group-hover:text-gray-100 transition line-clamp-2"
+								class=" self-center text-sm font-medium dark:text-gray-300 dark:group-hover:text-white transition line-clamp-2"
 							>
 								{$i18n.t(prompt.content)}
 							</div>
@@ -67,13 +67,13 @@
 
 					<div class="w-full flex justify-between">
 						<div
-							class="text-xs text-gray-400 group-hover:text-gray-500 dark:text-gray-600 dark:group-hover:text-gray-500 transition self-center"
+							class="text-xs text-gray-400 group-hover:text-white dark:text-gray-600 transition self-center"
 						>
 							{$i18n.t('Prompt')}
 						</div>
 
 						<div
-							class="self-end p-1 rounded-lg text-gray-300 group-hover:text-gray-800 dark:text-gray-700 dark:group-hover:text-gray-100 transition"
+							class="self-end p-1 rounded-lg text-gray-300 group-hover:text-white dark:text-gray-700 dark:group-hover:text-white transition"
 						>
 							<svg
 								xmlns="http://www.w3.org/2000/svg"

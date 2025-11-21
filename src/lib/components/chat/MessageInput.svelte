@@ -6,7 +6,8 @@
     modelfiles,
     settings,
     showSidebar,
-    theme
+    theme,
+    config
   } from "$lib/stores";
   import { findWordIndices } from "$lib/utils";
 
@@ -18,8 +19,9 @@
   import Tools from "./MessageInput/Tools.svelte";
   import Tooltip from "../common/Tooltip.svelte";
   import XMark from "$lib/components/icons/XMark.svelte";
-  import { config, modal } from "$lib/utils/wallet/index";
-  import { getAccount } from "@wagmi/core";
+
+  import { fade } from 'svelte/transition';
+  import Suggestions from "./MessageInput/Suggestions.svelte";
 
   const i18n = getContext("i18n");
 
@@ -166,28 +168,6 @@
     };
   });
   const know_ext = "image/*"
-
-  // check wallet connect
-  const checkWalletConnect = () => {
-    const account = getAccount(config);
-    if (account?.address) {
-      return true;
-    } else {
-      connect();
-      return false;
-    }
-  }
-  const connect = () => {
-    checkModalTheme();
-    modal.open();
-  }
-  const checkModalTheme = () => {
-    if ($theme === "system" || $theme === "light") {
-      modal.setThemeMode("light");
-    } else {
-      modal.setThemeMode("dark");
-    }
-  }
 </script>
 
 {#if dragged}
@@ -290,7 +270,7 @@
     </div>
 
     <div class="bg-white dark:bg-gray-900">
-      <div class="px-2.5 md:px-20 mx-auto inset-x-0">
+      <div class="px-5 md:px-20 mx-auto inset-x-0">
         <div class=" pb-4">
           <input
             bind:this={filesInputElement}
@@ -356,9 +336,7 @@
             dir={$settings?.chatDirection ?? "LTR"}
             class=" flex flex-col relative w-full rounded-3xl bg-gray-100 dark:bg-gray-850 dark:text-gray-100 button-select-none p-3 border border-gray-300 dark:border-gray-800 p-1"
             on:submit|preventDefault={() => {
-              if (checkWalletConnect()) {
-                submitPrompt(prompt, toolInfo, user);
-              } 
+              submitPrompt(prompt, toolInfo, user);
             }}
           >
             {#if files.length > 0}
@@ -420,9 +398,7 @@
                       e.preventDefault();
                     }
                     if (prompt !== "" && e.keyCode == 13 && !e.shiftKey) {
-                      if (checkWalletConnect()) {
-                        submitPrompt(prompt, toolInfo, user);
-                      }   
+                      submitPrompt(prompt, toolInfo, user);   
                     }
                   }
                 }}
@@ -628,6 +604,36 @@
           </form>
         </div>
       </div>
+      
+      {#if messages.length == 0}
+        <div class="m-auto w-full px-5 md:px-20 pb-[40px]">
+          <div class="flex justify-start">
+            <div class="flex space-x-4 mb-1" in:fade={{ duration: 200 }}></div>
+          </div>
+          <div class="w-full bg-1e1e1e padding-10" in:fade={{ duration: 200, delay: 300 }}>
+            <Suggestions suggestionPrompts={$config?.default_prompt_suggestions} submitPrompt = { async (p) => {
+              let text = p;
+              prompt = text;
+              await tick();
+              const chatInputElement = document.getElementById('chat-textarea');
+              if (chatInputElement) {
+                prompt = text;
+                chatInputElement.style.height = '';
+                chatInputElement.style.height = Math.min(chatInputElement.scrollHeight, 200) + 'px';
+                chatInputElement.focus();
+
+                const words = findWordIndices(prompt);
+
+                if (words.length > 0) {
+                  const word = words.at(0);
+                  chatInputElement.setSelectionRange(word?.startIndex, word.endIndex + 1);
+                }
+              }  
+              await tick();
+            }} />
+          </div>
+        </div>
+      {/if} 
     </div>
   </div>
 </div>

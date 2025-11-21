@@ -83,6 +83,15 @@ class PayTable:
         except Exception as e:
             log.error(f"update_vip_end_date: {e}")
             return False
+    
+    def update_addr_status(self, id: str, address: str, status: bool):
+        try:
+            query = Pay.update(status=status, wallet_addr=address).where(Pay.id == id)
+            res = query.execute()
+            return res > 0
+        except Exception as e:
+            log.error(f"update_vip_end_date: {e}")
+            return False
         
 	# get payinfo by id
     def get_by_id(self, id: str) -> Optional[PayModel]:

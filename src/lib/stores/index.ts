@@ -16,6 +16,7 @@ export const theme = writable('light');
 export const chatId = writable('');
 
 export const chats = writable([]);
+export const chatsearch = writable("");
 export const tags = writable([]);
 export const models: Writable<Model[]> = writable([]);
 

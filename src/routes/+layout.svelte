@@ -8,13 +8,16 @@
     mobile,
     inviterId,
     channel,
-    user
+    user,
+    threesideAccount
   } from "$lib/stores";
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
   import { Toaster } from "svelte-sonner";
 
   import { defaultBackendConfig } from "$lib/apis";
+  import { config as wconfig } from "$lib/utils/wallet/bnb/index";
+  import { watchAccount, getAccount } from "@wagmi/core";
 
   import "../tailwind.css";
   import "../app.css";
@@ -131,6 +134,26 @@
       console.log("==============", error);
     }
   });
+  watchAccount(wconfig, {
+    async onChange() {
+      try {
+        if ($threesideAccount?.address) {
+          clearConnector();
+          $threesideAccount = {};
+        } else {
+          let account = getAccount(wconfig);
+          $threesideAccount = account;
+        }   
+      } catch (error) {
+        console.log("wallet login error:", error);
+      }
+    },
+  });
+  function clearConnector() {
+    wconfig.state.connections.forEach((item) => {
+      wconfig.state.connections.delete(item.connector.uid);
+    });
+  }
 </script>
 
 <svelte:head>

@@ -2,6 +2,7 @@
   import { goto } from "$app/navigation";
   import {
     chats,
+    chatsearch,
     settings,
     chatId,
     tags,
@@ -38,7 +39,6 @@
   let navElement;
 
   let title: string = "UI";
-  let search = "";
 
   let shareChatId: any = null;
 
@@ -53,11 +53,11 @@
   let filteredChatList = [];
 
   $: filteredChatList = $chats?.filter((chat) => {
-    if (search === "") {
+    if ($chatsearch === "") {
       return true;
     } else {
       let title = chat?.title.toLowerCase();
-      const query = search.toLowerCase();
+      const query = $chatsearch.toLowerCase();
 
       let contentMatches = false;
       // Access the messages within chat.chat.messages
@@ -149,23 +149,6 @@
     checkDirection();
   };
 
-  // Helper function to fetch and add chat content to each chat
-  const enrichChatsWithContent = async (chatList: any) => {
-    const enrichedChats: any = await Promise.all(
-      chatList.map(async (chat: any) => {
-        const chatDetails = await getChatById(
-          localStorage.token,
-          chat.id
-        ).catch((error) => null); // Handle error or non-existent chat gracefully
-        if (chatDetails) {
-          chat.chat = chatDetails.chat; // Assuming chatDetails.chat contains the chat content
-        }
-        return chat;
-      })
-    );
-    chats.set(enrichedChats);
-  };
-
   const editChatTitle = async (id, _title) => {
     if (_title === "") {
       toast.error($i18n.t("Title cannot be an empty string."));
@@ -248,7 +231,7 @@
   id="sidebar"
   class="h-screen max-h-[100dvh] min-h-screen select-none {$showSidebar
     ? 'md:relative w-[246px]'
-    : '-translate-x-[246px] w-[0px]'} bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-200 text-sm transition fixed z-50 top-0 left-0 rounded-r-2xl
+    : '-translate-x-[246px] w-[0px]'} bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-200 text-sm transition fixed z-50 top-0 left-0 rounded-t-3xl
         "
   data-state={$showSidebar}
 >
@@ -258,7 +241,7 @@
       : 'invisible'}"
   >
     <div
-      class="px-2.5 flex justify-between space-x-1 text-gray-600 dark:text-gray-400"
+      class="p-2.5 flex justify-between space-x-1 text-gray-600 dark:text-gray-400 border-b border-gray-300 dark:border-gray-700"
     >
       <a
         id="sidebar-new-chat-button"
@@ -280,29 +263,14 @@
         <div class="self-center mx-1.5">
           <img
             src="/creator/static/favicon2.png"
-            class="h-6"
+            class="h-5"
             alt="logo"
           />
-        </div>
-        <div class="self-center ml-auto">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            class="size-5"
-          >
-            <path
-              d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z"
-            />
-            <path
-              d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z"
-            />
-          </svg>
         </div>
       </a>
 
       <button
-        class=" cursor-pointer px-2 py-2 flex rounded-xl hover:bg-gray-100 dark:hover:bg-gray-850 transition"
+        class=" cursor-pointer px-2 py-2 flex rounded-xl hover:bg-[#9903E6] hover:text-white transition"
         on:click={() => {
           showSidebar.set(!$showSidebar);
         }}
@@ -327,6 +295,17 @@
     </div>
 
     <div class="relative flex flex-col flex-1 overflow-y-auto">
+      <div class="flex items-center p-4">
+        <svg xmlns="http://www.w3.org/2000/svg"
+          data-spm-anchor-id="a313x.search_index.0.i0.36643a81ufw80h"
+          viewBox="0 0 1024 1024" 
+          version="1.1"  
+          fill="#9802E5"
+          class="size-6" >
+          <path d="M810.666667 981.333333l-53.717334-117.248L640 810.666667l116.906667-53.76L810.666667 640l53.333333 116.906667L981.333333 810.666667l-117.333333 53.333333L810.666667 981.333333zM384 853.333333l-106.666667-234.666666L42.666667 512l234.666666-106.666667L384 170.666667l106.666667 234.666666L725.333333 512l-234.666666 106.666667L384 853.333333zM384 341.333333l-53.76 117.290667L213.333333 512l116.906667 53.76L384 682.666667l53.290667-116.949334L554.666667 512l-117.333334-53.333333z m426.666667 42.666667l-53.717334-116.864L640 213.333333l116.906667-53.290666L810.666667 42.666667l53.333333 117.333333L981.333333 213.333333l-117.333333 53.76L810.666667 384z"/>
+        </svg>
+        <span class="ml-2 font-bold text-sm">{ $i18n.t("Chats") }</span>
+      </div>
       {#if !($settings.saveChatHistory ?? true)}
         <div
           class="absolute z-40 w-full h-full bg-gray-50/90 dark:bg-black/90 flex justify-center"
@@ -375,34 +354,6 @@
           </div>
         </div>
       {/if}
-
-      <div class="px-2 mt-0.5 mb-2 flex justify-center space-x-2">
-        <div class="flex w-full rounded-xl" id="chat-search">
-          <div class="self-center pl-3 py-2 rounded-l-xl bg-transparent">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              class="w-4 h-4"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z"
-                clip-rule="evenodd"
-              />
-            </svg>
-          </div>
-
-          <input
-            class="w-full rounded-r-xl py-1.5 pl-2.5 pr-4 text-sm bg-transparent dark:text-gray-300 outline-none"
-            placeholder={$i18n.t("Search")}
-            bind:value={search}
-            on:focus={() => {
-              enrichChatsWithContent($chats);
-            }}
-          />
-        </div>
-      </div>
 
       {#if $tags?.length > 0}
         <div class="px-2.5 mb-2 flex gap-1 flex-wrap">
@@ -474,10 +425,10 @@
                     $chatId ||
                   chat.id === chatTitleEditId ||
                   chat.id === chatDeleteId
-                    ? 'bg-gray-200 dark:bg-gray-900'
+                    ? 'bg-[#9903E6] text-white'
                     : chat.id === selectedChatId
                     ? 'bg-gray-100 dark:bg-gray-950'
-                    : ' group-hover:bg-gray-100 dark:group-hover:bg-gray-950'}  whitespace-nowrap text-ellipsis"
+                    : ' group-hover:bg-[#9903E6CC] group-hover:text-white'}  whitespace-nowrap text-ellipsis"
                   href="/creator/c/{chat.id}"
                   on:click={() => {
                     selectedChatId = chat.id;
@@ -499,22 +450,17 @@
 
               <div
                 class="
-
-          {chat.id === $chatId ||
-                chat.id === chatTitleEditId ||
-                chat.id === chatDeleteId
-                  ? 'from-gray-200 dark:from-gray-900'
+                {chat.id === $chatId || chat.id === chatTitleEditId || chat.id === chatDeleteId
+                  ? 'text-white'
                   : chat.id === selectedChatId
                   ? 'from-gray-100 dark:from-gray-950'
-                  : 'invisible group-hover:visible from-gray-100 dark:from-gray-950'}
-            absolute right-[10px] top-[10px] pr-2 pl-5 bg-gradient-to-l from-80%
-
-              to-transparent"
-              >
+                  : 'invisible group-hover:visible text-white from-gray-100 dark:from-gray-950'}
+                  absolute right-[10px] top-[10px] pr-2 pl-5"
+                >
                 {#if chatTitleEditId === chat.id}
                   <div class="flex self-center space-x-1.5 z-10">
                     <button
-                      class=" self-center dark:hover:text-white transition"
+                      class=" self-center hover:text-white transition"
                       on:click={() => {
                         editChatTitle(chat.id, chatTitle);
                         chatTitleEditId = null;
@@ -616,7 +562,7 @@
                     >
                       <button
                         aria-label="Chat Menu"
-                        class=" self-center dark:hover:text-white transition"
+                        class="self-center hover:text-white transition"
                         on:click={() => {
                           selectedChatId = chat.id;
                         }}

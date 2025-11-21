@@ -976,5 +976,9 @@
   "Paying": "En pago",
   "Payment timeout": "Tiempo de pago agotado",
   "Paid": "Pagado",
-  "This generation uses the {{model}} high-quality model, which will consume {{paymoney}} USDC, The expected wait time is 1-3 minutes.": "Esta generación utiliza el modelo de alta calidad {{model}}, consumirá {{paymoney}} USDC. El tiempo de espera esperado es de 1-3 minutos."
+  "Pay": "Pagar",
+  "Pay Success": "Pago exitoso",
+  "Pay Failed": "Pago fallido",
+  "Insufficient USDT Balance": "Saldo de USDT insuficiente",
+  "This generation uses the {{model}} high-quality model, which will consume {{paymoney}} USDT, The expected wait time is 1-3 minutes.": "Esta generación utiliza el modelo de alta calidad {{model}}, consumirá {{paymoney}} USDT. El tiempo de espera esperado es de 1-3 minutos."
 }

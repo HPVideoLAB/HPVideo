@@ -15,7 +15,8 @@ from apps.web.routers import (
     completion,
     daily_users,
     fileupload,
-    x402pay
+    x402pay,
+    bnbpay
 )
 
 from config import (
@@ -81,6 +82,7 @@ app.include_router(completion.router, prefix="/chat", tags=["aliqwen"])
 app.include_router(daily_users.router, prefix="/daily", tags=["daily_users"])
 app.include_router(fileupload.router, prefix="/upload", tags=["aliupload"])
 app.include_router(x402pay.router, prefix="/x402", tags=["x402pay"])
+app.include_router(bnbpay.router, prefix="/bnbpay", tags=["bnbpay"])
 
 @app.get("/")
 async def get_status():

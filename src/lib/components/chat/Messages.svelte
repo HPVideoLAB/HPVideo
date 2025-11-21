@@ -9,8 +9,7 @@
 
 	import UserMessage from './Messages/UserMessage.svelte';
 	import ResponseMessage from './Messages/ResponseMessage.svelte';
-	import Placeholder from './Messages/Placeholder.svelte';
-	import { copyToClipboard, findWordIndices } from '$lib/utils';
+	import { copyToClipboard } from '$lib/utils';
 	import CompareMessages from './Messages/CompareMessages.svelte';
 
 	const i18n = getContext('i18n');
@@ -322,49 +321,13 @@
 
 <div class="h-full flex mb-16">
 	{#if messages.length == 0}
-		<Placeholder
-			models={selectedModels}
-			modelfiles={selectedModelfiles}
-			{suggestionPrompts}
-			submitPrompt={async (p, idx) => {
-				prompt = "";
-				let text = p;
-				if (p.includes('{{CLIPBOARD}}')) {
-					const clipboardText = await navigator.clipboard.readText().catch((err) => {
-						toast.error($i18n.t('Failed to read clipboard contents'));
-						return '{{CLIPBOARD}}';
-					});
-
-					text = p.replaceAll('{{CLIPBOARD}}', clipboardText);
-				}
-
-				prompt = text;
-				
-				await tick();
-
-				const chatInputElement = document.getElementById('chat-textarea');
-				if (chatInputElement) {
-					if (idx == 0) {
-						chatInputPlaceholder = text;
-					} else {
-						prompt = text;
-					}
-
-					chatInputElement.style.height = '';
-					chatInputElement.style.height = Math.min(chatInputElement.scrollHeight, 200) + 'px';
-					chatInputElement.focus();
-
-					const words = findWordIndices(prompt);
-
-					if (words.length > 0) {
-						const word = words.at(0);
-						chatInputElement.setSelectionRange(word?.startIndex, word.endIndex + 1);
-					}
-				}
-				
-				await tick();
-			}}
-		/>
+		{#if selectedModels[0].length > 0}
+			<div class="flex flex-col justify-center items-center w-full mb-[400px]">
+				<img class="size-8" src={$models.filter(item => selectedModels.includes(item.id))[0].modelicon} alt=""/>
+				<span class="text-xl font-bold mt-1">{$models.filter(item => selectedModels.includes(item.id))[0].name}</span>
+				<span class="w-full max-w-[600px] text-lg text-center mt-1.5 px-5">{ $i18n.t($models.filter(item => selectedModels.includes(item.id))[0].desc) }</span>
+			</div>
+		{/if}	
 	{:else}
 		<div class="w-full pt-2">
 			{#key chatId}

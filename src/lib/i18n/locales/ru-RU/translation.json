@@ -976,5 +976,9 @@
   "Paying": "Оплата в процессе",
   "Payment timeout": "Истекло время оплаты",
   "Paid": "Оплачено",
-  "This generation uses the {{model}} high-quality model, which will consume {{paymoney}} USDC, The expected wait time is 1-3 minutes.": "Данное поколение использует высококачественную модель {{model}}, оно потребовало {{paymoney}} USDC. Ожидаемое время ожидания — 1-3 минуты."
+  "Pay": "Оплатить",
+  "Pay Success": "Оплата успешна",
+  "Pay Failed": "Оплата не удалась",
+  "Insufficient USDT Balance": "Недостаточный баланс USDT",
+  "This generation uses the {{model}} high-quality model, which will consume {{paymoney}} USDT, The expected wait time is 1-3 minutes.": "Данное поколение использует высококачественную модель {{model}}, оно потребовало {{paymoney}} USDT. Ожидаемое время ожидания — 1-3 минуты."
 }

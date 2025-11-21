@@ -69,7 +69,9 @@
     class=" z-[90] {$mobile ? `w-full max-w-[90%]`: `min-w-[365px] max-w-[80%]`}  justify-start rounded-md  bg-white dark:bg-gray-850 dark:text-white shadow-lg border border-gray-300/30 dark:border-gray-700/50  outline-none mt-2"
     transition={flyAndScale}
     side={$mobile ? "bottom" : "bottom-start"}
-    sideOffset={4}
+    align="start"
+    alignOffset={-8}
+    sideOffset={8}
   >
     <slot>
       <div class="w-full px-1 my-2 max-h-88 overflow-y-auto max-h-[calc(100vh-200px)]">
