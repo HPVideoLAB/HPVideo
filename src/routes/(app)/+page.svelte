@@ -10,15 +10,17 @@
     chatId,
     chats,
     config,
-    inviterId,
-    channel,
     modelfiles,
     models,
     pageUpdateNumber,
     settings,
     showSidebar,
     user,
-    switchModel
+    switchModel,
+    theme,
+    paystatus,
+    urlprompt,
+    chatsearch
   } from "$lib/stores";
 
   import {
@@ -40,8 +42,9 @@
   import Messages from "$lib/components/chat/Messages.svelte";
   import Navbar from "$lib/components/layout/Navbar.svelte";
 
-  let inviter: any = "";
-  let channelName: any = "";
+  import { config as wconfig, modal, getUSDTBalance, tranUsdt } from "$lib/utils/wallet/bnb/index";
+	import { getAccount } from "@wagmi/core";
+  import { bnbpaycheck } from '$lib/apis/pay';
 
   const i18n = getContext("i18n");
 
@@ -89,9 +92,6 @@
     currentId: null,
   };
 
-  let videodura = 8;
-  let videosize = "1280*720";
-
   let chatInputPlaceholder = "";
 
   // 触发当前组件初始化
@@ -115,18 +115,42 @@
     messages = [];
   }
 
+  $: if($chatsearch!= "") {
+		const resultIds = Object.values(history.messages) // 提取所有对象组成的数组
+			.filter(item => {
+				// 注意：content 可能是字符串（user 角色）或数组（assistant 角色），需先判断类型
+				const contentStr = typeof item.content === 'string' ? item.content : '';
+				return contentStr.includes($chatsearch); // 包含「产品」关键词则保留
+			})
+			.map(item => item.id);
+		console.log("============resultIds========", resultIds);
+		if (resultIds.length > 0) {
+			scrollContent(resultIds[0]);
+		}
+	}
+	function scrollContent(id: string) {
+    const target = document.getElementById(id);
+    if (target) {
+      target.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  }
+
+  // assign urlprompt
+  const assignUrlPrpmpt = async () => {
+    if ($urlprompt) {
+      prompt = $urlprompt;
+      await urlprompt.set("");
+    }
+  }
+
   onMount(async () => {
-    const queryParams = new URLSearchParams($page.url.search);
-    inviter = queryParams.get("inviter");
-    channelName = queryParams.get("channel");
-    if (inviter) {
-      $inviterId = inviter;
-    }
-    if (channelName) {
-      await channel.set(channelName);
-    }
 
     await initNewChat();
+
+    await assignUrlPrpmpt();
 
     // 触发直接发送消息
     if ($switchModel.status) {
@@ -197,7 +221,7 @@
   //////////////////////////
   // Ollama functions
   //////////////////////////
-  const submitPrompt = async (userPrompt: string, userToolInfo: any, _user = null) => {
+  const submitPrompt = async (userPrompt: string, videoInfo: any, _user = null) => {
     console.log("submitPrompt", $chatId, userPrompt);
 
     selectedModels = selectedModels.map((modelId) =>
@@ -254,7 +278,7 @@
         imageinfo: "",
         content: userPrompt,
         files: files.length > 0 ? files : undefined,
-        toolInfo: userToolInfo, // video param
+        toolInfo: videoInfo, // video param
         models: selectedModels.filter(
           (m, mIdx) => selectedModels.indexOf(m) === mIdx
         ),
@@ -282,11 +306,16 @@
             id: responseMessageId,
             childrenIds: [],
             role: "assistant",
+            size: videoInfo?.size,
+            duration: videoInfo?.duration,
+            paystatus: false,
+            paytype: "unpaid",
+            paymoney: videoInfo?.amount,
             status: "processing",
-            size: videosize,
-            content: "",
+            content: "paying",
             model: model.id,
             userContext: null,
+            done: true,
             timestamp: Math.floor(Date.now() / 1000), // Unix epoch
           };
 
@@ -339,8 +368,20 @@
           await tick();
         }
 
-        // Send prompt
-        await sendPrompt(userPrompt, responseMap);
+        // 加载聊天列表（赋值聊天title)
+        const _chatId = JSON.parse(JSON.stringify($chatId));
+        if (messages.length == 2) { 
+          window.history.replaceState(history.state, "", `/creator/c/${_chatId}`);
+          const _title = await generateDeChatTitle(userPrompt);
+          await setChatTitle(_chatId, _title);
+        }
+
+        // 更新消息到数据库
+        Object.keys(responseMap).map(async (modelId) => {
+          await updateChatMessage(_chatId);
+        })
+
+        stopResponse();
 
       } catch (err) {
         const _chatId = JSON.parse(JSON.stringify($chatId));
@@ -357,12 +398,113 @@
           if (autoScroll) {
             scrollToBottom();
           }
-        })  
+        })
       }  
     }
   };
 
-  const sendPrompt = async (prompt, responseMap = null, modelId = null, reload = false) => {
+  //=======bnb pay function=======
+  const connect = () => {
+    checkModalTheme();
+    modal.open();
+  }
+  const checkModalTheme = () => {
+    if ($theme === "system" || $theme === "light") {
+      modal.setThemeMode("light");
+    } else {
+      modal.setThemeMode("dark");
+    }
+  }
+  const startPay = async (messageinfo: any) => {
+		const account = getAccount(wconfig);
+		if (!account?.address) {
+			connect();
+      $paystatus = false;
+			return;
+		}
+
+    let paymoney = messageinfo?.paymoney.toString();
+    let body = {
+			hash: "",
+			address: account?.address,
+			messageid: messageinfo?.id,
+      model: messageinfo?.model,
+      size: messageinfo?.size,
+      duration: messageinfo?.duration,
+      amount: paymoney
+		};
+    const response = await bnbpaycheck(localStorage.token, body);
+    console.log("==============checkpay result=============", response);
+    if (response?.ok) {
+      $paystatus = false;
+      await updatePayStatus(messageinfo, true, "paying");
+
+      // Send prompt
+      let currResponseMap: any = {};
+      currResponseMap[messageinfo?.model] = messageinfo;
+      let currmessage = messages.filter(item => item.id == messageinfo?.parentId);
+      await sendPrompt(currmessage[0].content, currResponseMap);
+
+    } else {
+      const balance = await getUSDTBalance(account?.address);
+		
+      if (Number(paymoney) <= balance) {
+
+        await updatePayStatus(messageinfo, false, "paying");
+
+        const txResponse = await tranUsdt(paymoney, messageinfo.id);
+        if (txResponse) {
+          let body = {
+            hash: txResponse?.hash,
+            address: account?.address,
+            messageid: messageinfo?.id,
+            model: messageinfo?.model,
+            size: messageinfo?.size,
+            duration: messageinfo?.duration,
+            amount: paymoney
+          };
+          const response = await bnbpaycheck(localStorage.token, body);
+          if (response?.ok) {
+            $paystatus = false;
+            await updatePayStatus(messageinfo, true, "paying");
+            toast.success($i18n.t("Pay Success"));
+
+            // Send prompt
+            let currResponseMap: any = {};
+            currResponseMap[messageinfo?.model] = messageinfo;
+            let currmessage = messages.filter(item => item.id == messageinfo?.parentId);
+            await sendPrompt(currmessage[0].content, currResponseMap);
+
+          } else{
+            $paystatus = false;
+            await updatePayStatus(messageinfo, false, "unpaid");
+            toast.error($i18n.t("Pay Failed"));
+          }	
+        } else{
+          $paystatus = false;
+          await updatePayStatus(messageinfo, false, "unpaid");
+          toast.error($i18n.t("Pay Failed"));
+        }
+
+      } else {
+        $paystatus = false;
+        toast.error($i18n.t("Insufficient USDT Balance"));
+      } 
+    } 
+	}
+
+  // update chat message into db
+  const updatePayStatus = async (messageinfo: any, paystatus: boolean, payval: string) => {
+    let responseMessageId = messageinfo?.id;
+    messageinfo.paystatus = paystatus;
+    messageinfo.paytype = payval;
+    messageinfo.status = payval;
+    messageinfo.content = payval;
+    history.messages[responseMessageId] = messageinfo;
+    await updateChatMessage($chatId);
+  }
+
+  const sendPrompt = async (prompt: string, responseMap = null, modelId = null, reload = false) => {
     const _chatId = JSON.parse(JSON.stringify($chatId));
     await Promise.all(
       (modelId ? [modelId] : atSelectedModel !== '' ? [atSelectedModel.id] : Object.keys(responseMap)).map(
@@ -372,6 +514,12 @@
             // 创建响应消息
             let responseMessage = responseMap[model?.id];
             let responseMessageId = responseMessage?.id;
+
+            responseMessage.content = "";
+            responseMessage.done = false;
+            responseMessage.error = false;
+            history.messages[responseMessageId] = responseMessage;
+            history.currentId = responseMessageId;
 
             let userContext = null;
             if ($settings?.memory ?? false) {
@@ -402,6 +550,7 @@
             }
             responseMessage.userContext = userContext;
             // send a video request
+            stopResponseFlag = false;
             await sendPromptDeOpenAI(model, responseMessageId, _chatId, reload);
           } else {
             console.error($i18n.t(`Model {{modelId}} not found`, {}));
@@ -412,20 +561,11 @@
     // 所有模型响应结束后，还原firstResAlready为初始状态false
     firstResAlready = false;
 
-    // 加载聊天列表（赋值聊天title）
-    if (messages.length == 2) {
-      window.history.replaceState(history.state, "", `/creator/c/${_chatId}`);
-      const _title = await generateDeChatTitle(prompt);
-      await setChatTitle(_chatId, _title);
-    } else {
-      await chats.set(await getChatList(localStorage.token));
-    }
-
   };
 
   // AI Video Request
   const sendPromptDeOpenAI = async (model, responseMessageId, _chatId, reload) => {
-    const responseMessage = history.messages[responseMessageId];    
+    const responseMessage = history.messages[responseMessageId];
     scrollToBottom();
     try {
       let send_message = [
@@ -489,10 +629,10 @@
           source: model.source,
           permodel: model.id,
           model: fileFlag ? model.imagemodel : model.textmodel,
-          duration: videodura,
+          duration: responseMessage.duration,
           messageid: responseMessageId,
           messages: send_message,
-          size: videosize
+          size: responseMessage.size
         }
       );
 
@@ -519,8 +659,12 @@
           }
           if (!done) {
             responseMessage.limit = limit;
+          }
+          if (!responseMessage.createId && createId) {
             responseMessage.createId = createId;
-          } 
+            updateChatMessage(_chatId);
+          }
+
           messages = messages;
         
           if (error) {
@@ -579,72 +723,79 @@
     }
   };
 
-  const getVideoResult = async (responseMessage: any, _chatId: string) => {  
-    scrollToBottom();
-    try {
-      const [res, controller] = await getDeOpenAIChatResult(
-        localStorage.token,
-        { requestId: responseMessage.createId}
-      );
-
-      // reset responsemessage
-      history.messages[responseMessage?.id] = responseMessage;
-      await tick();
+  // reset responsemessage
+  const refreshVideoResult = async (messageinfo: any, _chatId: string) => {
+    if (messageinfo.createId) {
       scrollToBottom();
 
-      if (res && res.ok && res.body) {
-        const textStream = await createOpenAITextStream(res.body, true);
-        for await (const update of textStream) {
-          let { value, status, done, error } = update;
-          if (status) {
-            responseMessage.status = status;
-          }
-          messages = messages;
+			let responseMessageId = messageinfo?.id;
+      messageinfo.done = false;
+			messageinfo.error = false;
+      messageinfo.status = "processing"
+      history.messages[responseMessageId] = messageinfo;
 
-          if (error) {
-            await handleOpenAIError(error, null, null, responseMessage);
-            break;
-          }
+			const responseMessage = history.messages[responseMessageId];
 
-          if (done || stopResponseFlag || _chatId !== $chatId) {
-            responseMessage.done = true;
-            messages = messages;
-            if (stopResponseFlag) {
-              controller.abort("User: Stop Response");
+      try {
+        const [res, controller] = await getDeOpenAIChatResult(
+          localStorage.token,
+          { requestId: messageinfo.createId}
+        );
+
+        await tick();
+        scrollToBottom();
+
+        if (res && res.ok && res.body) {
+          const textStream = await createOpenAITextStream(res.body, true);
+          for await (const update of textStream) {
+            let { value, status, done, error } = update;
+            if (status) {
+              responseMessage.status = status;
             }
-            break;
-          }
+            messages = messages;
 
-          if (responseMessage.content == "" && value == "") {
-            continue;
-          } else {
-            responseMessage.content = value;
-          }
+            if (error) {
+              await handleOpenAIError(error, null, null, responseMessage);
+              break;
+            }
 
-          if (autoScroll) {
-            scrollToBottom();
-          }  
-        } 
+            if (done || stopResponseFlag || _chatId !== $chatId) {
+              responseMessage.done = true;
+              messages = messages;
+              if (stopResponseFlag) {
+                controller.abort("User: Stop Response");
+              }
+              break;
+            }
+
+            if (responseMessage.content == "" && value == "") {
+              continue;
+            } else {
+              responseMessage.content = value;
+            }
+
+            if (autoScroll) {
+              scrollToBottom();
+            }  
+          } 
+        }
+      } catch (error) {
+        await handleOpenAIError(error, null, null, responseMessage);
       }
-    } catch (error) {
-      await handleOpenAIError(error, null, null, responseMessage);
-    }
 
-    // 更新消息到数据库
-    await updateChatMessage($chatId);
+      // 更新消息到数据库
+      await updateChatMessage($chatId);
 
-    await tick();
+      await tick();
 
-    if (autoScroll) {
-      scrollToBottom();
-    }
-  }
-
-  const resentVideoResult = async (prompt: string, model: string, responseMessage: any, _chatId: string) => {
-    if (responseMessage.createId) {
-      await getVideoResult(responseMessage, _chatId);
+      if (autoScroll) {
+        scrollToBottom();
+      }
     } else {
-
+      let currResponseMap: any = {};
+      currResponseMap[messageinfo?.model] = messageinfo;
+      let currmessage = messages.filter(item => item.id == messageinfo?.parentId);
+      await sendPrompt(currmessage[0].content, currResponseMap);
     }
   }
 
@@ -767,7 +918,7 @@
 
 <div
   class="min-h-screen max-h-screen {$showSidebar
-    ? 'md:max-w-[calc(100%-246px)]'
+    ? 'md:max-w-[calc(100%-310px)]'
     : ''} w-full max-w-full flex flex-col"
 >
   <Navbar
@@ -805,7 +956,8 @@
           bottomPadding={files.length > 0}
           suggestionPrompts={selectedModelfile?.suggestionPrompts ?? $config?.default_prompt_suggestions}
           {sendPrompt}
-          {resentVideoResult}
+          {startPay}
+          {refreshVideoResult}
           {continueGeneration}
           {regenerateResponse}
         />
@@ -820,8 +972,6 @@
   bind:autoScroll
   bind:selectedModel={atSelectedModel}
   bind:currentModel = {selectedModels}
-  bind:videodura
-  bind:videosize
   {messages}
   {submitPrompt}
   {stopResponse}

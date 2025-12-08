@@ -13,6 +13,7 @@ export const getDeModels = async (token: string = "") => {
         model: "wan-2.5",
         textmodel: "wan-2.5/text-to-video",
         imagemodel: "wan-2.5/image-to-video",
+        audio: true,
         duration: [5, 10],
         amount: {"480": [0.375, 0.75], "720": [0.75, 1.5], "1080": [1.125, 2.25]},
         size: ["480*832","832*480","720*1280","1280*720","1080*1920","1920*1080"],
@@ -29,6 +30,7 @@ export const getDeModels = async (token: string = "") => {
         model: "sora-2",
         textmodel: "sora-2/text-to-video",
         imagemodel: "sora-2/image-to-video",
+        audio: true,
         duration: [4, 8, 12],
         amount: {"720": [0.45, 1.35, 2.7]},
         size: ["720*1280","1280*720"],
@@ -45,8 +47,9 @@ export const getDeModels = async (token: string = "") => {
         model: "ovi",
         textmodel: "ovi/text-to-video",
         imagemodel: "ovi/image-to-video",
-        duration: [10, 30, 60],
-        amount: {"540": [0.45, 1.35, 2.7]},
+        audio: true,
+        duration: [5],
+        amount: {"540": [0.225]},
         size: ["540*960","960*540"],
         tip: "OVI",
         support: "image",
@@ -61,9 +64,10 @@ export const getDeModels = async (token: string = "") => {
         model: "veo3.1",
         textmodel: "veo3.1/text-to-video",
         imagemodel: "veo3.1/image-to-video",
+        audio: true,
         duration: [4, 6, 8],
         amount: {"*": [2.4, 3.6, 4.8]},
-        size: ["480*832","832*480","720*1280","1280*720","1080*1920","1920*1080"],
+        size: ["9:16","16:9"],
         tip: "VEO 3.1",
         support: "image",
         type: 1,
@@ -77,9 +81,10 @@ export const getDeModels = async (token: string = "") => {
         model: "ltx-2-pro",
         textmodel: "ltx-2-pro/text-to-video",
         imagemodel: "ltx-2-pro/image-to-video",
+        audio: false,
         duration: [6, 8, 10],
         amount: {"*": [0.54, 0.72, 0.9]},
-        size: ["480*832","832*480","720*1280","1280*720","1080*1920","1920*1080"],
+        size: ["1920*1080"],
         tip: "LTX 2 PRO",
         support: "image",
         type: 1,
@@ -93,9 +98,10 @@ export const getDeModels = async (token: string = "") => {
         model: "hailuo-02",
         textmodel: "hailuo-02/t2v-standard",
         imagemodel: "hailuo-02/i2v-standard",
+        audio: false,
         duration: [6, 10],
         amount: {"*": [0.345, 0.84]},
-        size: ["480*832","832*480","720*1280","1280*720","1080*1920","1920*1080"],
+        size: ["1366*768"],
         tip: "HAILUO 02",
         support: "image",
         type: 1,
@@ -109,9 +115,10 @@ export const getDeModels = async (token: string = "") => {
         model: "seedance",
         textmodel: "seedance-v1-pro-t2v-480p",
         imagemodel: "seedance-v1-pro-i2v-480p",
+        audio: false,
         duration: [6, 9, 12],
         amount: {"*": [0.27, 0.405, 0.54]},
-        size: ["480*832","832*480","720*1280","1280*720","1080*1920","1920*1080"],
+        size: ["3:4","4:3","9:16","16:9","21:9"],
         tip: "SEEDANCE V1",
         support: "image",
         type: 1,
@@ -125,9 +132,10 @@ export const getDeModels = async (token: string = "") => {
         model: "kling",
         textmodel: "kling-v2.0-t2v-master",
         imagemodel: "kling-v2.0-i2v-master",
+        audio: true,
         duration: [5, 10],
         amount: {"*": [1.95, 3.9]},
-        size: ["480*832","832*480","720*1280","1280*720","1080*1920","1920*1080"],
+        size: ["9:16","16:9"],
         tip: "KLING V2.0",
         support: "image",
         type: 1,
@@ -141,6 +149,7 @@ export const getDeModels = async (token: string = "") => {
         model: "pixverse",
         textmodel: "pixverse-v4.5-t2v",
         imagemodel: "pixverse-v4.5-i2v",
+        audio: true,
         duration: [5, 8],
         amount: {"*": [0.525, 1.05]},
         size: ["3:4","4:3","9:16","16:9"],
@@ -210,6 +219,40 @@ export const getDeOpenAIChatResult = async (
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ...body
+      }),
+    });
+    if (res.status != 200) {
+      throw new Error("error");
+    }
+  } catch (err) {
+    error = err;
+    res = null;
+  }
+
+  if (error) {
+    throw error;
+  }
+
+  return [res, controller];
+}
+
+// AI Video X402 Result Request Encapsulation
+export const getX402DeOpenAIChatResult = async (
+  token: string = "",
+  body: Object
+) => {
+  let res: any;
+  let error = null;
+  const controller = new AbortController();
+  try {
+    res = await fetch(`${WEBUI_API_BASE_URL}/chat/video/x402/result`, {
+      signal: controller.signal,
+      method: "POST",
+      headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

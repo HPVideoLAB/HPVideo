@@ -9,7 +9,7 @@ wave_key = os.getenv("WAVESPEED_KEY")
 
 amounts = {
   "wan-2.5": {
-    "480": {"5": 0.0001, "10": 0.75},
+    "480": {"5": 0.375, "10": 0.75},
     "720": {"5": 0.75, "10": 1.5}, 
     "1080": {"5": 1.125, "10": 2.25}
   },
@@ -17,7 +17,7 @@ amounts = {
     "720": {"4": 0.45, "8": 1.35, "12": 2.7}
   },
   "ovi": {
-    "540": {"10": 0.45, "30": 1.35, "60": 2.7}
+    "540": {"5": 0.225}
   },
   "veo3.1": {
     "*": {"4": 2.4, "6": 3.6, "8": 4.8}
@@ -52,22 +52,38 @@ class WaveApi:
 			"Authorization": f'Bearer {wave_key}',
 			"Content-Type": "application/json"
 		}
-		last_message = param.messages[-1]
-		if param.source == 'pixverse':
+		user_data_list = [item for item in param.messages if item.get("role") == "user"]
+		last_message = user_data_list[-1]
+		contents = self.judge_content_type(last_message.get("content"))
+		if param.source == 'google':
 			data = {
 				"duration": param.duration,
-				"prompt": last_message.get("content"),
+				"prompt": contents.get("text"),
+				"aspect_ratio": param.size,
+				"generate_audio": True,
+				"resolution": "720p"
+			}
+		elif param.source == 'pixverse':
+			data = {
+				"duration": param.duration,
+				"prompt": contents.get("text"),
 				"aspect_ratio": param.size,
 				"resolution": "720p"
+			}
+		elif param.source == 'bytedance' or param.source == 'kwaivgi':
+			data = {
+				"duration": param.duration,
+				"prompt": contents.get("text"),
+				"aspect_ratio": param.size
 			}
 		else:
 			data = {
 				"duration": param.duration,
-				"prompt": last_message.get("content"),
+				"prompt": contents.get("text"),
 				"size": param.size
 			}
-		if param.image is not None and param.image.strip() != "":
-			data["image"] = param.image
+		if contents.get("image") is not None:
+			data["image"] = contents.get("image").get("url")
 
 		try:
 			url = f'{wave_url}/{param.source}/{param.model}'
@@ -143,10 +159,30 @@ class WaveApi:
 					amount = f"${amount_dict.get(key).get(str(duration))}"
 			pay = PayTableInstall.get_by_messageid(messageid)
 			if pay is None:
-				PayTableInstall.insert_pay("", model, size, duration, amount, messageid)
+				PayTableInstall.insert_pay("", model, size, duration, amount, messageid, "", False, True)
 			return {
         "amount": amount,
         "messageid": messageid
     }
+
+	def judge_content_type(self, content: object):
+		if isinstance(content, str):
+			return {"text": content, "image": None}
+		elif isinstance(content, list):
+			text = ""
+			image = ""
+			has_text = any(item.get("type") == "text" for item in content)
+			if has_text:
+				text_list = [item.get("text", "").strip() for item in content if item.get("type") == "text"]
+				text = text_list[0]
+
+			has_image = any(item.get("type") == "image_url" for item in content)
+			if has_image:
+				image_list = [item.get("image_url", "") for item in content if item.get("type") == "image_url"]
+				image = image_list[0]
+			return {"text": text, "image": image}
+		else:
+			return {"text": content, "image": None}
+			
 
 WaveApiInstance = WaveApi()

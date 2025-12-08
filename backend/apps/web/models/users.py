@@ -352,6 +352,8 @@ class UsersTable:
             query.execute()  # 执行更新操作
 
             user = User.get(User.id == id)  # 查询更新后的用户
+            user_dict = model_to_dict(user)
+            RedisClientInstance.add_key_value(f"user:{id}", user_dict)
             return UserModel(**model_to_dict(user))  # 将数据库对象转换为Pydantic模型并返回
         except:
             return None  # 如果更新失败，返回None

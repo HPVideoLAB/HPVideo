@@ -43,6 +43,7 @@ export const showSidebar = writable(false);
 export const showSettings = writable(false);
 export const showArchivedChats = writable(false);
 export const showChangelog = writable(false);
+export const showPriceView = writable(false);
 
 // 升级VIP标志用于实时更新升级数据
 export const vipupgrade = writable(false);
@@ -68,6 +69,7 @@ export const showFollowTGGroupModal = writable(false);
 // 钱包数据
 export let currentWalletData = writable(DefaultCurrentWalletData)
 export let threesideAccount = writable({})
+export let paystatus = writable(false)
 
 // 模型访问数量
 export let modelLimits = writable([
@@ -80,11 +82,8 @@ export let modelLimits = writable([
 export let pageUpdateNumber = writable(0)
 
 
-// 邀请人id
-export let inviterId = writable("")
-
-// 来源频道
-export let channel = writable("")
+// 网页请求参数
+export let urlprompt = writable("")
 
 // 切换模型相关
 export const switchModel = writable({

@@ -243,7 +243,7 @@ def calTotal(request: Request, model: str):
 async def get_param(messageid: str, prompt: str, size: str, duration: int) -> Dict[str, Any]:
     pay = PayTableInstall.get_by_messageid(messageid)
     if pay is not None:
-        PayTableInstall.update_status(pay.id, True)
+        PayTableInstall.update_status(pay.id, True, True)
     result = WaveApiInstance.x402create("alibaba", "wan-2.5/text-to-video", prompt, duration, size)
     if result is not None and result.get('code') == 200:
         requestId = result['data']['id']
@@ -258,7 +258,7 @@ async def get_param(messageid: str, prompt: str, size: str, duration: int) -> Di
 async def get_param(messageid: str, prompt: str, size: str, duration: int) -> Dict[str, Any]:
     pay = PayTableInstall.get_by_messageid(messageid)
     if pay is not None:
-        PayTableInstall.update_status(pay.id, True)
+        PayTableInstall.update_status(pay.id, True, True)
     result = WaveApiInstance.x402create("openai", "sora-2/text-to-video", prompt, duration, size)
     if result is not None and result.get('code') == 200:
         requestId = result['data']['id']
@@ -273,7 +273,7 @@ async def get_param(messageid: str, prompt: str, size: str, duration: int) -> Di
 async def get_param(messageid: str, prompt: str, size: str, duration: int) -> Dict[str, Any]:
     pay = PayTableInstall.get_by_messageid(messageid)
     if pay is not None:
-        PayTableInstall.update_status(pay.id, True)
+        PayTableInstall.update_status(pay.id, True, True)
     result = WaveApiInstance.x402create("character-ai", "ovi/text-to-video", prompt, duration, size)
     if result is not None and result.get('code') == 200:
         requestId = result['data']['id']
@@ -288,7 +288,7 @@ async def get_param(messageid: str, prompt: str, size: str, duration: int) -> Di
 async def get_param(messageid: str, prompt: str, size: str, duration: int) -> Dict[str, Any]:
     pay = PayTableInstall.get_by_messageid(messageid)
     if pay is not None:
-        PayTableInstall.update_status(pay.id, True)
+        PayTableInstall.update_status(pay.id, True, True)
     result = WaveApiInstance.x402create("google", "veo3.1/text-to-video", prompt, duration, size)
     if result is not None and result.get('code') == 200:
         requestId = result['data']['id']
@@ -303,7 +303,7 @@ async def get_param(messageid: str, prompt: str, size: str, duration: int) -> Di
 async def get_param(messageid: str, prompt: str, size: str, duration: int) -> Dict[str, Any]:
     pay = PayTableInstall.get_by_messageid(messageid)
     if pay is not None:
-        PayTableInstall.update_status(pay.id, True)
+        PayTableInstall.update_status(pay.id, True, True)
     result = WaveApiInstance.x402create("lightricks", "ltx-2-pro/text-to-video", prompt, duration, size)
     if result is not None and result.get('code') == 200:
         requestId = result['data']['id']
@@ -318,7 +318,7 @@ async def get_param(messageid: str, prompt: str, size: str, duration: int) -> Di
 async def get_param(messageid: str, prompt: str, size: str, duration: int) -> Dict[str, Any]:
     pay = PayTableInstall.get_by_messageid(messageid)
     if pay is not None:
-        PayTableInstall.update_status(pay.id, True)
+        PayTableInstall.update_status(pay.id, True, True)
     result = WaveApiInstance.x402create("minimax", "hailuo-02/t2v-standard", prompt, duration, size)
     if result is not None and result.get('code') == 200:
         requestId = result['data']['id']
@@ -333,7 +333,7 @@ async def get_param(messageid: str, prompt: str, size: str, duration: int) -> Di
 async def get_param(messageid: str, prompt: str, size: str, duration: int) -> Dict[str, Any]:
     pay = PayTableInstall.get_by_messageid(messageid)
     if pay is not None:
-        PayTableInstall.update_status(pay.id, True)
+        PayTableInstall.update_status(pay.id, True, True)
     result = WaveApiInstance.x402create("bytedance", "seedance-v1-pro-t2v-480p", prompt, duration, size)
     if result is not None and result.get('code') == 200:
         requestId = result['data']['id']
@@ -348,7 +348,7 @@ async def get_param(messageid: str, prompt: str, size: str, duration: int) -> Di
 async def get_param(messageid: str, prompt: str, size: str, duration: int) -> Dict[str, Any]:
     pay = PayTableInstall.get_by_messageid(messageid)
     if pay is not None:
-        PayTableInstall.update_status(pay.id, True)
+        PayTableInstall.update_status(pay.id, True, True)
     result = WaveApiInstance.x402create("kwaivgi", "kling-v2.0-t2v-master", prompt, duration, size)
     if result is not None and result.get('code') == 200:
         requestId = result['data']['id']
@@ -363,7 +363,7 @@ async def get_param(messageid: str, prompt: str, size: str, duration: int) -> Di
 async def get_param(messageid: str, prompt: str, size: str, duration: int) -> Dict[str, Any]:
     pay = PayTableInstall.get_by_messageid(messageid)
     if pay is not None:
-        PayTableInstall.update_status(pay.id, True)
+        PayTableInstall.update_status(pay.id, True, True)
     result = WaveApiInstance.x402create("pixverse", "pixverse-v4.5-t2v", prompt, duration, size)
     if result is not None and result.get('code') == 200:
         requestId = result['data']['id']

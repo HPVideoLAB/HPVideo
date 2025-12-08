@@ -6,8 +6,8 @@
     modelfiles,
     settings,
     showSidebar,
-    theme,
-    config
+    config,
+    threesideAccount
   } from "$lib/stores";
   import { findWordIndices } from "$lib/utils";
 
@@ -47,11 +47,14 @@
   export let fileUploadEnabled = true;
 
   export let prompt = "";
-  export let videodura = 8;
-  export let videosize = "720*1280";
+  let videodura = 8;
+  let videosize = "720*1280";
+  let videomoney = "$0.01";
   export let messages: any[] = [];
 
-  let toolInfo: any = {duration: videodura, size: videosize};
+  const getVideoInfo = () => {
+    return {duration: videodura, size: videosize, amount: videomoney};
+  }
 
   $: if (prompt) {
     if (chatTextAreaElement) {
@@ -173,7 +176,7 @@
 {#if dragged}
   <div
     class="fixed {$showSidebar
-      ? 'left-0 md:left-[246px] md:w-[calc(100%-246px)]'
+      ? 'left-0 md:left-[310px] md:w-[calc(100%-310px)]'
       : 'left-0'}  w-full h-full flex z-50 touch-none pointer-events-none"
     id="dropzone"
     role="region"
@@ -193,7 +196,7 @@
 
 <div
   class="fixed bottom-0 {$showSidebar
-    ? 'left-0 md:left-[246px]'
+    ? 'left-0 md:left-[310px]'
     : 'left-0'} right-0"
 >
   <div class="w-full">
@@ -271,7 +274,7 @@
 
     <div class="bg-white dark:bg-gray-900">
       <div class="px-5 md:px-20 mx-auto inset-x-0">
-        <div class=" pb-4">
+        <div class="pb-[30px]">
           <input
             bind:this={filesInputElement}
             bind:files={inputFiles}
@@ -336,7 +339,11 @@
             dir={$settings?.chatDirection ?? "LTR"}
             class=" flex flex-col relative w-full rounded-3xl bg-gray-100 dark:bg-gray-850 dark:text-gray-100 button-select-none p-3 border border-gray-300 dark:border-gray-800 p-1"
             on:submit|preventDefault={() => {
-              submitPrompt(prompt, toolInfo, user);
+              if ($threesideAccount?.address) {
+                submitPrompt(prompt, getVideoInfo(), user);
+              } else{
+                document.getElementById("connect-wallet-btn")?.click();
+              }           
             }}
           >
             {#if files.length > 0}
@@ -398,7 +405,7 @@
                       e.preventDefault();
                     }
                     if (prompt !== "" && e.keyCode == 13 && !e.shiftKey) {
-                      submitPrompt(prompt, toolInfo, user);   
+                      submitPrompt(prompt, getVideoInfo(), user);   
                     }
                   }
                 }}
@@ -552,7 +559,7 @@
 
                   <!-- Video Resolution -->
                   <div class="self-star flex gap-x-1 mb-2 ml-1 mr-1">
-                    <Tools bind:videosize={videosize} bind:videodura={videodura} bind:selectedModel={currentModel}/>
+                    <Tools bind:videosize={videosize} bind:videodura={videodura} bind:videomoney={videomoney} bind:selectedModel={currentModel}/>
                   </div>
                 </div>
                 
@@ -606,7 +613,7 @@
       </div>
       
       {#if messages.length == 0}
-        <div class="m-auto w-full px-5 md:px-20 pb-[40px]">
+        <div class="m-auto w-full px-5 md:px-20 pb-[30px]">
           <div class="flex justify-start">
             <div class="flex space-x-4 mb-1" in:fade={{ duration: 200 }}></div>
           </div>

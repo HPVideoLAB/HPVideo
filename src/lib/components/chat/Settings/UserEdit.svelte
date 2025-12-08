@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, getContext } from "svelte";
-	import { user, theme } from "$lib/stores";
+	import { user, theme, threesideAccount } from "$lib/stores";
 	import { generateInitialsImage, canvasPixelTest } from "$lib/utils";
 	import { DropdownMenu } from "bits-ui";
 	import ChevronDown from "$lib/components/icons/ChevronDown.svelte";
@@ -8,6 +8,8 @@
 	import { toast } from "svelte-sonner";
 	import { updateUserProfile } from "$lib/apis/auths";
 	import { updateUserLanguage } from "$lib/apis/users";
+
+	import { modal } from "$lib/utils/wallet/bnb/index";
 
 	const i18n = getContext("i18n");
 
@@ -269,6 +271,16 @@
 
 			<div class="pt-2 pb-0">
 				<div class="flex flex-row items-center w-full bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg">
+					<div class="text-sm font-medium mx-2">{$i18n.t("Wallet Address")}:</div>
+					<div class="flex-1">
+						<input class="w-full rounded-lg py-1 px-4 text-sm dark:text-gray-300 dark:bg-gray-850 outline-none"
+						  value={$threesideAccount?.address} disabled>
+					</div>
+				</div>
+			</div>
+
+			<div class="pt-2 pb-0">
+				<div class="flex flex-row items-center w-full bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg">
 					<div class="text-sm font-medium mx-2">{$i18n.t("Name")}:</div>
 					<div class="flex-1">
 						<input
@@ -409,6 +421,11 @@
 					</div>
 				</div>
 			</div>
+			<div class="flex w-full justify-center pb-2">
+				<button class="w-[90%] primaryButton text-white text-sm px-2 py-1.5 rounded-lg" on:click={() => {
+					modal.open();
+				}}>{$i18n.t("Close Wallet")}</button>
+			</div>	
 		</div>
 	</div>
 </div>

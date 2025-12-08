@@ -17,7 +17,6 @@ export const getSessionUser = async (token: string, channel: string) => {
     })
     .catch(async (err) => {
       error = err.detail;
-      await signOut(channel);
       return null;
     });
 

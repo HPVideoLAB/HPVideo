@@ -32,6 +32,7 @@ from config import (
     AppConfig,
 )
 
+
 app = FastAPI()
 
 origins = ["*"]
@@ -47,7 +48,6 @@ app.state.config.DEFAULT_USER_ROLE = DEFAULT_USER_ROLE
 app.state.config.USER_PERMISSIONS = USER_PERMISSIONS
 app.state.config.WEBHOOK_URL = WEBHOOK_URL
 app.state.AUTH_TRUSTED_EMAIL_HEADER = WEBUI_AUTH_TRUSTED_EMAIL_HEADER
-
 
 
 app.add_middleware(

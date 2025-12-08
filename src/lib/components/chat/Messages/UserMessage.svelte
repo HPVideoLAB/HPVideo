@@ -226,9 +226,9 @@
 			{:else}
 				<div class="w-full">
 					<div class="flex {$settings?.chatBubble ?? true ? 'justify-end' : ''} mb-2">
-						<div
+						<div id={message?.id}
 							class="rounded-3xl {$settings?.chatBubble ?? true
-								? `max-w-[90%] px-5 py-2 text-white bg-gradient-to-r from-[#9802E5] to-[#E0A3FF] ${
+								? `max-w-[90%] p-6 text-white bg-gradient-to-r from-[#9802E5] to-[#E0A3FF] ${
 										message.files ? 'rounded-tr-lg' : ''
 								  }`
 								: ''}  "
@@ -296,7 +296,7 @@
 							{/if}
 						{/if}
 						{#if !readOnly}
-							<Tooltip content={$i18n.t('Edit')} placement="bottom">
+							<!-- <Tooltip content={$i18n.t('Edit')} placement="bottom">
 								<button
 									class="invisible group-hover:visible p-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg dark:hover:text-white hover:text-black transition edit-user-message-button"
 									on:click={() => {
@@ -318,7 +318,7 @@
 										/>
 									</svg>
 								</button>
-							</Tooltip>
+							</Tooltip> -->
 						{/if}
 
 						<Tooltip content={$i18n.t('Copy')} placement="bottom">

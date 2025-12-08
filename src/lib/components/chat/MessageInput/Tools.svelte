@@ -16,7 +16,9 @@
 
   export let videodura = 10;
   export let videosize = "720*1280";
+  export let videomoney = "$0.001";
   export let selectedModel: any = [];
+  let videodura_index = 0;
   let modelObj: any = [];
 
   $: if (selectedModel && selectedModel.length > 0) {
@@ -63,6 +65,7 @@
         }
       })
     }
+    videomoney = amount[videodura_index];
   }
 
   onMount(() => {
@@ -114,7 +117,7 @@
               }}
             >
               <div class="flex flex-row items-center gap-2 mr-1">
-                {#if Number(item.split("*")[0]) < Number(item.split("*")[1])}
+                {#if Number(item.split("*")[0]) < Number(item.split("*")[1]) || Number(item.split(":")[0]) < Number(item.split(":")[1])}
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 1024 1024"
@@ -183,6 +186,8 @@
               on:click={(e) => {
                 e.preventDefault();
                 videodura = item;
+                videodura_index = index;
+                checkmoney(modelObj[0].amount);
                 durashow = false;
               }}
             >

@@ -17,9 +17,10 @@
 	export let chatId = '';
 	export let readOnly = false;
 	export let sendPrompt: Function;
-	export let resentVideoResult: Function
+	export let refreshVideoResult: Function
 	export let continueGeneration: Function;
 	export let regenerateResponse: Function;
+	export let startPay: Function;
 
 	export let user = $_user;
 	export let prompt;
@@ -135,29 +136,8 @@
 		await sendPrompt(userPrompt, responseMap, modelLimit);
 	};
 
-	const resentMessage = async (messageId) => {
-		let userMessage = {
-			...history.messages[messageId]
-		};
-
-		let userPrompt = userMessage?.content;
-		
-		// Create Simulate ResopnseMessage
-		let currentMessage: any = {};
-		history.messages[messageId].childrenIds.forEach((responseMessageId: string) => {
-			let responseMessage = history.messages[responseMessageId];
-			currentMessage = {
-				...responseMessage,
-				status: "",
-				content: "",
-				error: false,
-				errmsg: "",
-				done: false
-			}
-		});
-
-		await tick();
-		await resentVideoResult(userMessage?.models[0], userPrompt, currentMessage, chatId);
+	const resentMessage = async (message: any) => {
+		await refreshVideoResult(message, chatId);
 	};
 
 	const updateChatMessages = async () => {
@@ -317,6 +297,10 @@
 			history: history
 		});
 	};
+
+	const handlePay = async (message: any) => {
+		await startPay(message);
+	}
 </script>
 
 <div class="h-full flex mb-16">
@@ -332,7 +316,7 @@
 		<div class="w-full pt-2">
 			{#key chatId}
 				{#each messages as message, messageIdx}
-					<div class=" w-full {messageIdx === messages.length - 1 ? 'pb-28' : ''}">
+					<div class=" w-full {messageIdx === messages.length - 1 ? 'pb-[10rem]' : ''}">
 						<div
 							class="flex flex-col justify-between px-6 md:px-20 mb-3 {$settings?.fullScreenMode ?? null
 								? 'max-w-full'
@@ -369,6 +353,7 @@
 										{showPreviousMessage}
 										{showNextMessage}
 										{rateMessage}
+										{handlePay}
 										copyToClipboard={copyToClipboardWithToast}
 										{continueGeneration}
 										{regenerateResponse}

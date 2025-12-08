@@ -6,18 +6,16 @@
     theme,
     WEBUI_NAME,
     mobile,
-    inviterId,
-    channel,
-    user,
-    threesideAccount
+    threesideAccount,
+    urlprompt
   } from "$lib/stores";
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
   import { Toaster } from "svelte-sonner";
 
   import { defaultBackendConfig } from "$lib/apis";
-  import { config as wconfig } from "$lib/utils/wallet/bnb/index";
-  import { watchAccount, getAccount } from "@wagmi/core";
+  import { config as wconfig, clearConnector } from "$lib/utils/wallet/bnb/index";
+  import { getAccount, disconnect } from "@wagmi/core";
 
   import "../tailwind.css";
   import "../app.css";
@@ -111,16 +109,9 @@
   // 获取请求携带参数
   async function initUrlParam() {
     const queryParams = new URLSearchParams($page.url.search);
-
-    // 获取邀请信息
-    let inviterVal = queryParams.get("inviter");
-    if (inviterVal) {
-      await inviterId.set(inviterVal);
-    }
-    // 获取渠道
-    let channelName = queryParams.get("channel");
-    if (channelName) {
-      await channel.set(channelName);
+    const promptVal = queryParams.get("urlprompt");
+    if (promptVal) {
+      await urlprompt.set(promptVal);
     }
   }
 
@@ -129,30 +120,23 @@
     try {
       await initData();
       await initUrlParam();
+      await checkWallectConnect();
       loaded = true;
     } catch (error) {
       console.log("==============", error);
     }
   });
-  watchAccount(wconfig, {
-    async onChange() {
-      try {
-        if ($threesideAccount?.address) {
-          clearConnector();
-          $threesideAccount = {};
-        } else {
-          let account = getAccount(wconfig);
-          $threesideAccount = account;
-        }   
-      } catch (error) {
-        console.log("wallet login error:", error);
-      }
-    },
-  });
-  function clearConnector() {
-    wconfig.state.connections.forEach((item) => {
-      wconfig.state.connections.delete(item.connector.uid);
-    });
+
+  // connect wallet function
+  const checkWallectConnect = async () => {
+    let account = getAccount(wconfig);
+    if (account?.address) {
+      await threesideAccount.set(account);
+    } else {
+      clearConnector();
+      localStorage.removeItem("token");
+      disconnect(wconfig);
+    }
   }
 </script>
 

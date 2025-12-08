@@ -51,11 +51,11 @@
 					<div class="flex flex-col text-left">
 						{#if prompt.title && prompt.title[0] !== ''}
 							<div
-								class="font-medium dark:text-gray-300 group-hover:text-white transition"
+								class="text-sm font-bold dark:text-gray-300 group-hover:text-white transition"
 							>
 								{$i18n.t(prompt.title[0])}
 							</div>
-							<div class="text-sm text-gray-600 group-hover:text-white font-normal line-clamp-2">{$i18n.t(prompt.title[1])}</div>
+							<div class="text-xs text-gray-600 group-hover:text-white font-normal line-clamp-2">{$i18n.t(prompt.title[1])}</div>
 						{:else}
 							<div
 								class=" self-center text-sm font-medium dark:text-gray-300 dark:group-hover:text-white transition line-clamp-2"

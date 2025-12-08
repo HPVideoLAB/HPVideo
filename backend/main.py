@@ -1,4 +1,3 @@
-from contextlib import asynccontextmanager
 import json
 import time
 import os
@@ -7,6 +6,7 @@ import logging
 import aiohttp
 
 from fastapi import FastAPI, Request, Depends, status
+from contextlib import asynccontextmanager
 from fastapi.staticfiles import StaticFiles
 from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -79,10 +79,20 @@ https://github.com/open-webui/open-webui
 """
 )
 
+# bnb usdt pay listener
+from apps.listener.bnbusdt import BNBUSDTPayListenerInstance
+import asyncio
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("FastAPI Server Running，Start USDT Listener...")
+    listener_task = asyncio.create_task(BNBUSDTPayListenerInstance.start_listening())
+    yield
+    listener_task.cancel()
+    await listener_task
+    print("===============bnb usdt pay close===============")
 
-app = FastAPI(
-    root_path="/creator", docs_url="/docs" if ENV == "dev" else None, redoc_url=None, lifespan=None
-)
+
+app = FastAPI(root_path="/creator", docs_url="/docs" if ENV == "dev" else None, redoc_url=None, lifespan=lifespan)
 
 app.state.config = AppConfig()
 app.state.config.ENABLE_MODEL_FILTER = ENABLE_MODEL_FILTER

@@ -88,7 +88,17 @@
                 >
                   <div class="flex items-center gap-2 mr-1">
                     <div class="flex flex-col line-clamp-1">
-                      <span class="text-sm text-gray-900 dark:text-gray-100">{item?.info?.tip}</span>
+                      <div class="flex items-center text-sm text-gray-900 dark:text-gray-100">{item?.info?.tip}
+                        {#if !item?.info?.audio}
+                          <svg xmlns="http://www.w3.org/2000/svg" 
+                            viewBox="0 0 1024 1024"
+                            version="1.1"
+                            fill="currentColor"
+                            class="size-4 ml-2">
+                            <path d="M251.264 701.653333H85.333333a42.666667 42.666667 0 0 1-42.666666-42.666666v-256a42.666667 42.666667 0 0 1 42.666666-42.666667h165.930667l225.877333-184.832A21.333333 21.333333 0 0 1 512 192v677.973333a21.333333 21.333333 0 0 1-34.858667 16.512L251.306667 701.653333z m619.733333-170.666666l150.869334 150.826666-60.373334 60.373334L810.666667 591.317333l-150.869334 150.869334-60.330666-60.373334 150.869333-150.826666-150.869333-150.869334 60.330666-60.330666L810.666667 470.656l150.826666-150.869333L1021.866667 380.16l-150.869334 150.869333z"/>
+                          </svg>
+                        {/if}
+                      </div>
                       <span class="text-xs mt-0.5 primaryText">{$i18n.t(item?.info?.desc)}</span>
                     </div>
                   </div>

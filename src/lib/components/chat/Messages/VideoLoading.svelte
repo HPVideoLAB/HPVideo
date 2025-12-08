@@ -31,7 +31,7 @@
 
 </script>
 
-<div class="w-full mt-3 mb-4">
+<div class="w-full my-3">
 	<div class="animate-pulse flex w-full">
 		<div class="flex justify-center flex-col items-center w-full {$mobile ? '' : (sizeflag ? 'max-w-[600px]' : 'max-w-[300px]')} rounded-lg
 			bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" style={`aspect-ratio: ${aspectRatio}`}>

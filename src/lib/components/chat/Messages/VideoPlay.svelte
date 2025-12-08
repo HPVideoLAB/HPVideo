@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { onMount, onDestroy } from 'svelte';
 	import { mobile } from "$lib/stores";
 	export let videourl = "";
 	export let videosize = "16:9";
+	
 
 	let videoElement: any;
 	let videoWidth = 0;
@@ -37,9 +39,17 @@
 		videoHeight = videoWidth * originalHeight / originalWidth;
 	}
 
+	onMount(() => {
+    window.addEventListener('resize', calculateOnLoadedMetadata);
+  });
+
+  onDestroy(() => {
+    window.removeEventListener('resize', calculateOnLoadedMetadata);
+  });
+
 </script>
 
-<div class="w-full mt-3 mb-4">
+<div class="w-full my-3">
 	<div class="flex w-full">
 		<div class="w-full {$mobile ? '' : sizeflag ? 'max-w-[600px]' : 'max-w-[300px]'}">
 			<video bind:this={videoElement} bind:clientWidth={videoWidth} class="my-1 w-full rounded-lg bg-red" controls src={videourl}

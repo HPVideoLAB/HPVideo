@@ -6,11 +6,11 @@ class AiModelReq(BaseModel):
     source: str
     permodel: str
     model: str
-    duration: int
+    duration: Optional[int] = 0
+    size: Optional[str] = None
     messageid: str
     messages: object
     image: Optional[str] = None
-    size: str
 
 class AiResultReq(BaseModel):
     requestId: str
