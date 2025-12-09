@@ -1,36 +1,28 @@
 <script>
-  import "../polyfills"; // 必须在其他代码之前引入
-  import { onMount, setContext } from "svelte";
-  import {
-    config,
-    theme,
-    WEBUI_NAME,
-    mobile,
-    threesideAccount,
-    urlprompt
-  } from "$lib/stores";
-  import { page } from "$app/stores";
-  import { goto } from "$app/navigation";
-  import { Toaster } from "svelte-sonner";
+  import '../polyfills'; // 必须在其他代码之前引入
+  import { onMount, setContext } from 'svelte';
+  import { config, theme, WEBUI_NAME, mobile, threesideAccount, urlprompt } from '$lib/stores';
+  import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
+  import { Toaster } from 'svelte-sonner';
 
-  import { defaultBackendConfig } from "$lib/apis";
-  import { config as wconfig, clearConnector } from "$lib/utils/wallet/bnb/index";
-  import { getAccount, disconnect } from "@wagmi/core";
+  import { defaultBackendConfig } from '$lib/apis';
+  import { config as wconfig, clearConnector } from '$lib/utils/wallet/bnb/index';
+  import { getAccount, disconnect } from '@wagmi/core';
 
-  import "../tailwind.css";
-  import "../app.css";
+  import '../tailwind.css';
+  import '../app.css';
 
   // 打开调试模式
   import VConsole from 'vconsole';
   const vConsole = new VConsole();
 
+  import 'tippy.js/dist/tippy.css';
 
-  import "tippy.js/dist/tippy.css";
+  import { WEBUI_BASE_URL } from '$lib/constants';
+  import i18n, { initI18n } from '$lib/i18n';
 
-  import { WEBUI_BASE_URL } from "$lib/constants";
-  import i18n, { initI18n } from "$lib/i18n";
-
-  setContext("i18n", i18n);
+  setContext('i18n', i18n);
   let loaded = false;
   const BREAKPOINT = 768;
 
@@ -38,7 +30,8 @@
   async function registServiceWorker() {
     if ('serviceWorker' in navigator) {
       // 注册 Service Worker，指定 type 为 'module' 以支持 ES6 模块语法
-      navigator.serviceWorker.register('../static/sw.js', { type: 'module' })
+      navigator.serviceWorker
+        .register('../static/sw.js', { type: 'module' })
         .then((registration) => {
           console.log('Service Worker registered success with scope:', registration.scope);
         })
@@ -47,13 +40,13 @@
         });
     }
   }
-  
+
   async function initData() {
     let backendConfig = null;
     try {
       backendConfig = await defaultBackendConfig();
     } catch (error) {
-      console.error("Error loading backend config:", error);
+      console.error('Error loading backend config:', error);
     }
     // Initialize i18n even if we didn't get a backend config,
     // so `/error` can show something that's not `undefined`.
@@ -81,13 +74,13 @@
       }
     };
 
-    window.addEventListener("resize", onResize);
+    window.addEventListener('resize', onResize);
 
-    document.getElementById("splash-screen")?.remove();
+    document.getElementById('splash-screen')?.remove();
 
     // 创建并插入Google Analytics的script标签
-    const script = document.createElement("script");
-    script.src = "https://www.googletagmanager.com/gtag/js?id=G-ELT9ER83T2";
+    const script = document.createElement('script');
+    script.src = 'https://www.googletagmanager.com/gtag/js?id=G-ELT9ER83T2';
     script.async = true;
     document.head.appendChild(script);
 
@@ -97,19 +90,19 @@
       function gtag() {
         dataLayer.push(arguments);
       }
-      gtag("js", new Date());
-      gtag("config", "G-ELT9ER83T2");
+      gtag('js', new Date());
+      gtag('config', 'G-ELT9ER83T2');
     };
 
     return () => {
-      window.removeEventListener("resize", onResize);
+      window.removeEventListener('resize', onResize);
     };
   }
 
   // 获取请求携带参数
   async function initUrlParam() {
     const queryParams = new URLSearchParams($page.url.search);
-    const promptVal = queryParams.get("urlprompt");
+    const promptVal = queryParams.get('urlprompt');
     if (promptVal) {
       await urlprompt.set(promptVal);
     }
@@ -123,7 +116,7 @@
       await checkWallectConnect();
       loaded = true;
     } catch (error) {
-      console.log("==============", error);
+      console.log('==============', error);
     }
   });
 
@@ -134,19 +127,15 @@
       await threesideAccount.set(account);
     } else {
       clearConnector();
-      localStorage.removeItem("token");
+      localStorage.removeItem('token');
       disconnect(wconfig);
     }
-  }
+  };
 </script>
 
 <svelte:head>
   <title>{$WEBUI_NAME}</title>
-  <link
-    crossorigin="anonymous"
-    rel="icon"
-    href="{WEBUI_BASE_URL}/static/favicon.png"
-  />
+  <link crossorigin="anonymous" rel="icon" href="/favicon.png" />
 </svelte:head>
 
 {#if loaded}
