@@ -222,7 +222,8 @@ export const getDeOpenAIChatResult = async (
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        ...body
+        ...body,
+        project: "HPVideo"
       }),
     });
     if (res.status != 200) {
