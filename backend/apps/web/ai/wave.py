@@ -91,7 +91,7 @@ class WaveApi:
 			response.raise_for_status()
 			return response.json()
 		except Exception as e:
-			print(f"Request Err: {e}")
+			print(f"Request Err: {e}, {response.json()}")
 			return None
 		
 	# Create X402 Video ID      

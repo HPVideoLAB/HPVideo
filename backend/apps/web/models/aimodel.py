@@ -11,6 +11,7 @@ class AiModelReq(BaseModel):
     messageid: str
     messages: object
     image: Optional[str] = None
+    requestId: Optional[str] = None
 
 class AiResultReq(BaseModel):
     requestId: str

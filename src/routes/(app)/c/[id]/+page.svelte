@@ -224,40 +224,6 @@
 			$models.map((m) => m.id).includes(modelId) ? modelId : ""
 		);
 
-		// 校验模型是否支持文件类型
-		let currModel = $models.filter((item) =>
-			selectedModels.includes(item?.model)
-		);
-		if (
-			files.length > 0 &&
-			(files[0].type == "image" || (files[0]?.image ?? []).length > 0)
-		) {
-			if (currModel[0]?.support == "text") {
-				let imageModels = $models.filter(
-					(item) => item?.type == currModel[0]?.type && item?.support == "image"
-				);
-				selectedModels = [imageModels[0]?.model];
-			}
-			fileFlag = true;
-		} else {
-			// 校验历史记录是否有图片
-			let checkMessages = messages.filter(
-				(item) => item.role == "user" && Array.isArray(item.files)
-			);
-			if (checkMessages.length > 0) {
-				if (currModel[0]?.support == "text") {
-					let imageModels = $models.filter(
-						(item) =>
-							item?.type == currModel[0]?.type && item?.support == "image"
-					);
-					selectedModels = [imageModels[0]?.model];
-				}
-				fileFlag = true;
-			} else {
-				fileFlag = false;
-			}
-		}
-
 		firstResAlready = false; // 开始新对话的时候，也要还原firstResAlready为初始状态false
 		await tick();
 
@@ -650,6 +616,8 @@
 					  }),
 			}));
 
+			let fileFlag = checkImage();
+
 			const [res, controller] = await getDeOpenAIChatCompletion(
 				localStorage.token,
 				{
@@ -757,6 +725,16 @@
 		}
 	};
 
+	const checkImage = () => {
+		const userMsgsa = messages.filter(item => item.role === "user");
+		const lastUserMsg = userMsgsa.length > 0 ? userMsgsa[userMsgsa.length - 1] : null;
+		if (lastUserMsg && Array.isArray(lastUserMsg.files)) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
 	const refreshVideoResult = async (messageinfo: any, _chatId: string) => {
     if (messageinfo.createId) {
 			scrollToBottom();
@@ -768,11 +746,22 @@
       history.messages[responseMessageId] = messageinfo;
 
 			const responseMessage = history.messages[responseMessageId];
+			let currModel = $models.find(item => item.id == responseMessage.model);
+			let fileFlag = checkImage();
 
       try {
         const [res, controller] = await getDeOpenAIChatResult(
           localStorage.token,
-          { requestId: messageinfo.createId}
+          {
+						requestId: messageinfo.createId,
+						source: currModel?.source,
+						permodel: currModel?.id,
+          	model: fileFlag ? currModel?.imagemodel : currModel?.textmodel,
+						duration: responseMessage?.duration,
+						size: responseMessage?.size,
+						messageid: responseMessageId,
+						messages: messages
+					}
         );
 
         await tick();

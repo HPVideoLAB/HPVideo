@@ -33,7 +33,7 @@ async def completion_video(param: AiModelReq, user=Depends(get_current_user)):
         timeout = 0
         while True:
           timeout += 1
-          if timeout > 900:
+          if timeout > 300:
             data = {
               "success": True,
               "message": "timeout",
@@ -110,8 +110,9 @@ async def completion_video(param: AiModelReq, user=Depends(get_current_user)):
   return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @router.post("/video/result")
-async def completion_video(param: AiResultReq, user=Depends(get_current_user)):
+async def completion_video(param: AiModelReq, user=Depends(get_current_user)):
   def event_generator():
+    failednum = 0
     timeout = 0
     while True:
       timeout += 1
@@ -142,16 +143,32 @@ async def completion_video(param: AiResultReq, user=Depends(get_current_user)):
           yield f"data: {json.dumps(data)}\n\n"
           break
         elif status == 'failed':
-          data = {
-            "success": True,
-            "message": inner_data.get('message', 'success'),
-            "status": status,
-            "createId": param.requestId,
-            "videos": "queryfailed"
-          }
-          yield f"data: {json.dumps(data)}\n\n"
-          break
+          failednum += 1
+          if failednum == 3:
+            result = WaveApiInstance.create(param)
+            if result is not None and result.get('code') == 200:
+              param.requestId = result['data']['id']
+          if failednum <= 3:
+            data = {
+              "success": True,
+              "message": inner_data.get('message', 'success'),
+              "status": "processing",
+              "createId": param.requestId,
+              "videos": "videoloading"
+            }
+            yield f"data: {json.dumps(data)}\n\n"
+          else:
+            data = {
+              "success": True,
+              "message": inner_data.get('message', 'success'),
+              "status": status,
+              "createId": param.requestId,
+              "videos": "queryfailed"
+            }
+            yield f"data: {json.dumps(data)}\n\n"
+            break
         else:
+          failednum = 0
           data = {
             "success": True,
             "message": inner_data.get('message', 'success'),
