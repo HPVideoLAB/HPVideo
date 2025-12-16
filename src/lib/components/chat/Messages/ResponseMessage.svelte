@@ -223,10 +223,10 @@
   });
 
   // ⚠️ 慎用：Svelte 会尽量优化避免死循环，但逻辑依然很怪
-  $: if (message && message.paymoney !== 0.0001) {
-    message.paymoney = 0.0001; // 只在不相等时修改，防止死循环
-    console.log('已强制修正 paymoney 为 0.0001');
-  }
+  // $: if (message && message.paymoney !== 0.0001) {
+  //   message.paymoney = 0.0001; // 只在不相等时修改，防止死循环
+  //   console.log('已强制修正 paymoney 为 0.0001');
+  // }
 </script>
 
 <CitationsModal bind:show={showCitationModal} citation={selectedCitation} />
