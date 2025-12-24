@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { toast } from "svelte-sonner";
-  import { v4 as uuidv4 } from "uuid";
-  import { page } from "$app/stores";
-  import { onMount, getContext, tick } from "svelte";
+  import { toast } from 'svelte-sonner';
+  import { v4 as uuidv4 } from 'uuid';
+  import { page } from '$app/stores';
+  import { onMount, getContext, tick } from 'svelte';
+  import ImgToVideo from '$lib/components/chat/MessageInput-modules/ImgToVideo.svelte';
 
   import {
     WEBUI_NAME,
@@ -20,60 +21,46 @@
     theme,
     paystatus,
     urlprompt,
-    chatsearch
-  } from "$lib/stores";
+    chatsearch,
+  } from '$lib/stores';
 
-  import {
-    createNewChat,
-    getChatList,
-    updateChatById
-  } from "$lib/apis/chats";
+  import { createNewChat, getChatList, updateChatById } from '$lib/apis/chats';
 
-  import {
-    getDeOpenAIChatCompletion,
-    getDeOpenAIChatResult,
-    generateDeTitle
-  } from "$lib/apis/de";
-  import { DEGPT_TOKEN } from "$lib/constants"
+  import { getDeOpenAIChatCompletion, getDeOpenAIChatResult, generateDeTitle } from '$lib/apis/de';
+  import { DEGPT_TOKEN } from '$lib/constants';
 
-  import { queryMemory } from "$lib/apis/memories";
-  import { createOpenAITextStream } from "$lib/apis/streaming";
-  import MessageInput from "$lib/components/chat/MessageInput.svelte";
-  import Messages from "$lib/components/chat/Messages.svelte";
-  import Navbar from "$lib/components/layout/Navbar.svelte";
+  import { queryMemory } from '$lib/apis/memories';
+  import { createOpenAITextStream } from '$lib/apis/streaming';
+  import MessageInput from '$lib/components/chat/MessageInput.svelte';
+  import Messages from '$lib/components/chat/Messages.svelte';
+  import Navbar from '$lib/components/layout/Navbar.svelte';
 
-  import { config as wconfig, modal, getUSDTBalance, tranUsdt } from "$lib/utils/wallet/bnb/index";
-	import { getAccount } from "@wagmi/core";
+  import { config as wconfig, modal, getUSDTBalance, tranUsdt } from '$lib/utils/wallet/bnb/index';
+  import { getAccount } from '@wagmi/core';
   import { bnbpaycheck } from '$lib/apis/pay';
 
-  const i18n = getContext("i18n");
+  const i18n: any = getContext('i18n');
 
   let stopResponseFlag = false;
   let autoScroll = true;
-  let processing = "";
+  let processing = '';
   let messagesContainerElement: HTMLDivElement;
   let currentRequestId: any = null;
 
   let showModelSelector = true;
 
-  let selectedModels = [""];
-  let atSelectedModel = "";
+  let selectedModels = [''];
+  let atSelectedModel = '';
 
   let selectedModelfile = null;
   $: selectedModelfile =
-    selectedModels.length === 1 &&
-    $modelfiles.filter((modelfile) => modelfile.tagName === selectedModels[0])
-      .length > 0
-      ? $modelfiles.filter(
-          (modelfile) => modelfile.tagName === selectedModels[0]
-        )[0]
+    selectedModels.length === 1 && $modelfiles.filter((modelfile) => modelfile.tagName === selectedModels[0]).length > 0
+      ? $modelfiles.filter((modelfile) => modelfile.tagName === selectedModels[0])[0]
       : null;
 
   let selectedModelfiles = {};
   $: selectedModelfiles = selectedModels.reduce((a, tagName, i, arr) => {
-    const modelfile =
-      $modelfiles.filter((modelfile) => modelfile.tagName === tagName)?.at(0) ??
-      undefined;
+    const modelfile = $modelfiles.filter((modelfile) => modelfile.tagName === tagName)?.at(0) ?? undefined;
 
     return {
       ...a,
@@ -82,8 +69,8 @@
   }, {});
 
   let chat: any = null;
-  let title = "";
-  let prompt = "";
+  let title = '';
+  let prompt = '';
   let files: any[] = [];
   let fileFlag = false;
   let messages: any[] = [];
@@ -92,7 +79,7 @@
     currentId: null,
   };
 
-  let chatInputPlaceholder = "";
+  let chatInputPlaceholder = '';
 
   // 触发当前组件初始化
   $: $pageUpdateNumber, initNewChat();
@@ -115,25 +102,25 @@
     messages = [];
   }
 
-  $: if($chatsearch!= "") {
-		const resultIds = Object.values(history.messages) // 提取所有对象组成的数组
-			.filter(item => {
-				// 注意：content 可能是字符串（user 角色）或数组（assistant 角色），需先判断类型
-				const contentStr = typeof item.content === 'string' ? item.content : '';
-				return contentStr.includes($chatsearch); // 包含「产品」关键词则保留
-			})
-			.map(item => item.id);
-		console.log("============resultIds========", resultIds);
-		if (resultIds.length > 0) {
-			scrollContent(resultIds[0]);
-		}
-	}
-	function scrollContent(id: string) {
+  $: if ($chatsearch != '') {
+    const resultIds = Object.values(history.messages) // 提取所有对象组成的数组
+      .filter((item) => {
+        // 注意：content 可能是字符串（user 角色）或数组（assistant 角色），需先判断类型
+        const contentStr = typeof item.content === 'string' ? item.content : '';
+        return contentStr.includes($chatsearch); // 包含「产品」关键词则保留
+      })
+      .map((item) => item.id);
+    console.log('============resultIds========', resultIds);
+    if (resultIds.length > 0) {
+      scrollContent(resultIds[0]);
+    }
+  }
+  function scrollContent(id: string) {
     const target = document.getElementById(id);
     if (target) {
       target.scrollIntoView({
         behavior: 'smooth',
-        block: 'start'
+        block: 'start',
       });
     }
   }
@@ -142,12 +129,11 @@
   const assignUrlPrpmpt = async () => {
     if ($urlprompt) {
       prompt = $urlprompt;
-      await urlprompt.set("");
+      await urlprompt.set('');
     }
-  }
+  };
 
   onMount(async () => {
-
     await initNewChat();
 
     await assignUrlPrpmpt();
@@ -166,42 +152,40 @@
     if (currentRequestId !== null) {
       currentRequestId = null;
     }
-    window.history.replaceState(history.state, "", `/creator`);
-    await chatId.set("");
+    window.history.replaceState(history.state, '', `/creator`);
+    await chatId.set('');
 
     autoScroll = true;
 
-    title = "";
-    prompt = "";
+    title = '';
+    prompt = '';
     messages = [];
     history = {
       messages: {},
       currentId: null,
     };
 
-    if ($page.url.searchParams.get("models")) {
-      selectedModels = $page.url.searchParams.get("models")?.split(",");
+    if ($page.url.searchParams.get('models')) {
+      selectedModels = $page.url.searchParams.get('models')?.split(',');
     } else if ($settings?.models) {
       selectedModels = $settings?.models;
     } else if ($config?.default_models) {
-      selectedModels = $config?.default_models.split(",");
+      selectedModels = $config?.default_models.split(',');
     } else {
-      selectedModels = [""];
+      selectedModels = [''];
     }
 
-    if ($page.url.searchParams.get("q")) {
-      prompt = $page.url.searchParams.get("q") ?? "";
+    if ($page.url.searchParams.get('q')) {
+      prompt = $page.url.searchParams.get('q') ?? '';
       if (prompt) {
         await tick();
         submitPrompt(prompt);
       }
     }
 
-    selectedModels = selectedModels.map((modelId) =>
-      $models.map((m) => m.id).includes(modelId) ? modelId : ""
-    );
+    selectedModels = selectedModels.map((modelId) => ($models.map((m) => m.id).includes(modelId) ? modelId : ''));
 
-    let _settings = JSON.parse(localStorage.getItem("settings") ?? "{}");
+    let _settings = JSON.parse(localStorage.getItem('settings') ?? '{}');
     settings.set({
       ..._settings,
     });
@@ -213,8 +197,7 @@
   const scrollToBottom = async () => {
     await tick();
     if (messagesContainerElement) {
-      messagesContainerElement.scrollTop =
-        messagesContainerElement.scrollHeight;
+      messagesContainerElement.scrollTop = messagesContainerElement.scrollHeight;
     }
   };
 
@@ -222,18 +205,16 @@
   // Ollama functions
   //////////////////////////
   const submitPrompt = async (userPrompt: string, videoInfo: any, _user = null) => {
-    console.log("submitPrompt", $chatId, userPrompt);
+    console.log('submitPrompt', $chatId, userPrompt);
 
-    selectedModels = selectedModels.map((modelId) =>
-      $models.map((m) => m.id).includes(modelId) ? modelId : ""
-    );
+    selectedModels = selectedModels.map((modelId) => ($models.map((m) => m.id).includes(modelId) ? modelId : ''));
 
     // console.log("selectedModels", selectedModels);
     if (selectedModels.length < 1) {
-      toast.error($i18n.t("Model not selected"));
+      toast.error($i18n.t('Model not selected'));
     } else if (messages.length != 0 && messages.at(-1).done != true) {
       // Response not done
-      console.log("wait");
+      console.log('wait');
     } else if (files.length > 0 && files.filter((file) => file.upload_status === false).length > 0) {
       // Upload not done
       toast.error(
@@ -243,7 +224,7 @@
       );
     } else {
       // Reset chat message textarea height
-      document.getElementById("chat-textarea").style.height = "";
+      document.getElementById('chat-textarea').style.height = '';
 
       // Create user message
       let userMessageId = uuidv4();
@@ -251,15 +232,13 @@
         id: userMessageId,
         parentId: messages.length !== 0 ? messages.at(-1).id : null,
         childrenIds: [],
-        role: "user",
+        role: 'user',
         user: _user ?? undefined,
-        imageinfo: "",
+        imageinfo: '',
         content: userPrompt,
         files: files.length > 0 ? files : undefined,
         toolInfo: videoInfo, // video param
-        models: selectedModels.filter(
-          (m, mIdx) => selectedModels.indexOf(m) === mIdx
-        ),
+        models: selectedModels.filter((m, mIdx) => selectedModels.indexOf(m) === mIdx),
         timestamp: Math.floor(Date.now() / 1000), // Unix epoch
       };
 
@@ -271,7 +250,7 @@
       if (messages.length !== 0) {
         history.messages[messages.at(-1).id].childrenIds.push(userMessageId);
       }
-      
+
       // Create Simulate ResopnseMessage
       let responseMap: any = {};
       selectedModels.map(async (modelId) => {
@@ -283,14 +262,14 @@
             parentId: userMessageId,
             id: responseMessageId,
             childrenIds: [],
-            role: "assistant",
+            role: 'assistant',
             size: videoInfo?.size,
             duration: videoInfo?.duration,
             paystatus: false,
-            paytype: "unpaid",
+            paytype: 'unpaid',
             paymoney: videoInfo?.amount,
-            status: "processing",
-            content: "paying",
+            status: 'processing',
+            content: 'paying',
             model: model.id,
             userContext: null,
             done: true,
@@ -314,10 +293,10 @@
       });
 
       // Reset chat input textarea
-      prompt = "";
+      prompt = '';
       files = [];
 
-      await tick()
+      await tick();
       scrollToBottom();
 
       // 代码有调用接口，放到try中可方便捕获异常
@@ -327,7 +306,7 @@
           if ($settings.saveChatHistory ?? true) {
             chat = await createNewChat(localStorage.token, {
               id: $chatId,
-              title: $i18n.t("New Chat"),
+              title: $i18n.t('New Chat'),
               models: selectedModels,
               system: $settings.system ?? undefined,
               options: {
@@ -341,15 +320,15 @@
             await chats.set(await getChatList(localStorage.token));
             await chatId.set(chat.id);
           } else {
-            await chatId.set("local");
+            await chatId.set('local');
           }
           await tick();
         }
 
         // 加载聊天列表（赋值聊天title)
         const _chatId = JSON.parse(JSON.stringify($chatId));
-        if (messages.length == 2) { 
-          window.history.replaceState(history.state, "", `/creator/c/${_chatId}`);
+        if (messages.length == 2) {
+          window.history.replaceState(history.state, '', `/creator/c/${_chatId}`);
           const _title = await generateDeChatTitle(userPrompt);
           await setChatTitle(_chatId, _title);
         }
@@ -357,10 +336,9 @@
         // 更新消息到数据库
         Object.keys(responseMap).map(async (modelId) => {
           await updateChatMessage(_chatId);
-        })
+        });
 
         stopResponse();
-
       } catch (err) {
         const _chatId = JSON.parse(JSON.stringify($chatId));
         Object.keys(responseMap).map(async (modelId) => {
@@ -372,12 +350,12 @@
           await updateChatMessage(responseMessage, _chatId);
 
           await tick();
-          
+
           if (autoScroll) {
             scrollToBottom();
           }
-        })
-      }  
+        });
+      }
     }
   };
 
@@ -385,50 +363,48 @@
   const connect = () => {
     checkModalTheme();
     modal.open();
-  }
+  };
   const checkModalTheme = () => {
-    if ($theme === "system" || $theme === "light") {
-      modal.setThemeMode("light");
+    if ($theme === 'system' || $theme === 'light') {
+      modal.setThemeMode('light');
     } else {
-      modal.setThemeMode("dark");
+      modal.setThemeMode('dark');
     }
-  }
+  };
   const startPay = async (messageinfo: any) => {
-		const account = getAccount(wconfig);
-		if (!account?.address) {
-			connect();
+    const account = getAccount(wconfig);
+    if (!account?.address) {
+      connect();
       $paystatus = false;
-			return;
-		}
+      return;
+    }
 
     let paymoney = messageinfo?.paymoney.toString();
     let body = {
-			hash: "",
-			address: account?.address,
-			messageid: messageinfo?.id,
+      hash: '',
+      address: account?.address,
+      messageid: messageinfo?.id,
       model: messageinfo?.model,
       size: messageinfo?.size,
       duration: messageinfo?.duration,
-      amount: paymoney
-		};
+      amount: paymoney,
+    };
     const response = await bnbpaycheck(localStorage.token, body);
-    console.log("==============checkpay result=============", response);
+    console.log('==============checkpay result=============', response);
     if (response?.ok) {
       $paystatus = false;
-      await updatePayStatus(messageinfo, true, "paying");
+      await updatePayStatus(messageinfo, true, 'paying');
 
       // Send prompt
       let currResponseMap: any = {};
       currResponseMap[messageinfo?.model] = messageinfo;
-      let currmessage = messages.filter(item => item.id == messageinfo?.parentId);
+      let currmessage = messages.filter((item) => item.id == messageinfo?.parentId);
       await sendPrompt(currmessage[0].content, currResponseMap);
-
     } else {
       const balance = await getUSDTBalance(account?.address);
-		
-      if (Number(paymoney) <= balance) {
 
-        await updatePayStatus(messageinfo, false, "paying");
+      if (Number(paymoney) <= balance) {
+        await updatePayStatus(messageinfo, false, 'paying');
 
         const txResponse = await tranUsdt(paymoney, messageinfo.id);
         if (txResponse) {
@@ -439,37 +415,35 @@
             model: messageinfo?.model,
             size: messageinfo?.size,
             duration: messageinfo?.duration,
-            amount: paymoney
+            amount: paymoney,
           };
           const response = await bnbpaycheck(localStorage.token, body);
           if (response?.ok) {
             $paystatus = false;
-            await updatePayStatus(messageinfo, true, "paying");
-            toast.success($i18n.t("Pay Success"));
+            await updatePayStatus(messageinfo, true, 'paying');
+            toast.success($i18n.t('Pay Success'));
 
             // Send prompt
             let currResponseMap: any = {};
             currResponseMap[messageinfo?.model] = messageinfo;
-            let currmessage = messages.filter(item => item.id == messageinfo?.parentId);
+            let currmessage = messages.filter((item) => item.id == messageinfo?.parentId);
             await sendPrompt(currmessage[0].content, currResponseMap);
-
-          } else{
+          } else {
             $paystatus = false;
-            await updatePayStatus(messageinfo, false, "unpaid");
-            toast.error($i18n.t("Pay Failed"));
-          }	
-        } else{
+            await updatePayStatus(messageinfo, false, 'unpaid');
+            toast.error($i18n.t('Pay Failed'));
+          }
+        } else {
           $paystatus = false;
-          await updatePayStatus(messageinfo, false, "unpaid");
-          toast.error($i18n.t("Pay Failed"));
+          await updatePayStatus(messageinfo, false, 'unpaid');
+          toast.error($i18n.t('Pay Failed'));
         }
-
       } else {
         $paystatus = false;
-        toast.error($i18n.t("Insufficient USDT Balance"));
-      } 
-    } 
-	}
+        toast.error($i18n.t('Insufficient USDT Balance'));
+      }
+    }
+  };
 
   // update chat message into db
   const updatePayStatus = async (messageinfo: any, paystatus: boolean, payval: string) => {
@@ -480,7 +454,7 @@
     messageinfo.content = payval;
     history.messages[responseMessageId] = messageinfo;
     await updateChatMessage($chatId);
-  }
+  };
 
   const sendPrompt = async (prompt: string, responseMap = null, modelId = null, reload = false) => {
     const _chatId = JSON.parse(JSON.stringify($chatId));
@@ -493,7 +467,7 @@
             let responseMessage = responseMap[model?.id];
             let responseMessageId = responseMessage?.id;
 
-            responseMessage.content = "";
+            responseMessage.content = '';
             responseMessage.done = false;
             responseMessage.error = false;
             history.messages[responseMessageId] = responseMessage;
@@ -502,21 +476,16 @@
             let userContext = null;
             if ($settings?.memory ?? false) {
               if (userContext === null) {
-                const res = await queryMemory(localStorage.token, prompt).catch(
-                  (error) => {
-                    toast.error(error);
-                    return null;
-                  }
-                );
+                const res = await queryMemory(localStorage.token, prompt).catch((error) => {
+                  toast.error(error);
+                  return null;
+                });
 
                 if (res) {
                   if (res.documents[0].length > 0) {
                     userContext = res.documents.reduce((acc, doc, index) => {
-                      const createdAtTimestamp =
-                        res.metadatas[index][0].created_at;
-                      const createdAtDate = new Date(createdAtTimestamp * 1000)
-                        .toISOString()
-                        .split("T")[0];
+                      const createdAtTimestamp = res.metadatas[index][0].created_at;
+                      const createdAtDate = new Date(createdAtTimestamp * 1000).toISOString().split('T')[0];
                       acc.push(`${index + 1}. [${createdAtDate}]. ${doc[0]}`);
                       return acc;
                     }, []);
@@ -533,12 +502,12 @@
           } else {
             console.error($i18n.t(`Model {{modelId}} not found`, {}));
           }
-      })
+        }
+      )
     );
 
     // 所有模型响应结束后，还原firstResAlready为初始状态false
     firstResAlready = false;
-
   };
 
   // AI Video Request
@@ -549,72 +518,66 @@
       let send_message = [
         $settings.system || (responseMessage?.userContext ?? null)
           ? {
-              role: "system",
-              content: `${$settings?.system ?? ""}${
-              responseMessage?.userContext ?? null
-                ? `\n\nUser Context:\n${(responseMessage?.userContext ?? []).join("\n")}` : ""}`,
-            } : undefined,
-            ...messages,
-        ].filter((message) => message);
+              role: 'system',
+              content: `${$settings?.system ?? ''}${
+                (responseMessage?.userContext ?? null)
+                  ? `\n\nUser Context:\n${(responseMessage?.userContext ?? []).join('\n')}`
+                  : ''
+              }`,
+            }
+          : undefined,
+        ...messages,
+      ].filter((message) => message);
 
-			// Filter out error data and data with empty content
-			send_message = send_message.filter(item =>!item.error).filter(item=> item.content != "");
+      // Filter out error data and data with empty content
+      send_message = send_message.filter((item) => !item.error).filter((item) => item.content != '');
 
       // Process image file messages
       send_message = send_message.map((message, idx, arr) => ({
         role: message.role,
-        ...((message.files?.filter((file) => file.type === "image").length > 0 ?? false) &&
-        message.role === "user"
+        ...((message.files?.filter((file) => file.type === 'image').length > 0 ?? false) && message.role === 'user'
           ? {
               content: [
                 {
-                  type: "text",
-                  text:
-                    arr.length - 1 !== idx
-                      ? message.content
-                      : message?.raContent ?? message.content,
+                  type: 'text',
+                  text: arr.length - 1 !== idx ? message.content : (message?.raContent ?? message.content),
                 },
                 ...message.files
-                  .filter((file) => file.type === "image" || file.type === "doc")
-                    .map((file) => (
-                      file.type === "image" ?
-                      {
-                        type: "image_url",
-                        image_url: {
-                          url: file.url,
-                        },
-                      } : {
-                        type: "file",
-                        file: {
-                          filename: file.name,
-                          file_data: file.url,
-                        },
-                      }
-                    )),
+                  .filter((file) => file.type === 'image' || file.type === 'doc')
+                  .map((file) =>
+                    file.type === 'image'
+                      ? {
+                          type: 'image_url',
+                          image_url: {
+                            url: file.url,
+                          },
+                        }
+                      : {
+                          type: 'file',
+                          file: {
+                            filename: file.name,
+                            file_data: file.url,
+                          },
+                        }
+                  ),
               ],
             }
           : {
-            content:
-              arr.length - 1 !== idx
-                ? message.content
-                : message?.raContent ?? message.content,
-          }),
+              content: arr.length - 1 !== idx ? message.content : (message?.raContent ?? message.content),
+            }),
       }));
 
       let fileFlag = checkImage();
 
-      const [res, controller] = await getDeOpenAIChatCompletion(
-        localStorage.token,
-        {
-          source: model.source,
-          permodel: model.id,
-          model: fileFlag ? model.imagemodel : model.textmodel,
-          duration: responseMessage.duration,
-          messageid: responseMessageId,
-          messages: send_message,
-          size: responseMessage.size
-        }
-      );
+      const [res, controller] = await getDeOpenAIChatCompletion(localStorage.token, {
+        source: model.source,
+        permodel: model.id,
+        model: fileFlag ? model.imagemodel : model.textmodel,
+        duration: responseMessage.duration,
+        messageid: responseMessageId,
+        messages: send_message,
+        size: responseMessage.size,
+      });
 
       await tick();
 
@@ -630,10 +593,10 @@
         // let errornum = 0;
         for await (const update of textStream) {
           let { value, limit, createId, status, paystatus, paymoney, done, error } = update;
-					if (paymoney) {
-						responseMessage.paystatus = paystatus;
-						responseMessage.paymoney = paymoney;
-					}
+          if (paymoney) {
+            responseMessage.paystatus = paystatus;
+            responseMessage.paymoney = paymoney;
+          }
           if (status) {
             responseMessage.status = status;
           }
@@ -646,7 +609,7 @@
           }
 
           messages = messages;
-        
+
           if (error) {
             await handleOpenAIError(error, null, model, responseMessage);
             break;
@@ -661,7 +624,7 @@
             responseMessage.done = true;
             messages = messages;
             if (stopResponseFlag) {
-              controller.abort("User: Stop Response");
+              controller.abort('User: Stop Response');
             }
             break;
           }
@@ -676,7 +639,7 @@
             await tick();
           }
 
-          if (responseMessage.content == "" && value == "") {
+          if (responseMessage.content == '' && value == '') {
             continue;
           } else {
             responseMessage.content = value;
@@ -705,45 +668,41 @@
 
   // check user last message is contain image
   const checkImage = () => {
-		const userMsgsa = messages.filter(item => item.role === "user");
-		const lastUserMsg = userMsgsa.length > 0 ? userMsgsa[userMsgsa.length - 1] : null;
-		if (lastUserMsg && Array.isArray(lastUserMsg.files)) {
-			return true;
-		} else {
-			return false;
-		}
-	}
+    const userMsgsa = messages.filter((item) => item.role === 'user');
+    const lastUserMsg = userMsgsa.length > 0 ? userMsgsa[userMsgsa.length - 1] : null;
+    if (lastUserMsg && Array.isArray(lastUserMsg.files)) {
+      return true;
+    } else {
+      return false;
+    }
+  };
 
   // reset responsemessage
   const refreshVideoResult = async (messageinfo: any, _chatId: string) => {
     if (messageinfo.createId) {
       scrollToBottom();
 
-			let responseMessageId = messageinfo?.id;
+      let responseMessageId = messageinfo?.id;
       messageinfo.done = false;
-			messageinfo.error = false;
-      messageinfo.status = "processing"
+      messageinfo.error = false;
+      messageinfo.status = 'processing';
       history.messages[responseMessageId] = messageinfo;
 
-			const responseMessage = history.messages[responseMessageId];
-      let currModel = $models.find(item => item.id == responseMessage.model);
+      const responseMessage = history.messages[responseMessageId];
+      let currModel = $models.find((item) => item.id == responseMessage.model);
       let fileFlag = checkImage();
 
-
       try {
-        const [res, controller] = await getDeOpenAIChatResult(
-          localStorage.token,
-          {
-            requestId: messageinfo.createId,
-            source: currModel?.source,
-						permodel: currModel?.id,
-          	model: fileFlag ? currModel?.imagemodel : currModel?.textmodel,
-						duration: responseMessage?.duration,
-						size: responseMessage?.size,
-						messageid: responseMessageId,
-						messages: messages
-          }
-        );
+        const [res, controller] = await getDeOpenAIChatResult(localStorage.token, {
+          requestId: messageinfo.createId,
+          source: currModel?.source,
+          permodel: currModel?.id,
+          model: fileFlag ? currModel?.imagemodel : currModel?.textmodel,
+          duration: responseMessage?.duration,
+          size: responseMessage?.size,
+          messageid: responseMessageId,
+          messages: messages,
+        });
 
         await tick();
         scrollToBottom();
@@ -766,12 +725,12 @@
               responseMessage.done = true;
               messages = messages;
               if (stopResponseFlag) {
-                controller.abort("User: Stop Response");
+                controller.abort('User: Stop Response');
               }
               break;
             }
 
-            if (responseMessage.content == "" && value == "") {
+            if (responseMessage.content == '' && value == '') {
               continue;
             } else {
               responseMessage.content = value;
@@ -779,8 +738,8 @@
 
             if (autoScroll) {
               scrollToBottom();
-            }  
-          } 
+            }
+          }
         }
       } catch (error) {
         await handleOpenAIError(error, null, null, responseMessage);
@@ -797,47 +756,42 @@
     } else {
       let currResponseMap: any = {};
       currResponseMap[messageinfo?.model] = messageinfo;
-      let currmessage = messages.filter(item => item.id == messageinfo?.parentId);
+      let currmessage = messages.filter((item) => item.id == messageinfo?.parentId);
       await sendPrompt(currmessage[0].content, currResponseMap);
     }
-  }
+  };
 
   // 更新消息到数据库
   const updateChatMessage = async (_chatId: string) => {
     messages = messages;
 
     stopResponseFlag = false;
-    
+
     // 更新聊天记录
-    if (_chatId === $chatId) {  
+    if (_chatId === $chatId) {
       if ($settings.saveChatHistory ?? true) {
         await updateChatById(localStorage.token, _chatId, {
           messages: messages,
-          history: history
+          history: history,
         });
       }
     }
-  }
+  };
 
-  const handleOpenAIError = async (
-    error: any,
-    res: Response | null,
-    model: any,
-    responseMessage: any
-  ) => {
+  const handleOpenAIError = async (error: any, res: Response | null, model: any, responseMessage: any) => {
     responseMessage.error = true;
-    responseMessage.errmsg = "It seems that you are offline. Please reconnect to send messages.";
+    responseMessage.errmsg = 'It seems that you are offline. Please reconnect to send messages.';
     responseMessage.done = true;
     messages = messages;
   };
 
   const stopResponse = () => {
     stopResponseFlag = true;
-    console.log("stopResponse");
+    console.log('stopResponse');
   };
 
   const regenerateResponse = async (message) => {
-    console.log("regenerateResponse");
+    console.log('regenerateResponse');
 
     if (messages.length != 0) {
       let userMessage = history.messages[message.parentId];
@@ -852,7 +806,7 @@
   };
 
   const continueGeneration = async () => {
-    console.log("continueGeneration");
+    console.log('continueGeneration');
     const _chatId = JSON.parse(JSON.stringify($chatId));
 
     if (messages.length != 0 && messages.at(-1).done == true) {
@@ -876,15 +830,15 @@
       const model = $models.find((model) => model.id === selectedModels[0]);
 
       const titleModelId =
-        model?.external ?? false
-          ? $settings?.title?.modelExternal ?? selectedModels[0]
-          : $settings?.title?.model ?? selectedModels[0];
+        (model?.external ?? false)
+          ? ($settings?.title?.modelExternal ?? selectedModels[0])
+          : ($settings?.title?.model ?? selectedModels[0]);
       const title = await generateDeTitle(
         DEGPT_TOKEN,
         $settings?.title?.prompt ??
           $i18n.t(
             "Create a concise, 3-5 word phrase as a header for the following query, strictly adhering to the 3-5 word limit and avoiding the use of the word 'title':"
-          ) + " {{prompt}}",
+          ) + ' {{prompt}}',
         titleModelId,
         userPrompt
       );
@@ -907,75 +861,142 @@
       await chats.set(await getChatList(localStorage.token));
     }
   };
+  // 定义是否图生视频模型
+  const allowModel = ['pika-v2.2-pikaframes', 'sam3-video', 'wan-2.1-v2v'];
 </script>
 
 <svelte:head>
   <title>
-    {title
-      ? `${
-          title.length > 30 ? `${title.slice(0, 30)}...` : title
-        } | ${$WEBUI_NAME}`
-      : `${$WEBUI_NAME}`}
+    {title ? `${title.length > 30 ? `${title.slice(0, 30)}...` : title} | ${$WEBUI_NAME}` : `${$WEBUI_NAME}`}
   </title>
 </svelte:head>
 
 <div
-  class="min-h-screen max-h-screen {$showSidebar
-    ? 'md:max-w-[calc(100%-310px)]'
-    : ''} w-full max-w-full flex flex-col"
+  class="min-h-screen max-h-screen {$showSidebar ? 'md:max-w-[calc(100%-310px)]' : ''} w-full max-w-full flex flex-col"
 >
-  <Navbar
-    {title}
-    bind:selectedModels
-    bind:showModelSelector
-    shareEnabled={messages.length > 0}
-    {chat}
-    {initNewChat}
-  />
-  <div class="flex flex-col flex-auto">
-    <div
-      class=" pb-2.5 flex flex-col justify-between w-full flex-auto overflow-auto h-0 max-w-full"
-      id="messages-container"
-      bind:this={messagesContainerElement}
-      on:scroll={(e) => {
-        autoScroll =
-          messagesContainerElement.scrollHeight -
-            messagesContainerElement.scrollTop <=
-          messagesContainerElement.clientHeight + 45;
-      }}
-    >
-      <div class=" h-full w-full flex flex-col pt-2 pb-4">
-        <Messages
-          key={$chatId}
-          chatId={$chatId}
-          {selectedModels}
-          {selectedModelfiles}
-          {processing}
-          bind:history
-          bind:messages
-          bind:autoScroll
-          bind:prompt
-          bind:chatInputPlaceholder
-          bottomPadding={files.length > 0}
-          suggestionPrompts={selectedModelfile?.suggestionPrompts ?? $config?.default_prompt_suggestions}
-          {sendPrompt}
-          {startPay}
-          {refreshVideoResult}
-          {continueGeneration}
-          {regenerateResponse}
-        />
+  <Navbar {title} bind:selectedModels bind:showModelSelector shareEnabled={messages.length > 0} {chat} {initNewChat} />
+
+  {#if selectedModels.length > 0 && allowModel.includes(selectedModels[0])}
+    <div class="flex flex-col justify-between gap-y-8 md:gap-y-16 max-h-[calc(100vh-95px)] overflow-y-auto">
+      <!-- 顶部模型介绍 -->
+      <div>
+        {#if selectedModels[0].length > 0}
+          <div class="flex flex-col justify-center items-center w-full">
+            <img class="size-8" src={$models.filter((item) => selectedModels.includes(item.id))[0].modelicon} alt="" />
+            <span class="text-xl font-bold mt-1"
+              >{$models.filter((item) => selectedModels.includes(item.id))[0].name}</span
+            >
+            <span class="w-full max-w-[600px] text-lg text-center mt-1.5 px-5"
+              >{$i18n.t($models.filter((item) => selectedModels.includes(item.id))[0].desc)}</span
+            >
+          </div>
+        {/if}
+      </div>
+
+      <!-- 生成的历史记录 -->
+      <div class="mx-auto w-full px-4">
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+        <h1>888888888888</h1>
+      </div>
+
+      <!-- 生图控件 -->
+      <ImgToVideo />
+    </div>
+  {:else}
+    <div class="flex flex-col flex-auto">
+      <div
+        class=" pb-2.5 flex flex-col justify-between w-full flex-auto overflow-auto h-0 max-w-full"
+        id="messages-container"
+        bind:this={messagesContainerElement}
+        on:scroll={(e) => {
+          autoScroll =
+            messagesContainerElement.scrollHeight - messagesContainerElement.scrollTop <=
+            messagesContainerElement.clientHeight + 45;
+        }}
+      >
+        <div class=" h-full w-full flex flex-col pt-2 pb-4">
+          <Messages
+            key={$chatId}
+            chatId={$chatId}
+            {selectedModels}
+            {selectedModelfiles}
+            {processing}
+            bind:history
+            bind:messages
+            bind:autoScroll
+            bind:prompt
+            bind:chatInputPlaceholder
+            bottomPadding={files.length > 0}
+            suggestionPrompts={selectedModelfile?.suggestionPrompts ?? $config?.default_prompt_suggestions}
+            {sendPrompt}
+            {startPay}
+            {refreshVideoResult}
+            {continueGeneration}
+            {regenerateResponse}
+          />
+        </div>
       </div>
     </div>
-  </div>
+  {/if}
 </div>
 
-<MessageInput
-  bind:files
-  bind:prompt
-  bind:autoScroll
-  bind:selectedModel={atSelectedModel}
-  bind:currentModel = {selectedModels}
-  {messages}
-  {submitPrompt}
-  {stopResponse}
-/>
+{#if !allowModel.includes(selectedModels[0])}
+  <MessageInput
+    bind:files
+    bind:prompt
+    bind:autoScroll
+    bind:selectedModel={atSelectedModel}
+    bind:currentModel={selectedModels}
+    {messages}
+    {submitPrompt}
+    {stopResponse}
+  />
+{/if}
