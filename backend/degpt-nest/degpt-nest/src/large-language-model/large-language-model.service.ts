@@ -26,7 +26,7 @@ export class LargeLanguageModelService {
     // resolution	❌	720p / 1080p	输出视频分辨率
     // seed	❌	-1 或整数	随机性控制，-1 每次不同
 
-    // 📌 重要规则（你现在已经踩过）
+    // 📌 重要规则
 
     // images 必须 ≥ 2
 
@@ -45,8 +45,8 @@ export class LargeLanguageModelService {
       prompt: createCatDto.prompt,
       images: createCatDto.images,
       resolution: createCatDto.resolution,
-      seed: -1,
-      transitions: [{ duration: 5 }],
+      seed: createCatDto.seed,
+      transitions: createCatDto.transitions,
     });
 
     return { requestId };

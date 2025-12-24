@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onDestroy } from 'svelte';
 
   type UploadStatus = 'idle' | 'valid' | 'uploading' | 'success' | 'error';
 
@@ -19,15 +19,21 @@
   let isDragging = false;
   let fileInput: HTMLInputElement | null = null;
 
+  // 预览 URL 缓存：避免每次渲染都 createObjectURL
+  const previewMap = new Map<string, string>();
+
+  function keyOf(f: File) {
+    return `${f.name}-${f.size}-${f.lastModified}`;
+  }
+
   function isImage(f: File) {
     return f.type === 'image/png' || f.type === 'image/jpeg';
   }
 
+  // 去重 + 限制数量
   function clamp(next: File[]) {
     const uniq = new Map<string, File>();
-    for (const f of next.filter(isImage)) {
-      uniq.set(`${f.name}-${f.size}-${f.lastModified}`, f);
-    }
+    for (const f of next.filter(isImage)) uniq.set(keyOf(f), f);
     return Array.from(uniq.values()).slice(0, MAX_FILES);
   }
 
@@ -37,8 +43,17 @@
     dispatch('filesChange', next);
   }
 
+  function openPicker(e?: Event) {
+    e?.stopPropagation();
+    if (status === 'uploading') return; // 上传中禁止选择
+    fileInput?.click();
+  }
+
   function onFileInputChange() {
     addFiles(fileInput?.files ?? null);
+
+    // 关键：清空 value，确保“同一文件再次选择”也能触发 change
+    if (fileInput) fileInput.value = '';
   }
 
   function onDrop(e: DragEvent) {
@@ -56,28 +71,62 @@
     isDragging = false;
   }
 
+  // 获取预览 URL（缓存）
   function previewUrl(f: File) {
-    return URL.createObjectURL(f);
+    const k = keyOf(f);
+    const existing = previewMap.get(k);
+    if (existing) return existing;
+
+    const url = URL.createObjectURL(f);
+    previewMap.set(k, url);
+    return url;
   }
+
+  // files 改变时，自动回收不再使用的 URL
+  $: {
+    const alive = new Set(files.map(keyOf));
+    for (const [k, url] of previewMap.entries()) {
+      if (!alive.has(k)) {
+        URL.revokeObjectURL(url);
+        previewMap.delete(k);
+      }
+    }
+  }
+
+  onDestroy(() => {
+    for (const url of previewMap.values()) URL.revokeObjectURL(url);
+    previewMap.clear();
+  });
 </script>
 
-<section class="rounded-2xl border border-gray-200 bg-transparent p-3 sm:p-4 dark:border-gray-850 flex flex-col">
+<section class="rounded-2xl border border-gray-200 bg-transparent px-3 py-0 sm:p-4 dark:border-gray-850 flex flex-col">
+  <!-- 标题 -->
   <div class="mb-3">
-    <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">文件上传</h2>
-    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">拖拽或点击选择图片（PNG/JPG，最多 5 张）。</p>
+    <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">关键帧图片（images）</h2>
   </div>
 
+  <!-- 上传区域 -->
+  <input
+    bind:this={fileInput}
+    class="hidden"
+    type="file"
+    multiple
+    accept={ACCEPT_TEXT}
+    on:change={onFileInputChange}
+    disabled={status === 'uploading'}
+  />
+  <!-- 上传按钮 -->
   <button
     type="button"
     class={`rounded-2xl flex-1 border-2 border-dashed bg-transparent p-4 transition
       ${isDragging ? 'border-primary-500' : 'border-gray-300 hover:border-primary-500'}
       dark:border-gray-700`}
-    aria-label="图片上传区域：拖拽图片到此处或按回车选择图片"
     on:drop|preventDefault={onDrop}
     on:dragover|preventDefault={onDragOver}
     on:dragleave={onDragLeave}
-    on:click={() => fileInput?.click()}
-    on:keydown={(e) => (e.key === 'Enter' || e.key === ' ') && fileInput?.click()}
+    on:click={openPicker}
+    on:keydown={(e) => (e.key === 'Enter' || e.key === ' ') && openPicker(e)}
+    disabled={status === 'uploading'}
   >
     <div class="flex flex-col items-center gap-3 text-center">
       <div
@@ -89,24 +138,19 @@
 
       <div class="space-y-1">
         <p class="text-sm font-medium text-gray-900 dark:text-gray-100">把图片拖到这里，或点击选择图片</p>
-        <p class="text-xs text-gray-600 dark:text-gray-400">最多 5 张 · 作为关键帧（keyframes）</p>
+        <p class="text-xs text-gray-600 dark:text-gray-400">PNG/JPG 最多 5 张 · 作为关键帧</p>
       </div>
 
       <div class="flex flex-wrap items-center justify-center gap-2">
-        <label
-          class="inline-flex cursor-pointer items-center rounded-xl bg-primary-500 px-4 py-2 text-sm font-medium text-white
-                 hover:bg-primary-600 active:bg-primary-700"
+        <button
+          type="button"
+          class={`inline-flex items-center rounded-xl px-4 py-2 text-sm font-medium text-white
+                 ${status === 'uploading' ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary-500 hover:bg-primary-600 active:bg-primary-700'}`}
+          on:click={openPicker}
+          disabled={status === 'uploading'}
         >
           选择图片
-          <input
-            bind:this={fileInput}
-            class="hidden"
-            type="file"
-            multiple
-            accept={ACCEPT_TEXT}
-            on:change={onFileInputChange}
-          />
-        </label>
+        </button>
 
         <button
           type="button"
@@ -122,7 +166,7 @@
 
       {#if message}
         <div
-          class="mt-2 w-full rounded-xl border px-3 py-2 text-sm
+          class=" w-full rounded-xl border px-3 py-2 text-sm
                  border-gray-200 bg-gray-50 text-gray-800
                  dark:border-gray-850 dark:bg-gray-950 dark:text-gray-200"
         >
@@ -132,7 +176,7 @@
     </div>
   </button>
 
-  <!-- 预览（最多 5 张） -->
+  <!-- 文件预览 -->
   {#if files.length > 0}
     <div class="mt-3">
       <div class="mb-2 flex items-center justify-between">
@@ -141,14 +185,15 @@
       </div>
 
       <div class="grid grid-cols-5 gap-2">
-        {#each files as f, idx}
+        {#each files as f, idx (keyOf(f))}
           <div class="group relative overflow-hidden rounded-xl border border-gray-200 dark:border-gray-850">
-            <img src={previewUrl(f)} alt={f.name} class="h-20 w-full object-cover" />
+            <img src={previewUrl(f)} alt={f.name} class="h-16 w-full object-cover" />
             <button
               type="button"
               class="absolute right-1 top-1 rounded-lg border border-gray-200 bg-black/50 px-2 py-1 text-[11px] font-medium text-white
                      opacity-0 transition group-hover:opacity-100 dark:border-gray-850"
               on:click|stopPropagation={() => dispatch('removeFile', idx)}
+              disabled={status === 'uploading'}
             >
               移除
             </button>

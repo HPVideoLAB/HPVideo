@@ -10,7 +10,7 @@ export type FetchDebug = {
 export async function fetchWithTimeout(
   url: string,
   init: RequestInit,
-  timeoutMs = 15000,
+  timeoutMs = 1800000,
   debug?: FetchDebug,
 ) {
   const logger = new Logger('fetchWithTimeout');

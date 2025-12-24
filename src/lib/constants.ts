@@ -4,8 +4,10 @@ import { browser, dev } from '$app/environment';
 export const APP_NAME = 'HPVideo';
 export const WEBUI_BASE_URL = browser ? (dev ? `http://${location.hostname}:8080/creator` : `/creator`) : `/creator`;
 
-// export const WEBUI_API_BASE_URL = `${WEBUI_BASE_URL}/api/v1`;
-export const WEBUI_API_BASE_URL = `https://hpvideo.io/creator/api/v1`;
+export const WEBUI_API_BASE_URL = `${WEBUI_BASE_URL}/api/v1`;
+// export const WEBUI_API_BASE_URL = `https://hpvideo.io/creator/api/v1`;
+// 新 Nest 后端：单独一个
+export const NEST_API_BASE_URL = `${WEBUI_BASE_URL}/nest-proxy`;
 export const DEGPT_API_BASE_URL = 'https://www.degpt.ai/api/v1';
 export const DEGPT_TOKEN =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjB4ZGU4Nzg0MDExZTFDODY0RTM3Njk3ZmFFMjhhNkUxOWFlNEU2REQ5ZCIsImV4cCI6MTc2OTY3ODk0Mn0.yFJYgjMRU5V0t7pZeV4GM6PLZfHMcpv3if1d-k1bdEc';

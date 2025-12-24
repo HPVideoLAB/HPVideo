@@ -82,6 +82,8 @@ https://github.com/open-webui/open-webui
 # bnb usdt pay listener
 from apps.listener.bnbusdt import BNBUSDTPayListenerInstance
 import asyncio
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("FastAPI Server Running，Start USDT Listener...")
@@ -92,7 +94,12 @@ async def lifespan(app: FastAPI):
     print("===============bnb usdt pay close===============")
 
 
-app = FastAPI(root_path="/creator", docs_url="/docs" if ENV == "dev" else None, redoc_url=None, lifespan=lifespan)
+app = FastAPI(
+    root_path="/creator",
+    docs_url="/docs" if ENV == "dev" else None,
+    redoc_url=None,
+    lifespan=lifespan,
+)
 
 app.state.config = AppConfig()
 app.state.config.ENABLE_MODEL_FILTER = ENABLE_MODEL_FILTER
@@ -163,6 +170,66 @@ async def check_url(request: Request, call_next):
     response.headers["X-Process-Time"] = str(process_time)
 
     return response
+
+
+# ====== Nest 反向代理（放在 app.mount 之前） ======
+NEST_ORIGIN = "http://127.0.0.1:3008"
+
+HOP_BY_HOP_HEADERS = {
+    "connection",
+    "keep-alive",
+    "proxy-authenticate",
+    "proxy-authorization",
+    "te",
+    "trailer",
+    "transfer-encoding",
+    "upgrade",
+    "host",
+    "content-length",
+}
+
+
+def _filter_headers(headers):
+    out = {}
+    for k, v in headers.items():
+        if k.lower() in HOP_BY_HOP_HEADERS:
+            continue
+        out[k] = v
+    return out
+
+
+async def _proxy_to_nest(path: str, request: Request):
+    # 你的 Nest 设置了 app.setGlobalPrefix('nest')，所以这里需要 /nest
+    upstream_url = f"{NEST_ORIGIN}/nest/{path}"
+
+    headers = _filter_headers(request.headers)
+    params = dict(request.query_params)
+    body = await request.body()
+
+    timeout = aiohttp.ClientTimeout(total=120)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        async with session.request(
+            method=request.method,
+            url=upstream_url,
+            params=params,
+            data=body,
+            headers=headers,
+        ) as r:
+            content = await r.read()
+            resp_headers = _filter_headers(r.headers)
+            return Response(content=content, status_code=r.status, headers=resp_headers)
+
+
+@app.api_route(
+    "/nest-proxy/{path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+)
+async def nest_proxy(path: str, request: Request):
+    return await _proxy_to_nest(path, request)
+
+
+# ====== 代理结束 ======
+
 
 app.mount("/images/api/v1", images_app)
 app.mount("/audio/api/v1", audio_app)
@@ -282,7 +349,9 @@ async def get_manifest_json():
         "background_color": "#343541",
         "theme_color": "#343541",
         "orientation": "portrait-primary",
-        "icons": [{"src": "/creator/static/logo.png", "type": "image/png", "sizes": "500x500"}],
+        "icons": [
+            {"src": "/creator/static/logo.png", "type": "image/png", "sizes": "500x500"}
+        ],
     }
 
 
@@ -305,19 +374,21 @@ async def get_opensearch_xml():
 async def healthcheck():
     return {"status": True}
 
-@app.get('/invite/{id}')
+
+@app.get("/invite/{id}")
 def redirect_to_url(request: Request, id: str):
     headers = request.headers
-    host = headers.get('host')
+    host = headers.get("host")
     # 替换成你想要跳转到的网址
-    return RedirectResponse(url=f'https://{host}?inviter={id}')
+    return RedirectResponse(url=f"https://{host}?inviter={id}")
 
-@app.get('/channel/{name}')
+
+@app.get("/channel/{name}")
 def redirect_to_url(request: Request, name: str):
     headers = request.headers
-    host = headers.get('host')
+    host = headers.get("host")
     # 替换成你想要跳转到的网址
-    return RedirectResponse(url=f'https://{host}?channel={name}')
+    return RedirectResponse(url=f"https://{host}?channel={name}")
 
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -356,5 +427,7 @@ async def add_process_time_and_error_logging(request: Request, call_next):
         return response
     except Exception as e:
         process_time = time.time() - start_time
-        log.error(f"Path: {request.url.path}, Error: {str(e)}, Process Time: {process_time:.2f}s")
+        log.error(
+            f"Path: {request.url.path}, Error: {str(e)}, Process Time: {process_time:.2f}s"
+        )
         raise  # 重新抛出异常，让 FastAPI 的错误处理器处理它

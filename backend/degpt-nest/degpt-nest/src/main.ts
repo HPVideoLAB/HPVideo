@@ -4,6 +4,9 @@ import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  // 禁用 ETag，避免 GET 轮询结果被条件缓存复用
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.disable('etag'); // 或 expressApp.set('etag', false)
   // 自动校验参数
   app.useGlobalPipes(
     new ValidationPipe({
@@ -18,6 +21,13 @@ async function bootstrap() {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
+  // 生产环境开启
+  // app.enableCors({
+  //   origin: ['https://hpvideo.io', 'https://www.hpvideo.io'],
+  //   credentials: true,
+  // });
+  app.setGlobalPrefix('nest');
+
   await app.listen(3008);
 }
 bootstrap();

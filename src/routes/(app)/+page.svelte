@@ -54,13 +54,14 @@
 
   let selectedModelfile = null;
   $: selectedModelfile =
-    selectedModels.length === 1 && $modelfiles.filter((modelfile) => modelfile.tagName === selectedModels[0]).length > 0
-      ? $modelfiles.filter((modelfile) => modelfile.tagName === selectedModels[0])[0]
+    selectedModels.length === 1 &&
+    $modelfiles.filter((modelfile: any) => modelfile.tagName === selectedModels[0]).length > 0
+      ? $modelfiles.filter((modelfile: any) => modelfile.tagName === selectedModels[0])[0]
       : null;
 
   let selectedModelfiles = {};
   $: selectedModelfiles = selectedModels.reduce((a, tagName, i, arr) => {
-    const modelfile = $modelfiles.filter((modelfile) => modelfile.tagName === tagName)?.at(0) ?? undefined;
+    const modelfile = $modelfiles.filter((modelfile: any) => modelfile.tagName === tagName)?.at(0) ?? undefined;
 
     return {
       ...a,

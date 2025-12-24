@@ -302,7 +302,7 @@
           />
           <form
             dir={$settings?.chatDirection ?? 'LTR'}
-            class=" flex flex-col relative w-full rounded-3xl bg-gray-100 dark:bg-gray-850 dark:text-gray-100 button-select-none p-3 border border-gray-300 dark:border-gray-800 p-1"
+            class=" flex flex-col relative w-full rounded-3xl bg-gray-100 dark:bg-gray-850 dark:text-gray-100 button-select-none p-3 border border-gray-300 dark:border-gray-800"
             on:submit|preventDefault={() => {
               if ($threesideAccount?.address) {
                 submitPrompt(prompt, getVideoInfo(), user);

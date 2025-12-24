@@ -1,100 +1,76 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import ImgToVideoUploader from './ImgToVideoUploader.svelte';
   import ImgToVideoParams from './ImgToVideoParams.svelte';
 
-  type Resolution = '720p' | '1080p';
-  type UploadStatus = 'idle' | 'valid' | 'uploading' | 'success' | 'error';
-  type TaskStatus = 'idle' | 'submitting' | 'processing' | 'completed' | 'failed';
+  import { getAccount } from '@wagmi/core';
+  import { config as wconfig, modal, getUSDTBalance, tranUsdt } from '$lib/utils/wallet/bnb/index';
+  import { bnbpaycheck } from '$lib/apis/pay';
+  import { toast } from 'svelte-sonner';
+  import { v4 as uuidv4 } from 'uuid';
+  import { theme } from '$lib/stores';
 
-  type Transition = {
-    duration: number; // seconds
-    prompt?: string; // optional local prompt
-  };
+  import { uploadImagesToOss, submitLargeLanguageModel, getLargeLanguageModelResult } from '$lib/apis/model/pika';
 
-  const MAX_FILES = 5;
-  const MAX_TOTAL_DURATION = 25;
+  // 抽离后的工具
+  import type { Resolution, UploadStatus, TaskStatus, Transition, FormErrors } from './modules/types';
+  import { IMG_TO_VIDEO_RULES as R } from './modules/types';
+  import { clampImageFiles, syncTransitions, totalDuration, validateImgToVideoForm } from './modules/form';
+  import { pollTaskResult } from './modules/task';
 
-  // UI state
-  let files: File[] = []; // 只收图片（png/jpg）
+  // ====== UI 状态（左侧上传） ======
+  let files: File[] = [];
   let status: UploadStatus = 'idle';
   let message = '';
 
-  // Right params (per docs)
+  // ====== UI 状态（右侧参数） ======
   let globalPrompt = '';
-  let negativePrompt = ''; // 文档没有 negative，这里先保留（不发到 API）
+  let negativePrompt = ''; // UI 保留，不发给 API
   let resolution: Resolution = '720p';
   let seed = -1;
 
-  // transitions length must be len(images) - 1
+  // transitions 必须 = files.length - 1
   let transitions: Transition[] = [];
+
+  // ====== 表单错误（右侧展示） ======
+  let errors: FormErrors = {};
+
+  // ====== 任务状态 ======
   let taskStatus: TaskStatus = 'idle';
   let requestId = '';
   let outputUrl = '';
 
-  // ===== helpers =====
-  function isImage(f: File) {
-    return f.type === 'image/png' || f.type === 'image/jpeg';
+  // ====== 轮询控制器 ======
+  let pollCtl: AbortController | null = null;
+
+  onDestroy(() => stopPolling());
+
+  function stopPolling() {
+    pollCtl?.abort();
+    pollCtl = null;
   }
 
-  function clampFiles(next: File[]) {
-    // 去重：name+size+lastModified
-    const uniq = new Map<string, File>();
-    for (const f of next.filter(isImage)) {
-      uniq.set(`${f.name}-${f.size}-${f.lastModified}`, f);
-    }
-    return Array.from(uniq.values()).slice(0, MAX_FILES);
+  function getToken(): string {
+    return localStorage.getItem('token') || localStorage.getItem('access_token') || '';
   }
 
   function syncTransitionsToFiles() {
-    const need = Math.max(0, files.length - 1);
-    if (transitions.length === need) return;
-
-    // 保留已有前缀，补默认
-    const next: Transition[] = [];
-    for (let i = 0; i < need; i++) {
-      next.push(transitions[i] ?? { duration: 5, prompt: '' });
-    }
-    transitions = next;
+    transitions = syncTransitions(files.length, transitions);
   }
 
-  function totalDuration() {
-    return transitions.reduce((sum, t) => sum + (Number(t.duration) || 0), 0);
-  }
-
-  function validateBeforeSubmit() {
-    if (files.length < 2) {
-      return 'Pikaframes 需要 2~5 张图片（keyframes）。';
-    }
-    if (!globalPrompt.trim()) {
-      return '请填写提示词（Prompt）。';
-    }
-    const td = totalDuration();
-    if (td > MAX_TOTAL_DURATION) {
-      return `转场总时长不能超过 ${MAX_TOTAL_DURATION}s（当前 ${td}s）。`;
-    }
-    // transitions 必须等于 images-1
-    if (transitions.length !== files.length - 1) {
-      return '转场数量必须等于 图片数量 - 1。';
-    }
-    // duration 合法
-    for (const [i, t] of transitions.entries()) {
-      if (!Number.isFinite(t.duration) || t.duration <= 0) {
-        return `第 ${i + 1} 段转场时长必须是正数。`;
-      }
-    }
-    return '';
-  }
-
-  // ===== events from left =====
+  // ====== 左侧事件 ======
   function onFilesChange(next: File[]) {
-    files = clampFiles(next);
+    files = clampImageFiles(next);
     syncTransitionsToFiles();
+
+    errors = { ...errors, __form: undefined };
 
     if (files.length === 0) {
       status = 'idle';
       message = '';
       return;
     }
+
     status = 'valid';
     message = `已选择 ${files.length} 张图片。`;
   }
@@ -102,6 +78,8 @@
   function onRemoveFile(index: number) {
     files = files.filter((_, i) => i !== index);
     syncTransitionsToFiles();
+
+    errors = { ...errors, __form: undefined };
 
     if (files.length === 0) {
       status = 'idle';
@@ -113,6 +91,8 @@
   }
 
   function onClear() {
+    stopPolling();
+
     files = [];
     transitions = [];
     status = 'idle';
@@ -120,93 +100,141 @@
     taskStatus = 'idle';
     requestId = '';
     outputUrl = '';
+    errors = {};
   }
 
-  // ===== API integration =====
   async function uploadImagesToUrls(imageFiles: File[]): Promise<string[]> {
-    // 你需要实现这个后端：把 File 上传到对象存储，返回可访问 URL 列表
-    const form = new FormData();
-    imageFiles.forEach((f) => form.append('images', f));
-
-    const res = await fetch('/api/upload/images', { method: 'POST', body: form });
-    if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
-    const data = await res.json();
-    // 期望返回：{ urls: string[] }
-    if (!data?.urls || !Array.isArray(data.urls)) throw new Error('Upload response invalid');
-    return data.urls;
+    const token = getToken();
+    const resp = await uploadImagesToOss(token, imageFiles);
+    return resp.urls;
   }
 
-  async function submitPikaTask(imageUrls: string[]) {
-    const payload = {
-      prompt: globalPrompt.trim(),
-      images: imageUrls,
-      transitions: transitions.map((t) => ({
-        duration: Number(t.duration),
-        ...(t.prompt?.trim() ? { prompt: t.prompt.trim() } : {}),
-      })),
-      resolution,
-      seed,
-    };
-
-    const res = await fetch('/api/pika/v2.2-pikaframes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data?.message || 'Submit failed');
-    }
-    // 期望返回：{ id: string }
-    return data.id as string;
-  }
-
+  // ====== 轮询任务结果（使用抽离的 pollTaskResult） ======
   async function pollResult(id: string) {
     taskStatus = 'processing';
     outputUrl = '';
 
-    // 简单轮询：最多 120 次（约 2 分钟，间隔 1s）
-    for (let i = 0; i < 120; i++) {
-      const res = await fetch(`/api/pika/predictions/${id}/result`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || 'Result failed');
+    stopPolling();
+    pollCtl = new AbortController();
 
-      const status = data?.data?.status as string;
-      if (status === 'completed') {
-        const outputs = data?.data?.outputs;
-        outputUrl = Array.isArray(outputs) ? outputs[0] : '';
-        taskStatus = 'completed';
-        return;
-      }
-      if (status === 'failed') {
-        taskStatus = 'failed';
-        throw new Error(data?.data?.error || 'Task failed');
-      }
-      await new Promise((r) => setTimeout(r, 1000));
+    const ret = await pollTaskResult({
+      requestId: id,
+      fetcher: (rid) => getLargeLanguageModelResult(rid),
+      signal: pollCtl.signal,
+      onCompleted: (url) => {
+        // completed 时即时更新 UI
+        outputUrl = url;
+      },
+    });
+
+    outputUrl = ret.url;
+    taskStatus = 'completed';
+  }
+
+  function calcAmount(): string {
+    return '0.0001';
+  }
+
+  async function payBeforeGenerate(): Promise<{ txHash?: string }> {
+    const account = getAccount(wconfig);
+    if (!account?.address) {
+      try {
+        if ($theme === 'system' || $theme === 'light') modal.setThemeMode('light');
+        else modal.setThemeMode('dark');
+      } catch {}
+      modal.open();
+      document.getElementById('connect-wallet-btn')?.click();
+      throw new Error('请先连接钱包');
     }
 
-    throw new Error('Polling timeout');
+    const address = account.address;
+    const amount = calcAmount();
+    const messageid = uuidv4();
+
+    const body = {
+      hash: '',
+      address,
+      messageid,
+      model: 'img-to-video',
+      size: resolution,
+      duration: totalDuration(transitions),
+      amount,
+    };
+
+    status = 'valid';
+    taskStatus = 'submitting';
+    message = '等待支付确认…';
+
+    const check1 = await bnbpaycheck(getToken(), body);
+    if (check1?.ok) {
+      message = '支付已确认，开始生成…';
+      return {};
+    }
+
+    message = '检查钱包余额…';
+    const balance = await getUSDTBalance(address);
+
+    if (!(Number(amount) > 0)) throw new Error('支付金额不合法');
+    if (Number(balance) < Number(amount)) throw new Error('USDT 余额不足');
+
+    message = '发起支付交易…';
+    const txResponse = await tranUsdt(amount, messageid);
+    if (!txResponse?.hash) throw new Error('交易未发出或用户取消');
+
+    message = '支付确认中…';
+    const check2 = await bnbpaycheck(getToken(), { ...body, hash: txResponse.hash });
+    if (!check2?.ok) throw new Error('支付校验失败');
+
+    toast.success('支付成功');
+    message = '支付成功，开始生成…';
+    return { txHash: txResponse.hash };
   }
 
   async function generateNow() {
-    const err = validateBeforeSubmit();
-    if (err) {
+    // 1) 校验
+    const v = validateImgToVideoForm({
+      filesLen: files.length,
+      globalPrompt,
+      transitions,
+      seed,
+    });
+    errors = v.errors;
+
+    if (!v.ok) {
       status = 'error';
-      message = err;
+      message = v.errors.__form || '请检查表单参数。';
       return;
     }
 
     try {
+      // 2) 支付
+      await payBeforeGenerate();
+
+      // 3) 上传 + 提交
       status = 'uploading';
       message = '正在上传图片…';
       taskStatus = 'submitting';
 
+      outputUrl = '';
+      requestId = '';
+
       const urls = await uploadImagesToUrls(files);
 
       message = '提交生成任务…';
-      requestId = await submitPikaTask(urls);
+      const submitResp = await submitLargeLanguageModel({
+        prompt: globalPrompt.trim(),
+        images: urls,
+        transitions: transitions.map((t) => ({
+          duration: Number(t.duration),
+          ...(t.prompt?.trim() ? { prompt: t.prompt.trim() } : {}),
+        })),
+        resolution,
+        seed,
+      });
 
+      requestId = submitResp.requestId;
+
+      // 4) 轮询
       message = '生成中…';
       await pollResult(requestId);
 
@@ -219,7 +247,7 @@
     }
   }
 
-  // 初次/变更同步
+  // 文件变化时自动同步 transitions
   $: syncTransitionsToFiles();
 </script>
 
@@ -244,6 +272,7 @@
         {taskStatus}
         {outputUrl}
         {requestId}
+        {errors}
         on:generate={generateNow}
       />
     </div>
