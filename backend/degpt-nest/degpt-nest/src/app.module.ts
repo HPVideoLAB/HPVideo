@@ -14,7 +14,10 @@ import { OssModule } from './oss/oss.module';
       // envFilePath: '.env', // 可选：默认就是根目录 .env
     }),
     LargeLanguageModelModule,
-    MongooseModule.forRoot('mongodb://localhost:27017/degpt'),
+    // 改这里：优先读环境变量，兼容 docker 场景
+    MongooseModule.forRoot(
+      process.env.MONGODB_URI || 'mongodb://localhost:27017/degpt',
+    ),
     OssModule, // 连接字符串
   ],
   controllers: [AppController],
