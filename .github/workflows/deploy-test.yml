@@ -1,35 +1,33 @@
-# SERVER_HOST: The IP address or domain name of your server.
-# SERVER_USER: SSH login username.
-# SERVER_PASSWORD: SSH login password. (It is recommended to use SSH key pair authentication instead of password)
-# DOCKER_PASSWORD
-# DOCKER_USERNAME
+name: Deploy to Server
 
-name: Deploy to Server # Define the name of the workflow
+on:
+  push:
+    branches:
+      - test
 
-on: # Define the events that trigger the workflow
-  push: # When code is pushed
-    branches: # Specify the branches that trigger the workflow
-      - test # Only pushes to the main branch will trigger this workflow
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-jobs: # Define the jobs to be executed
-  build: # Job identifier, here is the build job
-
-    runs-on: ubuntu-latest # Specify the running environment as the latest version of the Ubuntu virtual environment
-
-    steps: # Define the steps to be executed
-      - name: Checkout code # Step name
-        uses: actions/checkout@v2 # Use the actions/checkout@v2 action officially provided by GitHub Action to check out the repository code
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Log in to Docker Hub
         run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-        # run: docker login -u $DOCKER_USER -p $DOCKER_PASSWORD 
 
+      # 1) 原 Python/Svelte 一体镜像：不动
+      - name: Build and Push WebUI Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: aihpvideo/hpvideo:test
 
-      - name: Build and Push Docker image # Step name
-        uses: docker/build-push-action@v5 # Use the docker/build-push-action@v2 action to build and push the Docker image
-        with: # Parameters passed to the action
-          # username: ${{ secrets.DOCKER_USERNAME }}
-          # password: ${{ secrets.DOCKER_PASSWORD }}
-
-          push: true # Push the image to Docker Hub
-          tags: aihpvideo/hpvideo:test # Set the tag of the image
+      # 2) 新增 Nest 镜像
+      - name: Build and Push Nest Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: backend/degpt-nest/degpt-nest
+          push: true
+          tags: aihpvideo/hpvideo-nest:test

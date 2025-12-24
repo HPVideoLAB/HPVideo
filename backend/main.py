@@ -173,7 +173,8 @@ async def check_url(request: Request, call_next):
 
 
 # ====== Nest 反向代理（放在 app.mount 之前） ======
-NEST_ORIGIN = "http://127.0.0.1:3008"
+NEST_ORIGIN = os.getenv("NEST_ORIGIN", "http://127.0.0.1:3008")
+
 
 HOP_BY_HOP_HEADERS = {
     "connection",

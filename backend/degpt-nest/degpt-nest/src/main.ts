@@ -28,6 +28,6 @@ async function bootstrap() {
   // });
   app.setGlobalPrefix('nest');
 
-  await app.listen(3008);
+  await app.listen(3008, '0.0.0.0');
 }
 bootstrap();
