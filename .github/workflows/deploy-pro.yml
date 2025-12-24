@@ -1,36 +1,30 @@
-# Deploy them independently
+name: Build & Push Prod Images
 
-# SERVER_HOST: The IP address or domain name of your server.
-# SERVER_USER: SSH login username.
-# SERVER_PASSWORD: SSH login password. (It is recommended to use SSH key pair authentication instead of password)
-# DOCKER_PASSWORD
-# DOCKER_USERNAME
+on:
+  push:
+    branches:
+      - main
 
-name: Deploy to Server # Define the name of the workflow
-
-on: # Define the events that trigger the workflow
-  push: # When the code is pushed
-    branches: # Specify the branches that trigger the workflow
-      - main # Only pushes to the main branch will trigger this workflow
-
-jobs: # Define the jobs to be executed
-  # timeout-minutes: 30
-  build: # Job identifier, here is the build job
-    runs-on: ubuntu-latest # Specify the running environment as the latest version of the Ubuntu virtual environment
-    steps: # Define the steps to be executed
-      - name: Checkout code # Step name
-        uses: actions/checkout@v2 # Use the official GitHub Action actions/checkout@v2 to check out the repository code
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Log in to Docker Hub
         run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-        # run: docker login -u $DOCKER_USER -p $DOCKER_PASSWORD 
 
+      - name: Build & Push hpvideo (prod)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: aihpvideo/hpvideo:prod
 
-      - name: Build and Push Docker image # Step name
-        uses: docker/build-push-action@v5 # Use docker/build-push-action@v2 to build and push the Docker image
-        with: # Parameters passed to the action
-          # username: ${{ secrets.DOCKER_USERNAME }}
-          # password: ${{ secrets.DOCKER_PASSWORD }}
-
-          push: true # Push the image to Docker Hub
-          tags: aihpvideo/hpvideo:prod # Set the tag of the image
+      - name: Build & Push hpvideo-nest (prod)
+        uses: docker/build-push-action@v5
+        with:
+          context: backend/degpt-nest/degpt-nest
+          push: true
+          tags: aihpvideo/hpvideo-nest:prod
