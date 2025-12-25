@@ -206,10 +206,10 @@ export const getDeModels = async (token: string = '') => {
         type: 1,
 
         // 描述：你 UI 用 i18n.t() 展示
-        desc: 'Keyframe 图片生成视频：多张关键帧 + 分段提示词/时长，生成连贯过渡视频',
+        desc: '关键帧图片生成视频：多张关键帧 + 分段提示词，生成连贯的视频',
 
         // 图标：你准备好 logo 后换成对应 png
-        modelicon: '/creator/static/icon/pika.png',
+        modelicon: '/icon/pika.png',
 
         // 建议：放真正的后端调用标识（WaveSpeed model_uuid）
         modelinfo: 'pika/pika-v2.2-pikaframes',
@@ -243,7 +243,7 @@ export const getDeModels = async (token: string = '') => {
 
         desc: '视频内容编辑（替换/删除/清理等）：支持 prompt + 可选 apply_mask 限定编辑区域',
 
-        modelicon: '/creator/static/icon/sam.png',
+        modelicon: '/icon/sam.png',
         modelinfo: 'wavespeed-ai/sam3-video',
       },
       {
@@ -272,7 +272,7 @@ export const getDeModels = async (token: string = '') => {
 
         desc: '视频风格迁移/视频到视频编辑（V2V 480p Ultra-Fast）',
 
-        modelicon: '/creator/static/icon/qwen.png',
+        modelicon: '/icon/qwen.png',
         modelinfo: 'wavespeed-ai/wan-2.1/v2v-480p-ultra-fast',
       },
     ],

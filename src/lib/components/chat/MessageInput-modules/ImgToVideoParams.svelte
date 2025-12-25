@@ -67,7 +67,7 @@
       <label class="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">提示词（prompt，必填）</label>
       <textarea
         bind:value={globalPrompt}
-        rows={4}
+        rows={2}
         placeholder="全局描述：内容、运动、风格（例如：TV screen flickering..., warm cinematic lighting）"
         class={`w-full resize-y rounded-xl border bg-transparent px-3 py-2 text-sm
                text-gray-900 placeholder:text-gray-500 focus:outline-none
@@ -200,7 +200,7 @@
       </div>
     </div>
 
-    {#if outputUrl}
+    <!-- {#if outputUrl}
       <div class="mt-3 rounded-2xl border border-gray-200 p-3 dark:border-gray-850">
         <div class="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">结果（MP4）</div>
         <video
@@ -209,6 +209,6 @@
           src={outputUrl}
         />
       </div>
-    {/if}
+    {/if} -->
   </form>
 </section>

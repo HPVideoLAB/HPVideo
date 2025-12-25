@@ -10,6 +10,8 @@
   import { v4 as uuidv4 } from 'uuid';
   import { theme } from '$lib/stores';
 
+  import { updateChatById } from '$lib/apis/chats';
+
   import { uploadImagesToOss, submitLargeLanguageModel, getLargeLanguageModelResult } from '$lib/apis/model/pika';
 
   // 抽离后的工具
@@ -17,6 +19,12 @@
   import { IMG_TO_VIDEO_RULES as R } from './modules/types';
   import { clampImageFiles, syncTransitions, totalDuration, validateImgToVideoForm } from './modules/form';
   import { pollTaskResult } from './modules/task';
+
+  // ====== 接收主页面传入（关键：写入旧聊天树） ======
+  export let chatId: string = '';
+  export let history: any;
+  export let messages: any[] = [];
+  export let selectedModels: string[] = [];
 
   // ====== UI 状态（左侧上传） ======
   let files: File[] = [];
@@ -56,6 +64,96 @@
 
   function syncTransitionsToFiles() {
     transitions = syncTransitions(files.length, transitions);
+  }
+
+  function getModelId() {
+    return selectedModels?.[0] ?? 'img-to-video';
+  }
+
+  async function persistChat() {
+    // local 或无 chatId 不落库
+    if (!chatId || chatId === 'local') return;
+    await updateChatById(localStorage.token, chatId, { messages, history });
+  }
+
+  function appendVideoChatMessages(params: {
+    prompt: string;
+    modelId: string;
+    resolution: string;
+    duration: number;
+    seed: number;
+    requestId: string;
+    images: string[];
+  }) {
+    // 防御：若主页面没传 history/messages，这里直接抛错，避免 silent fail
+    if (!history || !history.messages) {
+      throw new Error('history 未传入 ImgToVideo');
+    }
+
+    const userId = uuidv4();
+    const assistantId = uuidv4();
+
+    const parentId = messages.length ? messages.at(-1).id : null;
+
+    const userMessage = {
+      id: userId,
+      parentId,
+      childrenIds: [],
+      role: 'user',
+      content: params.prompt,
+      toolInfo: {
+        type: 'img2video',
+        requestId: params.requestId,
+        images: params.images,
+        resolution: params.resolution,
+        duration: params.duration,
+        seed: params.seed,
+      },
+      models: [params.modelId],
+      timestamp: Math.floor(Date.now() / 1000),
+    };
+
+    // 注意：为了复用旧 ResponseMessage 的 VideoLoading/VideoPlay/VideoError
+    // - processing：content 为空，done=false
+    // - completed：content 为 mp4 url，done=true，status=completed
+    // - failed：error=true，done=true，status=failed
+    const assistantMessage = {
+      id: assistantId,
+      parentId: userId,
+      childrenIds: [],
+      role: 'assistant',
+      model: params.modelId,
+
+      size: params.resolution,
+      duration: params.duration,
+
+      status: 'processing',
+      content: '',
+      done: false,
+      error: false,
+
+      // 关闭旧支付分支（避免触发 pay UI）
+      paystatus: true,
+      paytype: 'paid',
+      paymoney: 0,
+
+      // 记录 requestId，后续如果你要做 refresh/重试可用
+      createId: params.requestId,
+
+      timestamp: Math.floor(Date.now() / 1000),
+    };
+
+    history.messages[userId] = userMessage;
+    history.messages[assistantId] = assistantMessage;
+    history.currentId = assistantId;
+
+    // 挂到聊天树上
+    if (parentId) {
+      history.messages[parentId].childrenIds = [...(history.messages[parentId].childrenIds ?? []), userId];
+    }
+    history.messages[userId].childrenIds = [...(history.messages[userId].childrenIds ?? []), assistantId];
+
+    return { userId, assistantId };
   }
 
   // ====== 左侧事件 ======
@@ -206,6 +304,8 @@
       return;
     }
 
+    let assistantId: string | null = null;
+
     try {
       // 2) 支付
       await payBeforeGenerate();
@@ -234,9 +334,36 @@
 
       requestId = submitResp.requestId;
 
+      // === 写入旧聊天树：生成中（最小复用旧 UI） ===
+      const modelId = getModelId();
+      const duration = totalDuration(transitions);
+
+      const ids = appendVideoChatMessages({
+        prompt: globalPrompt.trim(),
+        modelId,
+        resolution,
+        duration,
+        seed,
+        requestId,
+        images: urls,
+      });
+
+      assistantId = ids.assistantId;
+      await persistChat();
+
       // 4) 轮询
       message = '生成中…';
       await pollResult(requestId);
+
+      // === 写入旧聊天树：完成 ===
+      if (assistantId && history?.messages?.[assistantId]) {
+        history.messages[assistantId].status = 'completed';
+        history.messages[assistantId].content = outputUrl; // 纯 URL，旧 VideoPlay 直接吃
+        history.messages[assistantId].done = true;
+        history.messages[assistantId].error = false;
+        history.messages[assistantId].replytime = Math.floor(Date.now() / 1000);
+        await persistChat();
+      }
 
       status = 'success';
       message = '生成完成。';
@@ -244,6 +371,15 @@
       status = 'error';
       taskStatus = 'failed';
       message = e?.message || '发生错误';
+
+      // === 写入旧聊天树：失败 ===
+      if (assistantId && history?.messages?.[assistantId]) {
+        history.messages[assistantId].status = 'failed';
+        history.messages[assistantId].done = true;
+        history.messages[assistantId].error = true;
+        history.messages[assistantId].errmsg = e?.message || 'Video Generation Failed';
+        await persistChat();
+      }
     }
   }
 
