@@ -1,26 +1,51 @@
-version: '3.8'
-
 services:
+  postgres:
+    image: postgres:16
+    container_name: hpvideo-postgres-test
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: dzy_123
+      POSTGRES_DB: hpvideo_dp
+    volumes:
+      - /data/pg/hpvideo-test:/var/lib/postgresql/data
+    networks:
+      - degpt-network
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    container_name: hpvideo-mongo-test
+    volumes:
+      - /data/mongo/hpvideo-test:/data/db
+    networks:
+      - degpt-network
+    restart: unless-stopped
+
+  nest:
+    image: aihpvideo/hpvideo-nest:test
+    container_name: nest
+    env_file:
+      - /data/env/hpvideo/test/.env
+    ports:
+      - '3008:3008'
+    networks:
+      - degpt-network
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
   webui:
     image: aihpvideo/hpvideo:test
     container_name: hpvideo-test
     env_file:
       - /data/env/hpvideo/test/.env
-    environment:
-      - NEST_ORIGIN=http://nest:3008
     ports:
       - '5002:8080'
     networks:
       - degpt-network
     depends_on:
+      - postgres
       - nest
-    restart: unless-stopped
-
-  nest:
-    image: aihpvideo/hpvideo-nest:test
-    container_name: hpvideo-nest-test
-    networks:
-      - degpt-network
     restart: unless-stopped
 
 networks:
