@@ -17,6 +17,9 @@
     theme,
     paystatus,
     chatsearch,
+    // 👇 引用 Store
+    messages,
+    history,
   } from '$lib/stores';
   import { copyToClipboard, convertMessagesToHistory } from '$lib/utils';
 
@@ -27,15 +30,18 @@
 
   import { createOpenAITextStream } from '$lib/apis/streaming';
   import { queryMemory } from '$lib/apis/memories';
+
+  // 引入组件
   import MessageInput from '$lib/components/chat/MessageInput.svelte';
   import Messages from '$lib/components/chat/Messages.svelte';
   import Navbar from '$lib/components/layout/Navbar.svelte';
+  import ImgToVideo from '$lib/components/chat/MessageInput-modules/ImgToVideo.svelte'; // 确保引入了它
 
   import { config as wconfig, modal, getUSDTBalance, tranUsdt } from '$lib/utils/wallet/bnb/index';
   import { getAccount } from '@wagmi/core';
   import { bnbpaycheck } from '$lib/apis/pay';
 
-  const i18n = getContext('i18n');
+  const i18n: any = getContext('i18n');
 
   let loaded = false;
 
@@ -74,30 +80,22 @@
   let prompt = '';
   let files = [];
   let fileFlag = false;
-  let messages = [];
-  let history = {
-    messages: {},
-    currentId: null,
-  };
+
   let firstResAlready = false; // 已经有了第一个响应
 
   let chatInputPlaceholder = '';
 
-  $: if (history.currentId !== null) {
+  // 👇 Store 监听
+  $: if ($history.currentId !== null) {
     let _messages = [];
-
-    let currentMessage = history.messages[history.currentId];
+    let currentMessage = $history.messages[$history.currentId];
     while (currentMessage !== null) {
       _messages.unshift({ ...currentMessage });
-      currentMessage = currentMessage.parentId !== null ? history.messages[currentMessage.parentId] : null;
+      currentMessage = currentMessage.parentId !== null ? $history.messages[currentMessage.parentId] : null;
     }
-
-    // _messages.pop()
-    // console.log("messages = _messages;", _messages);
-
-    messages = _messages;
+    $messages = _messages;
   } else {
-    messages = [];
+    $messages = [];
   }
 
   $: if ($page.params.id) {
@@ -105,10 +103,7 @@
       if (await loadChat()) {
         await tick();
         loaded = true;
-
         window.setTimeout(() => scrollToBottom(), 0);
-        // const chatInput = document.getElementById('chat-textarea');
-        // chatInput?.focus();
       } else {
         await goto('/creator');
       }
@@ -116,13 +111,12 @@
   }
 
   $: if ($chatsearch != '') {
-    const resultIds = Object.values(history.messages) // 提取所有对象组成的数组
-      .filter((item) => {
-        // 注意：content 可能是字符串（user 角色）或数组（assistant 角色），需先判断类型
+    const resultIds = Object.values($history.messages)
+      .filter((item: any) => {
         const contentStr = typeof item.content === 'string' ? item.content : '';
-        return contentStr.includes($chatsearch); // 包含「产品」关键词则保留
+        return contentStr.includes($chatsearch);
       })
-      .map((item) => item.id);
+      .map((item: any) => item.id);
     if (resultIds.length > 0) {
       scrollContent(resultIds[0]);
     }
@@ -136,6 +130,13 @@
       });
     }
   }
+
+  // 定义图生视频模型列表
+  const allowModel = ['pika-v2.2-pikaframes', 'sam3-video', 'wan-2.1-v2v'];
+
+  // 👇👇👇 核心：响应式判断当前模型是否为视频模型
+  $: currentModelId = selectedModels.length > 0 ? selectedModels[0] : '';
+  $: isVideoModel = allowModel.includes(currentModelId);
 
   //////////////////////////
   // Web functions
@@ -153,11 +154,29 @@
       const chatContent = chat.chat;
 
       if (chatContent) {
-        selectedModels = $settings?.models;
-        history =
+        if (chatContent.models) selectedModels = chatContent.models;
+
+        // 👇👇👇 核心修复：数据清洗逻辑 (Data Cleaning) 👇👇👇
+        // 这一步专门用来修复历史遗留的 "content 是数组" 的问题
+        let loadedHistory =
           (chatContent?.history ?? undefined) !== undefined
             ? chatContent.history
             : convertMessagesToHistory(chatContent.messages);
+
+        if (loadedHistory && loadedHistory.messages) {
+          Object.keys(loadedHistory.messages).forEach((msgId) => {
+            const msg = loadedHistory.messages[msgId];
+            // 如果 content 是数组，取第一个元素变成字符串
+            if (Array.isArray(msg.content) && msg.content.length > 0) {
+              msg.content = msg.content[0];
+            } else if (Array.isArray(msg.content) && msg.content.length === 0) {
+              msg.content = ''; // 空数组变空字符串
+            }
+          });
+        }
+        // 👆👆👆 修复结束 👆👆👆
+
+        $history = loadedHistory;
         title = chatContent.title;
 
         let _settings = JSON.parse(localStorage.getItem('settings') ?? '{}');
@@ -169,8 +188,10 @@
         autoScroll = true;
         await tick();
 
-        if (messages.length > 0) {
-          history.messages[messages.at(-1).id].done = true;
+        if ($messages.length > 0) {
+          if ($messages.at(-1)) {
+            $history.messages[$messages.at(-1).id].done = true;
+          }
         }
         await tick();
 
@@ -197,28 +218,27 @@
 
     selectedModels = selectedModels.map((modelId) => ($models.map((m) => m.id).includes(modelId) ? modelId : ''));
 
-    firstResAlready = false; // 开始新对话的时候，也要还原firstResAlready为初始状态false
+    firstResAlready = false;
     await tick();
 
     if (selectedModels.includes('')) {
       toast.error($i18n.t('Model not selected'));
-    } else if (messages.length != 0 && messages.at(-1).done != true) {
-      // 响应未完成
+    }
+    // ⚠️ messages -> $messages
+    else if ($messages.length != 0 && $messages.at(-1).done != true) {
       console.log('wait');
     } else if (files.length > 0 && files.filter((file) => file.upload_status === false).length > 0) {
-      // 上传未完成
       toast.error(
         `Oops! Hold tight! Your files are still in the processing oven. We're cooking them up to perfection. Please be patient and we'll let you know once they're ready.`
       );
     } else {
-      // 重置聊天消息文本区高度
       document.getElementById('chat-textarea').style.height = '';
 
-      // 创建用户消息
+      // Create user message
       let userMessageId = uuidv4();
       let userMessage = {
         id: userMessageId,
-        parentId: messages.length !== 0 ? messages.at(-1).id : null,
+        parentId: $messages.length !== 0 ? $messages.at(-1).id : null,
         childrenIds: [],
         role: 'user',
         user: _user ?? undefined,
@@ -229,21 +249,17 @@
         models: selectedModels,
       };
 
-      // 将消息添加到历史记录并设置 currentId 为 messageId
-      history.messages[userMessageId] = userMessage;
-      history.currentId = userMessageId;
+      $history.messages[userMessageId] = userMessage;
+      $history.currentId = userMessageId;
 
-      // 将 messageId 附加到父消息的 childrenIds 中
-      if (messages.length !== 0) {
-        history.messages[messages.at(-1).id].childrenIds.push(userMessageId);
+      if ($messages.length !== 0) {
+        $history.messages[$messages.at(-1).id].childrenIds.push(userMessageId);
       }
 
-      // Create Simulate ResopnseMessage
       let responseMap: any = {};
       selectedModels.map(async (modelId) => {
         const model = $models.filter((m) => m.id === modelId).at(0);
         if (model) {
-          // Create response message
           let responseMessageId = uuidv4();
           let responseMessage = {
             parentId: userMessageId,
@@ -263,14 +279,12 @@
             timestamp: Math.floor(Date.now() / 1000), // Unix epoch
           };
 
-          // Add message to history and Set currentId to messageId
-          history.messages[responseMessageId] = responseMessage;
-          history.currentId = responseMessageId;
+          $history.messages[responseMessageId] = responseMessage;
+          $history.currentId = responseMessageId;
 
-          // Append messageId to childrenIds of parent message
           if (userMessageId !== null) {
-            history.messages[userMessageId].childrenIds = [
-              ...history.messages[userMessageId].childrenIds,
+            $history.messages[userMessageId].childrenIds = [
+              ...$history.messages[userMessageId].childrenIds,
               responseMessageId,
             ];
           }
@@ -278,7 +292,6 @@
         }
       });
 
-      // 重置聊天输入文本区
       prompt = '';
       files = [];
 
@@ -286,10 +299,8 @@
       scrollToBottom();
 
       try {
-        // 如果 messages 中只有一条消息，则创建新的聊天
-        if (messages.length == 2) {
+        if ($messages.length == 2) {
           if ($settings.saveChatHistory ?? true) {
-            // 3\1. 创建新的会话
             chat = await createNewChat(localStorage.token, {
               id: $chatId,
               title: $i18n.t('New Chat'),
@@ -298,8 +309,8 @@
               options: {
                 ...($settings.options ?? {}),
               },
-              messages: messages,
-              history: history,
+              messages: $messages,
+              history: $history,
               timestamp: Date.now(),
             });
             await chats.set(await getChatList(localStorage.token));
@@ -310,7 +321,6 @@
           await tick();
         }
 
-        // 更新消息到数据库
         const _chatId = JSON.parse(JSON.stringify($chatId));
         await updateChatMessage(_chatId);
 
@@ -321,9 +331,9 @@
           const model = $models.filter((m) => m.id === modelId).at(0);
           let responseMessage = responseMap[model?.id];
           await handleOpenAIError(err, null, model, responseMessage);
-          history.messages[responseMessageId] = responseMessage;
 
-          // 更新消息到数据库
+          $history.messages[responseMessageId] = responseMessage;
+
           await updateChatMessage(_chatId);
 
           await tick();
@@ -375,7 +385,7 @@
       // Send prompt
       let currResponseMap: any = {};
       currResponseMap[messageinfo?.model] = messageinfo;
-      let currmessage = messages.filter((item) => item.id == messageinfo?.parentId);
+      let currmessage = $messages.filter((item) => item.id == messageinfo?.parentId);
       await sendPrompt(currmessage[0].content, currResponseMap);
     } else {
       const balance = await getUSDTBalance(account?.address);
@@ -403,7 +413,7 @@
             // Send prompt
             let currResponseMap: any = {};
             currResponseMap[messageinfo?.model] = messageinfo;
-            let currmessage = messages.filter((item) => item.id == messageinfo?.parentId);
+            let currmessage = $messages.filter((item) => item.id == messageinfo?.parentId);
             await sendPrompt(currmessage[0].content, currResponseMap);
           } else {
             $paystatus = false;
@@ -429,7 +439,7 @@
     messageinfo.paytype = payval;
     messageinfo.status = payval;
     messageinfo.content = payval;
-    history.messages[responseMessageId] = messageinfo;
+    $history.messages[responseMessageId] = messageinfo;
     await updateChatMessage($chatId);
   };
 
@@ -448,8 +458,9 @@
 
             responseMessage.content = '';
             responseMessage.done = false;
-            history.messages[responseMessageId] = responseMessage;
-            history.currentId = responseMessageId;
+
+            $history.messages[responseMessageId] = responseMessage;
+            $history.currentId = responseMessageId;
 
             let userContext = null;
             if ($settings?.memory ?? false) {
@@ -489,8 +500,8 @@
     firstResAlready = false;
 
     // 加载聊天列表（赋值聊天title）
-    if (messages.length == 2) {
-      window.history.replaceState(history.state, '', `/creator/c/${_chatId}`);
+    if ($messages.length == 2) {
+      window.history.replaceState(window.history.state, '', `/creator/c/${_chatId}`);
       const _title = await generateDeChatTitle(prompt);
       await setChatTitle(_chatId, _title);
     } else {
@@ -498,13 +509,21 @@
     }
   };
 
-  // 对话DeGpt
+  const checkImage = () => {
+    const userMsgsa = $messages.filter((item) => item.role === 'user');
+    const lastUserMsg = userMsgsa.length > 0 ? userMsgsa[userMsgsa.length - 1] : null;
+    if (lastUserMsg && Array.isArray(lastUserMsg.files)) {
+      return true;
+    } else {
+      return false;
+    }
+  };
+  // 对话DeGpt (子页面修正版)
   const sendPromptDeOpenAI = async (model, responseMessageId, _chatId, reload) => {
-    const responseMessage = history.messages[responseMessageId];
+    console.log('🔍 [Child Debug] 进入 sendPromptDeOpenAI');
+    const responseMessage = $history.messages[responseMessageId];
 
     scrollToBottom();
-
-    // console.log("$settings.system", $settings.system, );
 
     try {
       let send_message = [
@@ -512,19 +531,17 @@
           ? {
               role: 'system',
               content: `${$settings?.system ?? ''}${
-                (responseMessage?.userContext ?? null)
+                responseMessage?.userContext ?? null
                   ? `\n\nUser Context:\n${(responseMessage?.userContext ?? []).join('\n')}`
                   : ''
               }`,
             }
           : undefined,
-        ...messages,
+        ...$messages,
       ].filter((message) => message);
 
-      // 过滤掉error和 content为空数据
       send_message = send_message.filter((item) => !item.error).filter((item) => item.content != '');
 
-      // 处理图片消息
       send_message = send_message.map((message, idx, arr) => ({
         role: message.role,
         ...((message.files?.filter((file) => file.type === 'image').length > 0 ?? false) && message.role === 'user'
@@ -532,7 +549,7 @@
               content: [
                 {
                   type: 'text',
-                  text: arr.length - 1 !== idx ? message.content : (message?.raContent ?? message.content),
+                  text: arr.length - 1 !== idx ? message.content : message?.raContent ?? message.content,
                 },
                 ...message.files
                   .filter((file) => file.type === 'image')
@@ -545,7 +562,7 @@
               ],
             }
           : {
-              content: arr.length - 1 !== idx ? message.content : (message?.raContent ?? message.content),
+              content: arr.length - 1 !== idx ? message.content : message?.raContent ?? message.content,
             }),
       }));
 
@@ -561,20 +578,20 @@
         size: responseMessage.size,
       });
 
-      // Wait until history/message have been updated
       await tick();
-
       scrollToBottom();
 
       // 6. 创建openai对话数据流
       if (res && res.ok && res.body) {
-        // cancle reload fun
         if (reload) {
           responseMessage.reload = false;
         }
         const textStream = await createOpenAITextStream(res.body, true);
         for await (const update of textStream) {
           let { value, limit, createId, status, paystatus, paymoney, done, error } = update;
+
+          console.log('🔍 [Child Debug Stream Send]', { value, status, done, isArray: Array.isArray(value) });
+
           if (paymoney) {
             responseMessage.paystatus = paystatus;
             responseMessage.paymoney = paymoney;
@@ -589,21 +606,23 @@
             responseMessage.createId = createId;
             updateChatMessage(_chatId);
           }
-          messages = messages;
+
+          // 这里不直接更新 $messages，后面统一刷新 $history
+          // $messages = $messages;
 
           if (error) {
             await handleOpenAIError(error, null, model, responseMessage);
             break;
           }
-          // 第一次响应的时候，把当前的id设置为当前响应的id
           if (value && !firstResAlready) {
             firstResAlready = true;
-            history.currentId = responseMessageId;
+            $history.currentId = responseMessageId;
           }
 
           if (done || stopResponseFlag || _chatId !== $chatId) {
             responseMessage.done = true;
-            messages = messages;
+            // ✨✨✨ 强制刷新源头 history ✨✨✨
+            $history = $history;
             if (stopResponseFlag) {
               controller.abort('User: Stop Response');
             }
@@ -616,14 +635,21 @@
 
           if (!firstResAlready && responseMessage.content.length > 0) {
             firstResAlready = true;
-            history.currentId = responseMessageId;
+            $history.currentId = responseMessageId;
             await tick();
           }
 
-          if (responseMessage.content == '' && value == '') {
-            continue;
-          } else {
+          // 1. 数组清洗
+          if (Array.isArray(value) && value.length > 0) {
+            console.log('🔍 [Child Debug] SendPrompt 检测到数组，正在转换:', value);
+            value = value[0];
+          }
+
+          // 2. 赋值保护 + 强制刷新 history
+          if (value && value.length > 0) {
             responseMessage.content = value;
+            // ✨✨✨ 强制刷新源头 history ✨✨✨
+            $history = $history;
           }
 
           if ($settings.responseAutoCopy) {
@@ -643,6 +669,7 @@
         await handleOpenAIError(null, res, model, responseMessage);
       }
     } catch (error) {
+      console.error('🔍 [Child Debug Error]', error);
       await handleOpenAIError(error, null, model, responseMessage);
     }
 
@@ -655,17 +682,9 @@
     }
   };
 
-  const checkImage = () => {
-    const userMsgsa = messages.filter((item) => item.role === 'user');
-    const lastUserMsg = userMsgsa.length > 0 ? userMsgsa[userMsgsa.length - 1] : null;
-    if (lastUserMsg && Array.isArray(lastUserMsg.files)) {
-      return true;
-    } else {
-      return false;
-    }
-  };
-
   const refreshVideoResult = async (messageinfo: any, _chatId: string) => {
+    console.log('🔍 [Child Debug] 进入 refreshVideoResult', messageinfo.createId);
+
     if (messageinfo.createId) {
       scrollToBottom();
 
@@ -673,9 +692,9 @@
       messageinfo.done = false;
       messageinfo.error = false;
       messageinfo.status = 'processing';
-      history.messages[responseMessageId] = messageinfo;
+      $history.messages[responseMessageId] = messageinfo;
 
-      const responseMessage = history.messages[responseMessageId];
+      const responseMessage = $history.messages[responseMessageId];
       let currModel = $models.find((item) => item.id == responseMessage.model);
       let fileFlag = checkImage();
 
@@ -688,7 +707,7 @@
           duration: responseMessage?.duration,
           size: responseMessage?.size,
           messageid: responseMessageId,
-          messages: messages,
+          messages: $messages,
         });
 
         await tick();
@@ -698,10 +717,14 @@
           const textStream = await createOpenAITextStream(res.body, true);
           for await (const update of textStream) {
             let { value, status, done, error } = update;
+
+            console.log('🔍 [Child Debug Stream Refresh]', { value, status, done, isArray: Array.isArray(value) });
+
             if (status) {
               responseMessage.status = status;
             }
-            messages = messages;
+            // 不刷新 messages，后面统一刷 history
+            // $messages = $messages;
 
             if (error) {
               await handleOpenAIError(error, null, null, responseMessage);
@@ -710,17 +733,25 @@
 
             if (done || stopResponseFlag || _chatId !== $chatId) {
               responseMessage.done = true;
-              messages = messages;
+              // ✨✨✨ 强制刷新源头 history ✨✨✨
+              $history = $history;
               if (stopResponseFlag) {
                 controller.abort('User: Stop Response');
               }
               break;
             }
 
-            if (responseMessage.content == '' && value == '') {
-              continue;
-            } else {
+            // 1. 数组清洗
+            if (Array.isArray(value) && value.length > 0) {
+              console.log('🔍 [Child Debug] 检测到数组，正在转换:', value);
+              value = value[0];
+            }
+
+            // 2. 赋值保护 + 强制刷新 history
+            if (value && value.length > 0) {
               responseMessage.content = value;
+              // ✨✨✨ 强制刷新源头 history ✨✨✨
+              $history = $history;
             }
 
             if (autoScroll) {
@@ -729,28 +760,26 @@
           }
         }
       } catch (error) {
+        console.error('🔍 [Child Debug Error]', error);
         await handleOpenAIError(error, null, null, responseMessage);
       }
 
-      // 更新消息到数据库
-      await updateChatMessage($chatId);
-
+      await updateChatMessage(_chatId);
       await tick();
-
       if (autoScroll) {
         scrollToBottom();
       }
     } else {
       let currResponseMap: any = {};
       currResponseMap[messageinfo?.model] = messageinfo;
-      let currmessage = messages.filter((item) => item.id == messageinfo?.parentId);
+      let currmessage = $messages.filter((item) => item.id == messageinfo?.parentId);
       await sendPrompt(currmessage[0].content, currResponseMap);
     }
   };
 
   // 更新消息到数据库
   const updateChatMessage = async (_chatId: string) => {
-    messages = messages;
+    $messages = $messages;
 
     stopResponseFlag = false;
 
@@ -758,8 +787,8 @@
     if (_chatId === $chatId) {
       if ($settings.saveChatHistory ?? true) {
         await updateChatById(localStorage.token, _chatId, {
-          messages: messages,
-          history: history,
+          messages: $messages,
+          history: $history,
         });
       }
     }
@@ -770,9 +799,9 @@
       const model = $models.find((model) => model.id === selectedModels[0]);
 
       const titleModelId =
-        (model?.external ?? false)
-          ? ($settings?.title?.modelExternal ?? selectedModels[0])
-          : ($settings?.title?.model ?? selectedModels[0]);
+        model?.external ?? false
+          ? $settings?.title?.modelExternal ?? selectedModels[0]
+          : $settings?.title?.model ?? selectedModels[0];
       const titleModel = $models.find((model) => model.id === titleModelId);
 
       console.log(titleModel);
@@ -796,19 +825,18 @@
     responseMessage.error = true;
     responseMessage.content = 'It seems that you are offline. Please reconnect to send messages.';
     responseMessage.done = true;
-    messages = messages;
+    $messages = $messages;
   };
 
   const stopResponse = () => {
     stopResponseFlag = true;
     console.log('stopResponse');
   };
-
   const regenerateResponse = async (message) => {
     console.log('regenerateResponse');
 
-    if (messages.length != 0) {
-      let userMessage = history.messages[message.parentId];
+    if ($messages.length != 0) {
+      let userMessage = $history.messages[message.parentId];
       let userPrompt = userMessage.content;
 
       if ((userMessage?.models ?? [...selectedModels]).length == 1) {
@@ -823,8 +851,8 @@
     console.log('continueGeneration');
     const _chatId = JSON.parse(JSON.stringify($chatId));
 
-    if (messages.length != 0 && messages.at(-1).done == true) {
-      const responseMessage = history.messages[history.currentId];
+    if ($messages.length != 0 && $messages.at(-1).done == true) {
+      const responseMessage = $history.messages[$history.currentId];
       responseMessage.done = false;
       await tick();
 
@@ -882,7 +910,7 @@
       {chat}
       bind:selectedModels
       bind:showModelSelector
-      shareEnabled={messages.length > 0}
+      shareEnabled={$messages.length > 0}
       initNewChat={async () => {
         if (currentRequestId !== null) {
           await cancelOllamaRequest(localStorage.token, currentRequestId);
@@ -892,49 +920,105 @@
         goto('/creator');
       }}
     />
-    <div class="flex flex-col flex-auto">
-      <div
-        class=" pb-2.5 flex flex-col justify-between w-full flex-auto overflow-auto h-0 max-w-full"
-        id="messages-container"
-        bind:this={messagesContainerElement}
-        on:scroll={(e) => {
-          autoScroll =
-            messagesContainerElement.scrollHeight - messagesContainerElement.scrollTop <=
-            messagesContainerElement.clientHeight + 45;
-        }}
-      >
-        <div class=" h-full w-full flex flex-col py-4">
-          <Messages
-            chatId={$chatId}
-            {selectedModels}
-            {selectedModelfiles}
-            {processing}
-            bind:history
-            bind:messages
-            bind:autoScroll
-            bind:prompt
-            bind:chatInputPlaceholder
-            bottomPadding={files.length > 0}
-            {sendPrompt}
-            {startPay}
-            {refreshVideoResult}
-            {continueGeneration}
-            {regenerateResponse}
-          />
+
+    {#if isVideoModel}
+      <div class="flex flex-col flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
+        <div
+          class="flex-1 flex flex-col w-full"
+          id="messages-container"
+          bind:this={messagesContainerElement}
+          on:scroll={(e) => {
+            autoScroll =
+              messagesContainerElement.scrollHeight - messagesContainerElement.scrollTop <=
+              messagesContainerElement.clientHeight + 45;
+          }}
+        >
+          <!-- <div class="pt-6">
+            {#if selectedModels[0] && $models.find((m) => m.id === selectedModels[0])}
+              <div class="flex flex-col justify-center items-center w-full">
+                <img class="size-8" src={$models.find((m) => m.id === selectedModels[0]).modelicon} alt="" />
+                <span class="text-xl font-bold mt-1">{$models.find((m) => m.id === selectedModels[0]).name}</span>
+                <span class="w-full max-w-[600px] text-lg text-center mt-1.5 px-5 text-gray-500">
+                  {$i18n.t($models.find((m) => m.id === selectedModels[0]).desc)}
+                </span>
+              </div>
+            {/if}
+          </div> -->
+
+          <div class="h-full w-full flex flex-col pb-4 px-2 md:px-4">
+            <Messages
+              chatId={$chatId}
+              {selectedModels}
+              {selectedModelfiles}
+              {processing}
+              bind:history={$history}
+              bind:messages={$messages}
+              bind:autoScroll
+              bind:prompt
+              bind:chatInputPlaceholder
+              bottomPadding={files.length > 0}
+              {sendPrompt}
+              {startPay}
+              {refreshVideoResult}
+              {continueGeneration}
+              {regenerateResponse}
+            />
+          </div>
+        </div>
+
+        <div class="w-full bg-white dark:bg-gray-900 z-20">
+          <div class="p-2 md:p-4">
+            <ImgToVideo />
+          </div>
         </div>
       </div>
-    </div>
+    {:else}
+      <div class="flex flex-col flex-auto overflow-y-auto">
+        <div
+          class=" pb-2.5 flex flex-col justify-between w-full flex-auto max-w-full"
+          id="messages-container"
+          bind:this={messagesContainerElement}
+          on:scroll={(e) => {
+            autoScroll =
+              messagesContainerElement.scrollHeight - messagesContainerElement.scrollTop <=
+              messagesContainerElement.clientHeight + 45;
+          }}
+        >
+          <div class=" h-full w-full flex flex-col py-4">
+            <Messages
+              chatId={$chatId}
+              {selectedModels}
+              {selectedModelfiles}
+              {processing}
+              bind:history={$history}
+              bind:messages={$messages}
+              bind:autoScroll
+              bind:prompt
+              bind:chatInputPlaceholder
+              bottomPadding={files.length > 0}
+              {sendPrompt}
+              {startPay}
+              {refreshVideoResult}
+              {continueGeneration}
+              {regenerateResponse}
+            />
+          </div>
+        </div>
+      </div>
+    {/if}
   </div>
 
-  <MessageInput
-    bind:files
-    bind:prompt
-    bind:autoScroll
-    bind:chatInputPlaceholder
-    bind:selectedModel={atSelectedModel}
-    bind:currentModel={selectedModels}
-    {messages}
-    {submitPrompt}
-    {stopResponse}
-  />
+  {#if !isVideoModel}
+    <MessageInput
+      bind:files
+      bind:prompt
+      bind:autoScroll
+      bind:chatInputPlaceholder
+      bind:selectedModel={atSelectedModel}
+      bind:currentModel={selectedModels}
+      messages={$messages}
+      {submitPrompt}
+      {stopResponse}
+    />
+  {/if}
 {/if}

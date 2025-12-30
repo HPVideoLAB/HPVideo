@@ -1,3 +1,4 @@
+<!-- History.svelte -->
 <script lang="ts">
   import { getContext } from 'svelte';
   import dayjs from 'dayjs';
@@ -6,39 +7,43 @@
 
   const i18n: any = getContext('i18n');
 
-  export let history: any = { messages: {}, currentId: null };
-
   type Status = 'processing' | 'completed' | 'failed';
 
   type HistoryItem = {
-    id: string; // assistant message id
+    id: string;
     createdAt: number; // unix seconds
     model: string;
     status: Status;
     prompt: string;
     outputUrl?: string;
+    // 去掉 videosize（固定 16:9 不再需要）
   };
 
-  // 你页面 allowModel
-  const ALLOW_MODEL = ['pika-v2.2-pikaframes', 'sam3-video', 'wan-2.1-v2v'];
-
-  function normalizeStatus(s: any): Status {
-    if (s === 'completed') return 'completed';
-    if (s === 'failed' || s === 'timeout') return 'failed';
-    return 'processing';
-  }
-
-  function getOutputUrlFromAssistantMsg(m: any): string {
-    // 我们在 ImgToVideo 里写入：outputUrl / content
-    if (m?.outputUrl) return m.outputUrl;
-    if (typeof m?.content === 'string' && m.content.startsWith('http')) return m.content;
-
-    // 兼容你给的返回结构（如果你未来直接把 raw 存在 message.raw）
-    if (m?.raw?.outputs?.length) return m.raw.outputs[0];
-    if (m?.resultUrl) return m.resultUrl;
-
-    return '';
-  }
+  // ===== 静态数据（示例） =====
+  let items: HistoryItem[] = [
+    {
+      id: 'req_9b7c2a1',
+      createdAt: Math.floor(Date.now() / 1000) - 120,
+      model: 'Pika · Img-to-Video',
+      status: 'processing',
+      prompt: 'A calm rainy street at night, neon reflections, cinematic, shallow depth of field, slow dolly forward',
+    },
+    {
+      id: 'req_6f1a9d0',
+      createdAt: Math.floor(Date.now() / 1000) - 3600,
+      model: 'Pika · Img-to-Video',
+      status: 'completed',
+      prompt: 'A futuristic city skyline, sunrise, volumetric light, ultra wide, smooth camera movement',
+      outputUrl: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
+    },
+    {
+      id: 'req_21d0c8e',
+      createdAt: Math.floor(Date.now() / 1000) - 86400,
+      model: 'Pika · Img-to-Video',
+      status: 'failed',
+      prompt: 'Macro shot of a butterfly wing, glitter particles, dreamy bokeh, soft pastel palette',
+    },
+  ];
 
   function statusText(s: Status) {
     if (s === 'completed') return $i18n.t('Completed');
@@ -54,10 +59,14 @@
     return 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200';
   }
 
+  // 固定 16:9：移动端不限制宽度；桌面端统一 max-w 600
   function generatingBoxClass() {
-    return `flex justify-center flex-col items-center w-full ${$mobile ? '' : 'max-w-[600px]'} rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500`;
+    return `flex justify-center flex-col items-center w-full ${
+      $mobile ? '' : 'max-w-[600px]'
+    } rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500`;
   }
 
+  // 固定 16:9
   function generatingBoxStyle() {
     return 'aspect-ratio: 16/9';
   }
@@ -87,70 +96,21 @@
     if (!url) return;
     window.open(url, '_blank', 'noopener,noreferrer');
   }
-
-  function formatModelLabel(modelId: string) {
-    // 你也可以换成从 $models 里查 name；这里先给一个稳定文案
-    if (modelId?.includes('pika')) return 'Pika · Img-to-Video';
-    if (modelId?.includes('sam3')) return 'SAM3 · Video';
-    if (modelId?.includes('wan')) return 'WAN · Video';
-    return modelId || 'Img-to-Video';
-  }
-
-  // ===== 从 history.messages 派生 items =====
-  $: items = deriveItems(history);
-
-  function deriveItems(h: any): HistoryItem[] {
-    const map = h?.messages ?? {};
-    const all = Object.values(map) as any[];
-
-    // assistant 且属于图生视频模型（或 toolInfo.type === img-to-video）
-    const assistants = all.filter((m) => {
-      if (!m || m.role !== 'assistant') return false;
-      const modelOk = m.model && ALLOW_MODEL.includes(m.model);
-      const toolOk = m?.toolInfo?.type === 'img-to-video'; // 兼容未来扩展
-      return modelOk || toolOk;
-    });
-
-    const items: HistoryItem[] = assistants.map((a) => {
-      const parent = a.parentId ? map[a.parentId] : null;
-      const prompt = (parent?.content ?? '') as string;
-
-      const createdAt = (a.timestamp ?? parent?.timestamp ?? Math.floor(Date.now() / 1000)) as number;
-      const status = normalizeStatus(a.status);
-      const outputUrl = status === 'completed' ? getOutputUrlFromAssistantMsg(a) : '';
-
-      return {
-        id: a.id,
-        createdAt,
-        model: formatModelLabel(a.model),
-        status,
-        prompt,
-        outputUrl: outputUrl || undefined,
-      };
-    });
-
-    // 新的在前
-    items.sort((x, y) => (y.createdAt ?? 0) - (x.createdAt ?? 0));
-    return items;
-  }
-
-  let items: HistoryItem[] = [];
 </script>
 
 <section class="mx-auto">
   {#if items.length === 0}
-    <!-- <div
+    <div
       class="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-700
              dark:border-gray-850 dark:bg-gray-950 dark:text-gray-300"
     >
       {$i18n.t('No history yet')}
-    </div> -->
-
-    <div></div>
+    </div>
   {:else}
     <div class="space-y-3 md:w-[50%]">
       {#each items as item (item.id)}
         <div class="rounded-2xl border border-gray-200 bg-transparent p-3 sm:p-4 dark:border-gray-850">
+          <!-- 顶部：时间 / 模型 / 状态 + 操作 -->
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <div class="flex flex-wrap items-center gap-2">
@@ -172,6 +132,7 @@
               </div>
             </div>
 
+            <!-- 按钮：播放 / 复制prompt / 下载 -->
             <div class="flex flex-wrap justify-end gap-2">
               <button
                 type="button"
@@ -207,6 +168,7 @@
             </div>
           </div>
 
+          <!-- 内容：根据状态展示不同 UI -->
           <div class="mt-3">
             {#if item.status === 'processing'}
               <div class="w-full my-3">

@@ -99,7 +99,7 @@
   });
 </script>
 
-<section class="rounded-2xl border border-gray-200 bg-transparent px-3 py-0 sm:p-4 dark:border-gray-850 flex flex-col">
+<section class="rounded-2xl border border-gray-200 bg-transparent p-3 dark:border-gray-850 flex flex-col">
   <!-- 标题 -->
   <div class="mb-3">
     <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">关键帧图片（images）</h2>
@@ -145,7 +145,11 @@
         <button
           type="button"
           class={`inline-flex items-center rounded-xl px-4 py-2 text-sm font-medium text-white
-                 ${status === 'uploading' ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary-500 hover:bg-primary-600 active:bg-primary-700'}`}
+                 ${
+                   status === 'uploading'
+                     ? 'bg-gray-400 cursor-not-allowed'
+                     : 'bg-primary-500 hover:bg-primary-600 active:bg-primary-700'
+                 }`}
           on:click={openPicker}
           disabled={status === 'uploading'}
         >

@@ -14,14 +14,11 @@
   };
 
   export let globalPrompt = '';
-  export let negativePrompt = '';
   export let resolution: Resolution = '720p';
   export let seed = -1;
   export let transitions: Transition[] = [];
 
   export let taskStatus: TaskStatus = 'idle';
-  export let outputUrl = '';
-  export let requestId = '';
 
   // 由父组件校验后传进来，用于逐字段显示
   export let errors: FormErrors = {};
@@ -43,9 +40,10 @@
     if (isLoading) return;
     dispatch('generate');
   }
+  $: console.log(resolution);
 </script>
 
-<section class="rounded-2xl border border-gray-200 bg-transparent p-3 sm:p-4 dark:border-gray-850">
+<section class="rounded-2xl border border-gray-200 bg-transparent p-3 dark:border-gray-850">
   <div class="mb-3 flex items-center justify-between">
     <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">生成参数</h2>
     <div class="text-xs text-gray-600 dark:text-gray-400">总时长：{totalDuration()}s / {MAX_TOTAL_DURATION}s</div>
@@ -64,7 +62,6 @@
     {/if}
 
     <div>
-      <label class="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">提示词（prompt，必填）</label>
       <textarea
         bind:value={globalPrompt}
         rows={2}
@@ -72,7 +69,11 @@
         class={`w-full resize-y rounded-xl border bg-transparent px-3 py-2 text-sm
                text-gray-900 placeholder:text-gray-500 focus:outline-none
                dark:text-gray-100 dark:placeholder:text-gray-500
-               ${errors.globalPrompt ? 'border-red-400 focus:border-red-500 dark:border-red-600' : 'border-gray-300 focus:border-primary-500 dark:border-gray-700'}`}
+               ${
+                 errors.globalPrompt
+                   ? 'border-red-400 focus:border-red-500 dark:border-red-600'
+                   : 'border-gray-300 focus:border-primary-500 dark:border-gray-700'
+               }`}
       />
       {#if errors.globalPrompt}
         <div class="mt-1 text-[11px] text-red-600 dark:text-red-300">{errors.globalPrompt}</div>
@@ -86,7 +87,11 @@
           bind:value={resolution}
           class={`w-full rounded-xl border bg-transparent px-3 py-2 text-sm
                  text-gray-900 focus:outline-none dark:text-gray-100
-                 ${errors.resolution ? 'border-red-400 focus:border-red-500 dark:border-red-600' : 'border-gray-300 focus:border-primary-500 dark:border-gray-700'}`}
+                 ${
+                   errors.resolution
+                     ? 'border-red-400 focus:border-red-500 dark:border-red-600'
+                     : 'border-gray-300 focus:border-primary-500 dark:border-gray-700'
+                 }`}
         >
           <option value="720p">720p</option>
           <option value="1080p">1080p</option>
@@ -109,7 +114,11 @@
           class={`w-full rounded-xl border bg-transparent px-3 py-2 text-sm
                  text-gray-900 placeholder:text-gray-500 focus:outline-none
                  dark:text-gray-100
-                 ${errors.seed ? 'border-red-400 focus:border-red-500 dark:border-red-600' : 'border-gray-300 focus:border-primary-500 dark:border-gray-700'}`}
+                 ${
+                   errors.seed
+                     ? 'border-red-400 focus:border-red-500 dark:border-red-600'
+                     : 'border-gray-300 focus:border-primary-500 dark:border-gray-700'
+                 }`}
         />
         {#if errors.seed}
           <div class="mt-1 text-[11px] text-red-600 dark:text-red-300">{errors.seed}</div>
@@ -193,22 +202,6 @@
           立即生成视频
         {/if}
       </button>
-
-      <div class="mt-2 text-xs text-gray-600 dark:text-gray-400">
-        状态：{taskStatus}{#if requestId}
-          · Task: {requestId}{/if}
-      </div>
     </div>
-
-    <!-- {#if outputUrl}
-      <div class="mt-3 rounded-2xl border border-gray-200 p-3 dark:border-gray-850">
-        <div class="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">结果（MP4）</div>
-        <video
-          class="w-full max-h-[300px] rounded-xl border border-gray-200 dark:border-gray-850"
-          controls
-          src={outputUrl}
-        />
-      </div>
-    {/if} -->
   </form>
 </section>

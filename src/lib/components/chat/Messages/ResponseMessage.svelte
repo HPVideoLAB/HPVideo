@@ -236,7 +236,7 @@
       src={modelfiles[message.model]?.imageUrl ?? ($i18n.language === 'dg-DG' ? `/doge.png` : `/favicon.png`)}
     />
 
-    <div class="w-full overflow-hidden pl-1">
+    <div class="w-full pl-1">
       <!-- {console.log("modelfiles", modelfiles, message)} -->
       <Name>
         {#if message.model in modelfiles}

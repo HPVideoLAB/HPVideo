@@ -295,12 +295,14 @@
   const handlePay = async (message: any) => {
     await startPay(message);
   };
+  // 不包含的模型
+  const notIncludeModels = ['pika-v2.2-pikaframes', 'sam3-video', 'wan-2.1-v2v'];
 </script>
 
 <div class="h-full flex">
   {#if messages.length == 0}
     {#if selectedModels[0].length > 0}
-      <div class="flex flex-col justify-center items-center w-full mb-[400px]">
+      <div class="flex flex-col items-center w-full">
         <img class="size-8" src={$models.filter((item) => selectedModels.includes(item.id))[0].modelicon} alt="" />
         <span class="text-xl font-bold mt-1">{$models.filter((item) => selectedModels.includes(item.id))[0].name}</span>
         <span class="w-full max-w-[600px] text-lg text-center mt-1.5 px-5"
@@ -312,9 +314,13 @@
     <div class="w-full pt-2">
       {#key chatId}
         {#each messages as message, messageIdx}
-          <div class=" w-full {messageIdx === messages.length - 1 ? 'pb-[10rem]' : ''}">
+          <div
+            class=" w-full {messageIdx === messages.length - 1
+              ? `${notIncludeModels.includes(selectedModels[0]) ? '' : 'pb-[10rem]'} `
+              : ''}"
+          >
             <div
-              class="flex flex-col justify-between px-6 md:px-20 mb-3 {($settings?.fullScreenMode ?? null)
+              class="flex flex-col justify-between px-6 md:px-20 mb-3 {$settings?.fullScreenMode ?? null
                 ? 'max-w-full'
                 : 'max-w-full'} mx-auto rounded-lg group"
             >
@@ -326,10 +332,10 @@
                   {message}
                   isFirstMessage={messageIdx === 0}
                   siblings={message.parentId !== null
-                    ? (history.messages[message.parentId]?.childrenIds ?? [])
-                    : (Object.values(history.messages)
+                    ? history.messages[message.parentId]?.childrenIds ?? []
+                    : Object.values(history.messages)
                         .filter((message) => message.parentId === null)
-                        .map((message) => message.id) ?? [])}
+                        .map((message) => message.id) ?? []}
                   {confirmEditMessage}
                   {showPreviousMessage}
                   {showNextMessage}

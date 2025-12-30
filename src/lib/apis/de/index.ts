@@ -414,6 +414,8 @@ export const generateDeTitle = async (token: string = '', template: string, mode
       }),
     });
     res = await result.json();
+
+    console.log('Title API Response:', res);
   } catch (err) {
     error = err;
     console.log('Request Error');

@@ -37,6 +37,7 @@ export type SubmitReq = {
   transitions?: Transition[]; // len = images-1, sum<=25
   resolution?: Resolution;
   seed?: number; // -1 ~ 2147483647
+  model: string;
 };
 
 export async function submitLargeLanguageModel(payload: SubmitReq): Promise<{ requestId: string }> {
