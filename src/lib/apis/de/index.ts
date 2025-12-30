@@ -182,7 +182,7 @@ export const getDeModels = async (token: string = '') => {
         imagemodel: 'pika/pika-v2.2-pikaframes',
 
         // 是否带音频（你 UI 会在 audio=false 时显示静音 icon）
-        audio: false,
+        audio: true,
 
         // 可选时长档位（你的 toolInfo.duration 会用）
         // Pikaframes 通过 transitions 可以做到更长，总长度可到 ~25s（WaveSpeed 模型页/README 有提）
@@ -223,7 +223,7 @@ export const getDeModels = async (token: string = '') => {
         textmodel: 'wavespeed-ai/sam3-video',
         imagemodel: 'wavespeed-ai/sam3-video',
 
-        audio: false,
+        audio: true,
 
         // 你 UI 以档位形式展示时长；SAM3 编辑类一般不太按这个选项限制，先给常用档位
         duration: [5, 10, 30, 60],

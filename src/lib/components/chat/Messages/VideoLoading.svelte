@@ -1,8 +1,11 @@
 <script lang="ts">
   import { getContext } from 'svelte';
   import { mobile } from '$lib/stores';
-  const i18n = getContext('i18n');
+
+  const i18n: any = getContext('i18n');
+
   export let videosize = '16/9';
+
   let aspectRatio = '16/9';
   let sizeflag = true;
 
@@ -30,15 +33,12 @@
   }
 </script>
 
-<div class="w-full my-3">
+<div class="w-full">
   <div class="animate-pulse flex w-full">
     <div
-      class="flex justify-center flex-col items-center max-h-[380px] w-full {$mobile
-        ? ''
-        : sizeflag
-        ? 'max-w-[600px]'
-        : 'max-w-[300px]'} rounded-lg
-			bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"
+      class={`flex justify-center flex-col items-center max-h-[320px] w-full ${
+        $mobile ? '' : sizeflag ? 'max-w-[600px]' : 'max-w-[300px]'
+      } rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500`}
       style={`aspect-ratio: ${aspectRatio}`}
     >
       <img class="size-10" src="/creator/static/video/video_generating.png" alt="" />

@@ -12,18 +12,31 @@ import { pollTaskResult } from '$lib/components/chat/MessageInput-modules/module
 import { generateDeTitle } from '$lib/apis/de';
 import { DEGPT_TOKEN } from '$lib/constants';
 
-// 定义参数类型
+// 🔥 扩展参数接口
 export interface VideoTaskParams {
   files: File[];
   prompt: string;
-  transitions: any[];
-  resolution: string;
-  seed: number;
-  amount: number;
-  duration: number;
-  selectedModels: string[];
+  selectedModels: string[]; // 真实值: ['pika-v2.2-pikaframes'] 等
   token: string;
   translateFn: Function;
+  seed: number;
+  amount: number;
+
+  // Pika 专属
+  transitions?: any[];
+  resolution?: string;
+
+  // Wan 专属
+  negative_prompt?: string;
+  strength?: number;
+  duration?: number;
+  num_inference_steps?: number;
+  guidance_scale?: number;
+  flow_shift?: number;
+  loras?: any[];
+
+  // Sam 专属
+  apply_mask?: boolean;
 }
 
 export class VideoChatService {
@@ -31,11 +44,44 @@ export class VideoChatService {
    * 【核心方法】提交视频生成任务
    */
   static async submitTask(params: VideoTaskParams) {
-    const { files, prompt, transitions, resolution, seed, amount, duration, selectedModels, token, translateFn } =
-      params;
+    const {
+      files,
+      prompt,
+      selectedModels,
+      token,
+      translateFn,
+      seed,
+      amount,
+      // Pika
+      transitions,
+      resolution,
+      // Wan
+      negative_prompt,
+      strength,
+      duration,
+      num_inference_steps,
+      guidance_scale,
+      flow_shift,
+      loras,
+      // Sam
+      apply_mask,
+    } = params;
+
+    // 1. 获取前端模型 ID (例如 'wan-2.1-v2v')
+    const currentModelId = selectedModels[0] || 'pika-v2.2-pikaframes';
+
+    // 2. 模糊匹配判断逻辑 (兼容长 ID)
+    const isWan = currentModelId.includes('wan'); // 匹配 'wan-2.1-v2v'
+    const isSam = currentModelId.includes('sam'); // 匹配 'sam3-video'
+    const isPika = !isWan && !isSam; // 匹配 'pika-v2.2-pikaframes'
+
+    // 3. 🔥 映射为后端 DTO 需要的简短 ID
+    let backendModelName = 'pika';
+    if (isWan) backendModelName = 'wan-2.1';
+    if (isSam) backendModelName = 'sam3';
 
     // ==========================================
-    // 1. 上传阶段 (Upload)
+    // 4. 上传阶段 (Upload)
     // ==========================================
     let uploadedUrls: string[] = [];
     if (files && files.length > 0) {
@@ -43,25 +89,41 @@ export class VideoChatService {
         const uploadRes = await uploadImagesToOss(token, files);
         uploadedUrls = uploadRes.urls || [];
       } catch (e) {
-        console.error('Image upload failed', e);
-        throw new Error('Image upload failed, please try again');
+        console.error('Upload failed', e);
+        throw new Error('Upload failed, please try again');
       }
     }
 
     // ==========================================
-    // 2. 伪造数据阶段 (Optimistic UI)
+    // 5. 伪造数据阶段 (Optimistic UI)
     // ==========================================
     const userMessageId = uuidv4();
     const responseMessageId = uuidv4();
     const timestamp = Math.floor(Date.now() / 1000);
 
-    // 获取 Store 快照
     const currentMessages: any = get(messagesStore);
     const currentHistory = get(historyStore);
     let currentChatId = get(chatId);
     const currentUser = get(user);
 
-    // 2.1 构造 User Message
+    // 5.1 构造 User Message (toolInfo 里的展示数据)
+    const toolInfo: any = {
+      amount,
+      seed,
+      ...(duration ? { duration } : {}),
+    };
+
+    if (isPika) {
+      toolInfo.size = resolution;
+      toolInfo.transitions = transitions;
+    } else if (isWan) {
+      toolInfo.strength = strength;
+      toolInfo.steps = num_inference_steps;
+      toolInfo.loras = loras;
+    } else if (isSam) {
+      toolInfo.apply_mask = apply_mask;
+    }
+
     const userMessage = {
       id: userMessageId,
       parentId: currentMessages.length > 0 ? currentMessages.at(-1).id : null,
@@ -69,20 +131,18 @@ export class VideoChatService {
       role: 'user',
       content: prompt,
       imageinfo: '',
-      toolInfo: {
-        duration: duration,
-        size: resolution,
-        amount: amount,
-        transitions: transitions,
-        seed: seed,
-      },
+      toolInfo: toolInfo,
       models: selectedModels,
-      files: uploadedUrls.map((url) => ({ type: 'image', url: url })),
+      // files 用于前端预览：Pika 是图片列表(image)，Wan/Sam 是视频(video)
+      files: uploadedUrls.map((url) => ({
+        type: isPika ? 'image' : 'video',
+        url: url,
+      })),
       timestamp: timestamp,
       user: currentUser,
     };
 
-    // 2.2 构造 Assistant Message
+    // 5.2 构造 Assistant Message
     const responseMessage = {
       id: responseMessageId,
       parentId: userMessageId,
@@ -90,9 +150,9 @@ export class VideoChatService {
       role: 'assistant',
       content: '',
       status: 'processing',
-      model: selectedModels[0],
-      size: resolution,
-      duration: duration,
+      model: currentModelId, // 消息里存真实的前端 ID
+      size: resolution || '720p',
+      duration: duration || 0,
       paystatus: true,
       paytype: 'unpaid',
       paymoney: amount,
@@ -101,7 +161,7 @@ export class VideoChatService {
       userContext: null,
     };
 
-    // 2.3 链接上一条消息
+    // 5.3 链接上一条消息
     if (currentMessages.length > 0) {
       const lastMsgId = currentMessages.at(-1).id;
       if (currentHistory.messages[lastMsgId]) {
@@ -109,7 +169,7 @@ export class VideoChatService {
       }
     }
 
-    // 2.4 更新本地 Store -> UI 刷新
+    // 5.4 更新本地 Store
     currentHistory.messages[userMessageId] = userMessage;
     currentHistory.messages[responseMessageId] = responseMessage;
     currentHistory.currentId = responseMessageId;
@@ -118,14 +178,13 @@ export class VideoChatService {
     this.scrollToBottom();
 
     // ==========================================
-    // 3. 存档阶段 (Sync to Backend)
+    // 6. 存档阶段 (Sync to Backend)
     // ==========================================
     const newMessagesList = get(messagesStore);
 
     try {
-      // 如果 ID 是 local、空字符串或者 undefined，说明是新对话
       if (!currentChatId || currentChatId === 'local' || currentChatId === '') {
-        // --- Case A: 新建会话 (Create) ---
+        // --- Create Chat ---
         const chatPayload = {
           id: null,
           title: translateFn('New Chat'),
@@ -138,21 +197,14 @@ export class VideoChatService {
         };
 
         const newChat = await createNewChat(token, chatPayload);
-
-        // 更新本地 ID
         currentChatId = newChat.id;
         chatId.set(currentChatId);
-
-        // 更新浏览器 URL
         window.history.replaceState(window.history.state, '', `/creator/c/${currentChatId}`);
-
-        // 刷新左侧列表
         await chats.set(await getChatList(token));
 
-        // ✨ 调用自动生成标题 (不 await)
-        this.generateAndSetTitle(token, currentChatId, prompt, selectedModels[0]);
+        this.generateAndSetTitle(token, currentChatId, prompt, currentModelId);
       } else {
-        // --- Case B: 更新已有会话 (Update) ---
+        // --- Update Chat ---
         await updateChatById(token, currentChatId, {
           messages: newMessagesList,
           history: currentHistory,
@@ -160,27 +212,59 @@ export class VideoChatService {
       }
 
       // ==========================================
-      // 4. 执行任务 (Call NestJS)
+      // 7. 🔥 执行任务 (Call NestJS)
       // ==========================================
-      const nestPayload: any = {
+
+      // 基础通用参数
+      let nestPayload: any = {
         prompt: prompt,
-        images: uploadedUrls,
-        transitions: transitions.map((t: any) => ({
-          duration: Number(t.duration),
-          ...(t.prompt?.trim() ? { prompt: t.prompt.trim() } : {}),
-        })),
-        resolution: resolution,
         seed: seed,
-        model: 'pika',
+        model: backendModelName, // 🔥 传给后端的是简短 ID ('pika', 'wan-2.1', 'sam3')
       };
+
+      if (isPika) {
+        // 🟢 Pika Payload
+        nestPayload = {
+          ...nestPayload,
+          images: uploadedUrls,
+          resolution: resolution,
+          transitions: Array.isArray(transitions)
+            ? transitions.map((t: any) => ({
+                duration: Number(t.duration),
+                ...(t.prompt?.trim() ? { prompt: t.prompt.trim() } : {}),
+              }))
+            : [],
+        };
+      } else if (isWan) {
+        // 🔵 Wan Payload
+        nestPayload = {
+          ...nestPayload,
+          video: uploadedUrls[0], // 取第一个 URL
+          negative_prompt: negative_prompt,
+          strength: strength,
+          duration: duration,
+          num_inference_steps: num_inference_steps,
+          guidance_scale: guidance_scale,
+          flow_shift: flow_shift,
+          loras: loras,
+        };
+      } else if (isSam) {
+        // 🟣 SAM Payload
+        nestPayload = {
+          ...nestPayload,
+          video: uploadedUrls[0], // 取第一个 URL
+          apply_mask: apply_mask,
+        };
+      }
+
+      // console.log('Final Payload to NestJS:', nestPayload);
 
       const submitResp = await submitLargeLanguageModel(nestPayload);
 
       // ==========================================
-      // 5. 轮询 (Polling)
+      // 8. 轮询 (Polling)
       // ==========================================
       if (submitResp && submitResp.requestId) {
-        // 不 await pollAndResolve，让它在后台运行
         this.pollAndResolve(token, currentChatId, responseMessageId, submitResp.requestId);
       } else {
         throw new Error('Failed to get task ID (requestId)');
@@ -203,46 +287,34 @@ export class VideoChatService {
     }
   }
 
-  /**
-   * ✨ 辅助：自动生成并更新会话标题 (带拦截器)
-   */
+  // ... (generateAndSetTitle, pollAndResolve 等私有方法保持不变，直接复用即可) ...
+  // 为节省篇幅，下面是这些固定方法的精简版，你需要保留原有的完整实现
+
   private static async generateAndSetTitle(token: string, chatId: string, prompt: string, modelId: string) {
+    // ... 原有逻辑 ...
     const _settings = get(settings);
     const _models = get(models);
-
     if (!(_settings?.title?.auto ?? true)) return;
-
     try {
       const currModel: any = _models.find((m) => m.id === modelId);
       const titleModelId =
         currModel?.external ?? false ? _settings?.title?.modelExternal ?? modelId : _settings?.title?.model ?? modelId;
-
       const defaultTemplate = 'Create a concise, 3-5 word phrase as a header...: {{prompt}}';
-
       let title = await generateDeTitle(DEGPT_TOKEN, _settings?.title?.prompt || defaultTemplate, titleModelId, prompt);
-
-      // 🚨 拦截器：防止 "Innovative Solutions Hub"
       if (!title || title.includes('Innovative Solutions Hub') || title.length > 30) {
-        console.warn('Detected invalid AI title, falling back to prompt.');
         title = prompt.length > 15 ? prompt.slice(0, 15) + '...' : prompt;
       }
-
       if (title) {
         await updateChatById(token, chatId, { title });
         await chats.set(await getChatList(token));
       }
     } catch (e) {
-      console.error('Auto title generation failed:', e);
-      // 失败兜底
       const fallbackTitle = prompt.length > 15 ? prompt.slice(0, 15) + '...' : prompt;
       await updateChatById(token, chatId, { title: fallbackTitle });
       await chats.set(await getChatList(token));
     }
   }
 
-  /**
-   * 内部方法：轮询并处理最终结果
-   */
   private static async pollAndResolve(token: string, chatIdStr: string, msgId: string, requestId: string) {
     try {
       const result = await pollTaskResult({
@@ -268,13 +340,11 @@ export class VideoChatService {
         history: get(historyStore),
       });
     } catch (err) {
-      console.error('Polling Error:', err);
       this.updateSingleMessage(msgId, {
         status: 'failed',
         done: true,
         content: 'Generation failed, please try again',
       });
-
       await updateChatById(token, chatIdStr, {
         messages: get(messagesStore),
         history: get(historyStore),

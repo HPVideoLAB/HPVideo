@@ -99,7 +99,7 @@
   });
 </script>
 
-<section class="rounded-2xl border border-gray-200 bg-transparent p-3 dark:border-gray-850 flex flex-col">
+<section class="rounded-2xl border border-gray-200 bg-transparent p-3 dark:border-gray-850 flex flex-col h-full">
   <!-- 标题 -->
   <div class="mb-3">
     <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">关键帧图片（images）</h2>

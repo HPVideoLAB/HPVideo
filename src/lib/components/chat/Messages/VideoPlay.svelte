@@ -1,61 +1,35 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
   import { mobile } from '$lib/stores';
+
   export let videourl = '';
-  export let videosize = '16:9';
+  export let videosize = '16:9'; // 你可以留着，不作为最终判断依据
 
-  let videoElement: any;
-  let videoWidth = 0;
-  let videoHeight = 0;
-  let sizeflag = true;
+  let videoEl: HTMLVideoElement | null = null;
+  let isLandscape = true; // 横屏：object-cover；竖屏：object-contain
 
-  $: if (videosize) {
-    if (videosize.includes('*')) {
-      let rate = Number(videosize.split('*')[0]) / Number(videosize.split('*')[1]);
-      videoHeight = videoWidth / rate;
-      if (rate > 1) {
-        sizeflag = true;
-      } else {
-        sizeflag = false;
-      }
-    } else if (videosize.includes(':')) {
-      let rate = Number(videosize.split('*')[0]) / Number(videosize.split('*')[1]);
-      videoHeight = videoWidth / rate;
-      if (rate > 1) {
-        sizeflag = true;
-      } else {
-        sizeflag = false;
-      }
-    } else {
-      videoHeight = (videoWidth * 9) / 16;
-      sizeflag = true;
+  function onLoadedMetadata() {
+    if (!videoEl) return;
+    const w = videoEl.videoWidth;
+    const h = videoEl.videoHeight;
+    if (w > 0 && h > 0) {
+      isLandscape = w >= h;
     }
   }
 
-  function calculateOnLoadedMetadata() {
-    const originalWidth = videoElement.videoWidth;
-    const originalHeight = videoElement.videoHeight;
-    videoHeight = (videoWidth * originalHeight) / originalWidth;
-  }
-
-  onMount(() => {
-    window.addEventListener('resize', calculateOnLoadedMetadata);
-  });
-
-  onDestroy(() => {
-    window.removeEventListener('resize', calculateOnLoadedMetadata);
-  });
+  // 动态 object-fit
+  $: fitClass = isLandscape ? 'object-cover' : 'object-contain';
 </script>
 
-<div class="w-full my-3">
+<div class="w-full">
   <div class="flex w-full justify-start">
-    <div class="w-auto relative overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+    <div class={`w-full ${$mobile ? '' : 'max-w-[600px]'}`}>
       <video
-        bind:this={videoElement}
-        class="my-1 block max-h-[320px] w-auto object-contain"
+        bind:this={videoEl}
+        on:loadedmetadata={onLoadedMetadata}
+        class={`w-full max-h-[320px] rounded-xl border border-gray-200 dark:border-gray-850 ${fitClass} bg-black/10`}
         controls
+        preload="metadata"
         src={videourl}
-        on:loadedmetadata={calculateOnLoadedMetadata}
       />
     </div>
   </div>

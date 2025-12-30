@@ -125,7 +125,9 @@
                 </div>
 
                 <span
-                  class={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] ${statusBadgeClass(item.status)}`}
+                  class={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] ${statusBadgeClass(
+                    item.status
+                  )}`}
                 >
                   {statusText(item.status)}
                 </span>
@@ -171,7 +173,7 @@
           <!-- 内容：根据状态展示不同 UI -->
           <div class="mt-3">
             {#if item.status === 'processing'}
-              <div class="w-full my-3">
+              <div class="w-full">
                 <div class="animate-pulse flex w-full">
                   <div class={generatingBoxClass()} style={generatingBoxStyle()}>
                     <img class="size-10" src="/creator/static/video/video_generating.png" alt="" />
@@ -180,7 +182,7 @@
                 </div>
               </div>
             {:else if item.status === 'failed'}
-              <div class="w-full my-3">
+              <div class="w-full">
                 <div class="flex w-full">
                   <div
                     class={`${generatingBoxClass()} bg-gradient-to-r from-red-600 via-rose-600 to-pink-600`}
