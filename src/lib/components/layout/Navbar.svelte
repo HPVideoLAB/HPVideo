@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getContext, onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import MyButton from '$lib/components/common/MyButton.svelte';
 
   import {
     mobile,
@@ -34,7 +35,7 @@
   import { getChatList } from '$lib/apis/chats';
   import PriceModal from '../price/PriceModal.svelte';
 
-  const i18n = getContext('i18n');
+  const i18n: any = getContext('i18n');
 
   export let initNewChat: Function;
   export let shareEnabled: boolean = false;
@@ -259,6 +260,10 @@
             <ModelSelector bind:selectedModels />
           {/if}
         </div>
+
+        <MyButton round size="small" type="primary" on:click={() => goto('/creator/pro')} class="ml-2"
+          >高级模式</MyButton
+        >
         <div class="ml-1">
           <button
             id="new-chat-button"
@@ -288,41 +293,6 @@
       <div class="flex-1" />
 
       <div class="self-start flex items-center text-gray-600 dark:text-gray-400">
-        <!-- {#if shareEnabled}
-          <Menu
-            {chat}
-            {shareEnabled}
-            shareHandler={() => {
-              showShareChatModal = !showShareChatModal;
-            }}
-            downloadHandler={() => {
-              showDownloadChatModal = !showDownloadChatModal;
-            }}
-          >
-            <button
-              class="hidden md:flex cursor-pointer px-2 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-850 transition"
-              id="chat-context-menu-button"
-            >
-              <div class=" m-auto self-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke-width="1.5"
-                  stroke="currentColor"
-                  class="size-5"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM18.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"
-                  />
-                </svg>
-              </div>
-            </button>
-          </Menu>
-        {/if} -->
-
         <Tooltip content={$i18n.t('New Chat')}>
           <button
             id="new-chat-button"

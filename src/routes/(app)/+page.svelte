@@ -356,11 +356,12 @@
     modal.open();
   };
   const checkModalTheme = () => {
-    if ($theme === 'system' || $theme === 'light') {
-      modal.setThemeMode('light');
-    } else {
-      modal.setThemeMode('dark');
-    }
+    // if ($theme === 'system' || $theme === 'light') {
+    //   modal.setThemeMode('light');
+    // } else {
+    //   modal.setThemeMode('dark');
+    // }
+    modal.setThemeMode('dark');
   };
   const startPay = async (messageinfo: any) => {
     const account = getAccount(wconfig);

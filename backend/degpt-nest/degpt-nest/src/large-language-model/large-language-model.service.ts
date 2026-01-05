@@ -1,147 +1,155 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { CreateLargeLanguageModelDto } from './dto/create-large-language-model.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { LargeMode } from './schemas/creatimg-schema';
+// 引入修改后的 Schema (注意属性名已改为 modelName)
+import { LargeMode, LargeModeDocument } from './schemas/creatimg-schema';
 import { usePika } from '@/hook/usepika';
 import { useWan } from '@/hook/useWan';
 import { useSam3 } from '@/hook/useSam3';
 
 @Injectable()
 export class LargeLanguageModelService {
+  private readonly logger = new Logger(LargeLanguageModelService.name);
+
   constructor(
-    @InjectModel(LargeMode.name) private catModel: Model<LargeMode>,
+    @InjectModel(LargeMode.name) private catModel: Model<LargeModeDocument>,
   ) {}
 
-  async create(createCatDto: CreateLargeLanguageModelDto) {
+  // =======================================================
+  // 1. 创建逻辑：调用 Hook -> 拿到 ID -> 存库
+  // =======================================================
+  async create(createCatDto: CreateLargeLanguageModelDto, userId: string) {
     let requestId: string;
+    let thumbUrl = '';
 
-    switch (createCatDto.model) {
-      // =========================================================
-      // 🟢 Case A: Pika V2.2
-      // =========================================================
-      case 'pika':
-        const { submitTask: submitPika } = usePika();
-        requestId = await submitPika({
-          prompt: createCatDto.prompt,
-          images: createCatDto.images!,
-          resolution: createCatDto.resolution,
-          seed: createCatDto.seed,
-          transitions: createCatDto.transitions,
-        });
-        break;
+    // --- A. 调用第三方 Hook (保持原有逻辑) ---
+    try {
+      switch (createCatDto.model) {
+        case 'pika':
+          const { submitTask: submitPika } = usePika();
+          requestId = await submitPika({
+            prompt: createCatDto.prompt,
+            images: createCatDto.images!,
+            resolution: createCatDto.resolution,
+            seed: createCatDto.seed,
+            transitions: createCatDto.transitions,
+          });
+          // Pika: 取第一张图做封面
+          thumbUrl = createCatDto.images?.[0] || '';
+          break;
 
-      // =========================================================
-      // 🔵 Case B: Wan 2.1 (参数已补全)
-      // =========================================================
-      case 'wan-2.1':
-        const { submitWanTask } = useWan();
+        case 'wan-2.1':
+          const { submitWanTask } = useWan();
+          requestId = await submitWanTask({
+            video: createCatDto.video!,
+            prompt: createCatDto.prompt,
+            negative_prompt: createCatDto.negative_prompt,
+            loras: createCatDto.loras,
+            strength: createCatDto.strength,
+            num_inference_steps: createCatDto.num_inference_steps,
+            duration: createCatDto.duration,
+            guidance_scale: createCatDto.guidance_scale,
+            flow_shift: createCatDto.flow_shift,
+            seed: createCatDto.seed,
+          });
+          // Wan: 取视频链接做封面
+          thumbUrl = createCatDto.video || '';
+          break;
 
-        requestId = await submitWanTask({
-          // ==========================================
-          // 🔴 必填核心参数
-          // ==========================================
+        case 'sam3':
+          const { submitSam3Task } = useSam3();
+          requestId = await submitSam3Task({
+            video: createCatDto.video!,
+            prompt: createCatDto.prompt,
+            apply_mask: createCatDto.apply_mask,
+          });
+          // Sam: 取视频链接做封面
+          thumbUrl = createCatDto.video || '';
+          break;
 
-          // [必填] 源视频 URL
-          // 作用：生成的“底片”，AI 会基于它的构图和动作进行重绘
-          video: createCatDto.video!,
-
-          // [必填] 正向提示词
-          // 作用：描述你希望生成什么样子的视频（例如“吉卜力风格，阳光明媚”）
-          prompt: createCatDto.prompt,
-
-          // ==========================================
-          // 🟡 画面控制参数 (可选)
-          // ==========================================
-
-          // [可选] 负向提示词
-          // 作用：描述你不希望出现的元素（例如“模糊、低画质、变形”）
-          negative_prompt: createCatDto.negative_prompt,
-
-          // [可选] 风格模型 (LoRA)
-          // 限制：数组最多包含 3 个项目 (Max 3 items)
-          // 结构：{ path: string, scale: number }
-          // ⚠️ scale 取值范围：0.0 ~ 4.0
-          loras: createCatDto.loras,
-
-          // [可选] 重绘幅度 (Denoising Strength)
-          // 类型：Float (浮点数)
-          // 范围：0.10 ~ 1.00
-          // 默认：0.9
-          // 说明：0.1=微调(几乎不变)，1.0=完全重绘(不看原视频)。推荐 0.6~0.9。
-          strength: createCatDto.strength,
-
-          // ==========================================
-          // 🔵 技术/质量参数 (可选)
-          // ==========================================
-
-          // [可选] 推理步数 (Inference Steps)
-          // 类型：Integer (整数)
-          // 范围：1 ~ 40
-          // 默认：30
-          // 说明：步数越高画质越细腻，但生成时间越长。通常 30 够用。
-          num_inference_steps: createCatDto.num_inference_steps,
-
-          // [可选] 视频时长 (Duration)
-          // 类型：Integer (整数)
-          // 范围：5 ~ 10 (单位：秒)
-          // 默认：5
-          // 说明：目前只能生成 5 到 10 秒的视频。
-          duration: createCatDto.duration,
-
-          // [可选] 提示词相关性 (Guidance Scale / CFG)
-          // 类型：Number (数字)
-          // 范围：0.00 ~ 20.00
-          // 默认：5
-          // 说明：值越高，AI 越死板地遵循提示词；值越低，AI 越放飞自我。推荐 5~7。
-          guidance_scale: createCatDto.guidance_scale,
-
-          // [可选] 流动偏移 (Flow Shift)
-          // 类型：Number (数字)
-          // 范围：1.0 ~ 10.0
-          // 默认：3
-          // 说明：调节视频动态生成的节奏，影响画面过渡的自然程度。一般用默认值。
-          flow_shift: createCatDto.flow_shift,
-
-          // [可选] 随机种子 (Seed)
-          // 类型：Integer (整数)
-          // 范围：-1 ~ 2147483647
-          // 默认：-1
-          // 说明：-1 代表随机生成。如果填固定数字（如 1234），下次用同样的参数能生成一模一样的视频。
-          seed: createCatDto.seed,
-        });
-
-        break;
-
-      // =========================================================
-      // 🟣 Case C: SAM3 Video (视频抠图/分割)
-      // =========================================================
-      case 'sam3':
-        const { submitSam3Task } = useSam3();
-
-        requestId = await submitSam3Task({
-          // [必填] 源视频
-          video: createCatDto.video!,
-
-          // [必填] 目标物体 (例如 "person, car")
-          prompt: createCatDto.prompt,
-
-          // [可选] 是否抠图 (默认 true)
-          // 这里的 createCatDto.apply_mask 已经在 DTO 校验过了
-          apply_mask: createCatDto.apply_mask,
-        });
-        break;
-
-      default:
-        throw new BadRequestException('不支持的模型类型');
+        default:
+          throw new BadRequestException('不支持的模型类型');
+      }
+    } catch (error) {
+      this.logger.error(`Submit Error: ${error.message}`);
+      throw new BadRequestException(error.message || '提交失败');
     }
+
+    // --- B. 存入 MongoDB (新增逻辑) ---
+    // 注意：这里将 createCatDto.model 赋值给 modelName，解决 TS 报错
+    const newRecord = new this.catModel({
+      requestId,
+      userId,
+      modelName: createCatDto.model, // 🔥 映射字段
+      prompt: createCatDto.prompt,
+      params: createCatDto, // 🔥 完整参数备份
+      status: 'processing',
+      thumbUrl,
+      outputUrl: '',
+    });
+
+    await newRecord.save();
+    this.logger.log(`Task Created: ${requestId} for user ${userId}`);
 
     return { requestId };
   }
 
+  // =======================================================
+  // 2. 轮询逻辑：查库 -> (如果不完整)查API -> 更新库
+  // =======================================================
   async findOne(id: string) {
-    // 假设查询接口通用，使用 usePika 或 useWan 的查询方法均可
+    // 1. 先查数据库
+    const record = await this.catModel.findOne({ requestId: id });
+
+    // 2. 优化：如果库里已经是完成状态，直接返回库里的数据 (不用调第三方API)
+    if (
+      record &&
+      (record.status === 'completed' || record.status === 'failed')
+    ) {
+      return {
+        id: record.requestId, // 保持前端结构兼容
+        status: record.status,
+        resultUrl: record.outputUrl, // 保持前端结构兼容
+        raw: { status: record.status }, // 可选
+      };
+    }
+
+    // 3. 库里没完成，或者是旧数据，调用 Hook 查询
+    // (假设三个模型的查询接口通用，使用 usePika 即可)
     const { getResult } = usePika();
-    return await getResult(id);
+    let apiResult;
+
+    try {
+      apiResult = await getResult(id);
+    } catch (e) {
+      // 查询出错直接抛出，不更新数据库
+      throw e;
+    }
+
+    // 4. 如果 Hook 返回状态变了，同步更新数据库
+    if (record) {
+      if (apiResult.status === 'completed') {
+        record.status = 'completed';
+        record.outputUrl = apiResult.resultUrl;
+        await record.save();
+        this.logger.log(`Task Completed via Polling: ${id}`);
+      } else if (apiResult.status === 'failed') {
+        record.status = 'failed';
+        await record.save();
+      }
+    }
+
+    return apiResult;
+  }
+
+  // =======================================================
+  // 3. 获取历史列表 (新功能)
+  // =======================================================
+  async findAllByUser(userId: string) {
+    if (!userId || userId === 'anonymous') return [];
+
+    // 返回该用户的记录，按时间倒序
+    return this.catModel.find({ userId }).sort({ createdAt: -1 }).exec();
   }
 }

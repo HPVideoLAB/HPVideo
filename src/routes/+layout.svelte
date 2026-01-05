@@ -63,7 +63,9 @@
     }
 
     // -----------------
-    theme.set(localStorage.theme);
+    theme.set('dark');
+
+    console.log(localStorage.theme, 'themetheme');
 
     mobile.set(window.innerWidth < BREAKPOINT);
     const onResize = () => {

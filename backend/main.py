@@ -207,7 +207,10 @@ async def _proxy_to_nest(path: str, request: Request):
     params = dict(request.query_params)
     body = await request.body()
 
-    timeout = aiohttp.ClientTimeout(total=120)
+    # 🔥🔥🔥 核心修改在这里：改为 300秒 (5分钟) 🔥🔥🔥
+    # 之前可能是 120 或者默认值，导致上传大文件时 Python 层断开连接
+    timeout = aiohttp.ClientTimeout(total=600)
+
     async with aiohttp.ClientSession(timeout=timeout) as session:
         async with session.request(
             method=request.method,
@@ -216,6 +219,7 @@ async def _proxy_to_nest(path: str, request: Request):
             data=body,
             headers=headers,
         ) as r:
+            # 保持你原来的逻辑（等待全部读取完毕再返回），简单稳定
             content = await r.read()
             resp_headers = _filter_headers(r.headers)
             return Response(content=content, status_code=r.status, headers=resp_headers)

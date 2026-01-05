@@ -1,17 +1,17 @@
 <script lang="ts">
-  import { models, settings } from "$lib/stores";
-  import { getContext } from "svelte";
-  import Selector from "./ModelSelector/Selector.svelte";
-  import { updateUserModels } from "$lib/apis/users";
+  import { models, settings } from '$lib/stores';
+  import { getContext } from 'svelte';
+  import Selector from './ModelSelector/Selector.svelte';
+  import { updateUserModels } from '$lib/apis/users';
 
-  const i18n = getContext("i18n");
+  const i18n = getContext('i18n');
 
-  export let selectedModels = [""];
+  export let selectedModels = [''];
 
   const saveDefaultModel = async () => {
     settings.set({ ...$settings, models: selectedModels });
-    localStorage.setItem("settings", JSON.stringify($settings));
-    let selModels = selectedModels.join(",");
+    localStorage.setItem('settings', JSON.stringify($settings));
+    let selModels = selectedModels.join(',');
     await updateUserModels(localStorage.token, selModels);
   };
 
@@ -19,7 +19,7 @@
     selectedModels = selectedModels
       .map((model) => {
         if (selectedModels.length === 1) {
-          return selectedModels[0] === "" ? $models[0]?.model : model;
+          return selectedModels[0] === '' ? $models[0]?.model : model;
         } else {
           if ($models.map((m) => m.id).includes(model)) {
             return model;
@@ -38,9 +38,9 @@
 <div class="flex flex-col w-full items-start md:items-start">
   {#each selectedModels as selectedModel, selectedModelIdx}
     <Selector
-      placeholder={$i18n.t("Select a model")}
+      placeholder={$i18n.t('Select a model')}
       items={$models
-        .filter((model) => model.name !== "hr")
+        .filter((model) => model.name !== 'hr')
         .map((model) => ({
           value: model.id,
           label: model.name,

@@ -23,7 +23,7 @@ export class OssService {
       bucket: process.env.FILE_BUCKET_NAME,
       secure: true,
       // 可选：有些网络环境加超时更清晰
-      timeout: 60000,
+      timeout: 500000,
     });
 
     // 启动时打印关键配置（不打印 secret）

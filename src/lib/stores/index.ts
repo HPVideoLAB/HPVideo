@@ -11,7 +11,7 @@ export const MODEL_DOWNLOAD_POOL = writable({});
 
 export const mobile = writable(false);
 
-export const theme = writable('light');
+export const theme = writable('dark');
 // export const theme = writable('dark');
 export const chatId = writable('');
 
