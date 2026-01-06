@@ -11,10 +11,6 @@
 </script>
 
 <section class="flex flex-col gap-3 rounded-2xl border border-gray-800 bg-transparent p-4 h-full">
-  <div class="flex items-center justify-between">
-    <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">生成参数</h2>
-  </div>
-
   <form class="flex flex-col gap-3" on:submit|preventDefault={() => !isLoading && dispatch('generate')}>
     <div class="space-y-1.5">
       <label class="text-xs font-medium text-gray-400 ml-1">目标物体 (Object)</label>
@@ -30,11 +26,6 @@
               : 'border-gray-800 hover:border-gray-700 focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20'
           }`}
         />
-        <div
-          class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-primary-500 transition-colors pointer-events-none"
-        >
-          ✎
-        </div>
       </div>
     </div>
 

@@ -64,8 +64,8 @@
 
     // -----------------
     theme.set('dark');
-
-    console.log(localStorage.theme, 'themetheme');
+    // 2. 强制写入本地存储，防止下次加载时读取到旧的 'light'
+    localStorage.setItem('theme', 'dark');
 
     mobile.set(window.innerWidth < BREAKPOINT);
     const onResize = () => {

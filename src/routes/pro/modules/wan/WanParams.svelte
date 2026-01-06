@@ -2,7 +2,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { VIDEO_STYLES } from '../../../../constants/videoStyles';
-  import type { VideoStyle } from '../../../../constants/videoStyles';
 
   // Props
   export let globalPrompt = '';
@@ -10,6 +9,7 @@
   export let strength = 0.9;
   export let seed = -1;
   export let loras: { path: string; scale: number }[] = [];
+  export let costUsd: number | null = null; // 例如 0.12；null 表示不显示
 
   // Advanced Props
   export let duration = 5;
@@ -46,37 +46,28 @@
   $: currentStyle = VIDEO_STYLES.find((s) => s.id === selectedStyleId) || VIDEO_STYLES[0];
 </script>
 
-<section class="flex flex-col gap-3 rounded-3xl border border-white/5 p-3 shadow-2xl">
-  <form class="flex flex-col gap-3" on:submit|preventDefault={() => !isLoading && dispatch('generate')}>
-    <div class="space-y-3">
-      <div class="space-y-1.5">
-        <div class="relative">
-          <textarea
-            bind:value={globalPrompt}
-            rows={1}
-            placeholder="描述视频内容..."
-            class={`w-full resize-none rounded-2xl border bg-gray-900/60 px-4 py-3 text-sm text-gray-100 placeholder:text-gray-600 outline-none transition-all
+<section class="flex flex-col gap-1 rounded-3xl border border-white/5 p-3 shadow-2xl">
+  <form class="flex flex-col gap-1" on:submit|preventDefault={() => !isLoading && dispatch('generate')}>
+    <div class=" flex flex-col md:flex-row items-center gap-2">
+      <div class="relative w-full flex flex-col gap-1 flex-[5]">
+        <textarea
+          bind:value={globalPrompt}
+          rows={1}
+          placeholder="描述视频内容..."
+          class={`w-full resize-none rounded-2xl border  px-4 py-3 text-sm text-gray-100 placeholder:text-gray-600 outline-none transition-all bg-bg-light dark:bg-bg-dark
                     ${
                       errors.globalPrompt
                         ? 'border-red-500/50 focus:border-red-500 focus:ring-1 focus:ring-red-500/20'
-                        : 'border-white/10 hover:border-white/20 focus:border-primary-500 bg-gray-900 focus:ring-1 focus:ring-primary-500/30'
+                        : 'border-white/10 hover:border-white/20 focus:border-primary-500 bg-bg-light dark:bg-bg-dark focus:ring-1 focus:ring-primary-500/30'
                     }`}
-          />
-          <div class="absolute bottom-2 right-3 text-[10px] text-gray-600 pointer-events-none font-mono">PROMPT</div>
-        </div>
-      </div>
-
-      <div class="space-y-1.5">
-        <input
-          type="text"
-          bind:value={negativePrompt}
-          placeholder="负向提示词 (Negative Prompt)..."
-          class="w-full rounded-xl border border-white/5 bg-gray-900/40 px-4 py-2.5 text-xs text-gray-300 placeholder:text-gray-600 outline-none transition-all hover:border-white/10 focus:border-gray-600 bg-gray-900"
         />
+        {#if errors.globalPrompt}
+          <div class="mt-1 text-[11px] text-red-600 dark:text-red-300">{errors.globalPrompt}</div>
+        {/if}
       </div>
     </div>
 
-    <div class="rounded-2xl border border-white/5 bg-gray-900/30 p-3">
+    <div class="rounded-2xl border border-white/5 bg-gray-900/30 px-3 py-1">
       <div class="">
         <div class="flex justify-between items-end mb-2">
           <label class="text-xs font-medium text-gray-400">重绘幅度 (Strength)</label>
@@ -106,7 +97,7 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-x-3">
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-3">
         <div class="col-span-3 space-y-1">
           <div class="flex justify-between items-center px-1">
             {#if currentStyle.triggerWord}
@@ -121,7 +112,7 @@
           </div>
         </div>
 
-        <div class=" space-y-1">
+        <div class="col-span-3 xl:col-span-1 space-y-1">
           <label class="text-xs font-medium text-gray-400 px-1">风格滤镜</label>
           <div class="relative group">
             <select
@@ -133,6 +124,7 @@
                 <option value={style.id}>{style.label}</option>
               {/each}
             </select>
+
             <div class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -149,7 +141,7 @@
           </div>
         </div>
 
-        <div class=" space-y-1">
+        <div class="col-span-3 xl:col-span-1 space-y-1">
           <label class="text-xs font-medium text-gray-400 px-1">随机种子</label>
           <div class="relative group">
             <input
@@ -165,13 +157,25 @@
             </div>
           </div>
         </div>
+
+        <div class="col-span-3 xl:col-span-1 space-y-1">
+          <label class="text-xs font-medium text-gray-400 px-1">负向提示词</label>
+          <div class="relative group">
+            <input
+              type="text"
+              bind:value={negativePrompt}
+              placeholder="负向提示词..."
+              class="w-full xl:w-[180px] h-full rounded-xl border border-white/5 bg-gray-900/40 px-4 py-3 text-xs text-gray-300 placeholder:text-gray-600 outline-none transition-all hover:border-white/10 focus:border-gray-600 bg-gray-900"
+            />
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="">
+    <div>
       <button
         type="button"
-        class="flex w-full items-center justify-between py-2 text-xs font-medium text-gray-500 hover:text-gray-300 transition-colors"
+        class="flex w-full py-2 items-center justify-between text-xs font-medium text-gray-500 hover:text-gray-300 transition-colors"
         on:click={() => (showAdvanced = !showAdvanced)}
       >
         <span>高级参数 (Advanced)</span>
@@ -229,28 +233,32 @@
     <button
       type="submit"
       disabled={isLoading}
-      class="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-primary-600 to-violet-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-primary-900/30 transition-all hover:scale-[1.02] hover:shadow-primary-900/50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+      class="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-primary-600 to-violet-600 px-4 py-3
+         text-sm font-bold text-white shadow-lg shadow-primary-900/30 transition-all
+         hover:scale-[1.02] hover:shadow-primary-900/50 active:scale-[0.98]
+         disabled:cursor-not-allowed disabled:opacity-50"
     >
-      <span class="relative z-10 flex items-center justify-center gap-2">
-        {#if isLoading}
-          <svg
-            class="animate-spin h-4 w-4 text-white"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            ><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" /><path
-              class="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            /></svg
-          >
-          生成中...
-        {:else}
-          ✨ 生成视频 (Generate)
-        {/if}
+      <span class="relative z-10 flex w-full items-center justify-center">
+        <!-- 主文案（居中） -->
+        <span class="flex items-center gap-2">
+          {#if isLoading}
+            <iconify-icon icon="eos-icons:loading" class="text-lg" />
+            生成中...
+          {:else}
+            <iconify-icon icon="mdi:sparkles" class="text-xl text-warning-400" />
+            生成视频 <!-- 费用（右侧 pill，不挤主文案） -->
+            {#if !isLoading && costUsd !== null}
+              <span class="">
+                (${costUsd.toFixed(5)}/次)
+              </span>
+            {/if}
+          {/if}
+        </span>
       </span>
+
       <div
-        class="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent z-0"
+        class="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]
+           bg-gradient-to-r from-transparent via-white/20 to-transparent z-0"
       />
     </button>
   </form>

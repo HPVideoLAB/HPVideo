@@ -32,7 +32,7 @@
          shadow-sm dark:border-gray-850 md:overflow-y-auto md:h-[calc(100vh-90px)]"
 >
   <div
-    class="sticky top-0 z-10 p-3 flex items-center justify-between gap-2 border-b border-gray-200 dark:border-gray-850 bg-white dark:bg-black/50 backdrop-blur-sm"
+    class="sticky top-0 z-10 p-3 flex items-center justify-between gap-2 border-b border-gray-200 dark:border-gray-850 bg-bg-light dark:bg-bg-dark backdrop-blur-sm"
   >
     <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">历史</div>
     <div class="text-xs text-gray-600 dark:text-gray-400">{items.length}</div>
@@ -41,7 +41,7 @@
   <div class="mt-3 space-y-2">
     {#if items.length === 0}
       <div
-        class="rounded-xl border border-gray-200 p-4 text-center text-sm text-gray-700
+        class="rounded-xl border border-gray-200 px-4 py-8 text-center text-sm text-gray-700
                dark:border-gray-850 dark:text-gray-300"
       >
         暂无记录
@@ -95,22 +95,6 @@
                   on:mouseleave={(e) => e.currentTarget.pause()}
                 />
               {/if}
-
-              <div class="absolute bottom-1 right-1 z-30">
-                {#if it.status === 'processing'}
-                  <span
-                    class="inline-flex items-center rounded-md bg-amber-500/90 px-1.5 py-0.5 text-[10px] font-medium text-white shadow-sm"
-                  >
-                    生成中
-                  </span>
-                {:else if it.status === 'failed'}
-                  <span
-                    class="inline-flex items-center rounded-md bg-red-500/90 px-1.5 py-0.5 text-[10px] font-medium text-white shadow-sm"
-                  >
-                    失败
-                  </span>
-                {/if}
-              </div>
             </div>
 
             <div class="px-1">

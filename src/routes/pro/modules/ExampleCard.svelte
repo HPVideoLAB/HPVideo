@@ -1,47 +1,62 @@
 <script lang="ts">
-  let prompt = ''; // 当前显示的提示词
+  import { createEventDispatcher } from 'svelte';
+  import VideoPreview from '$lib/components/common/VideoPreview.svelte';
+  import { exampleData } from '../../../constants/example-data';
+  // 引入 fade 动画可以让切换更丝滑（可选）
+  import { fade } from 'svelte/transition';
 
-  // 示例卡片的图片和对应的提示词
-  const examples = [
-    {
-      image:
-        'https://p2-kling.klingai.com/bs2/upload-ylab-stunt/13efc772-b7f4-4676-9e77-63b12805e385-lcd12p6YQL6yH_7Oqpd06Q-output_ff.jpg?x-kcdn-pid=112452&x-oss-process=image%2Fresize%2Cw_128%2Ch_128%2Cm_mfit%2Fformat%2Cwebp',
-      prompt: '蓝色的女孩跳舞',
-    },
-    {
-      image:
-        'https://p2-kling.klingai.com/bs2/upload-ylab-stunt/13efc772-b7f4-4676-9e77-63b12805e385-lcd12p6YQL6yH_7Oqpd06Q-output_ff.jpg?x-kcdn-pid=112452&x-oss-process=image%2Fresize%2Cw_128%2Ch_128%2Cm_mfit%2Fformat%2Cwebp',
-      prompt: '坐着的女孩',
-    },
-    {
-      image:
-        'https://p2-kling.klingai.com/bs2/upload-ylab-stunt/13efc772-b7f4-4676-9e77-63b12805e385-lcd12p6YQL6yH_7Oqpd06Q-output_ff.jpg?x-kcdn-pid=112452&x-oss-process=image%2Fresize%2Cw_128%2Ch_128%2Cm_mfit%2Fformat%2Cwebp',
-      prompt: '酒瓶',
-    },
-    {
-      image:
-        'https://p2-kling.klingai.com/bs2/upload-ylab-stunt/13efc772-b7f4-4676-9e77-63b12805e385-lcd12p6YQL6yH_7Oqpd06Q-output_ff.jpg?x-kcdn-pid=112452&x-oss-process=image%2Fresize%2Cw_128%2Ch_128%2Cm_mfit%2Fformat%2Cwebp',
-      prompt: '接电话的女孩',
-    },
-  ];
+  export let currentModelValue: string = '';
 
-  // 点击卡片时填充提示词
-  const handleClick = (newPrompt: string) => {
-    prompt = newPrompt;
-  };
+  const dispatch = createEventDispatcher();
+
+  $: examples = (() => {
+    if (!currentModelValue) return [];
+    if (exampleData[currentModelValue]) {
+      return exampleData[currentModelValue];
+    }
+    if (currentModelValue.includes('pika')) return exampleData['pika-v2.2-pikaframes'] || [];
+    if (currentModelValue.includes('wan')) return exampleData['wan-2.1-v2v'] || [];
+    if (currentModelValue.includes('sam')) return exampleData['sam3-video'] || [];
+    return [];
+  })();
+
+  function handleApply(e: CustomEvent) {
+    console.log('User applied params:', e.detail);
+    dispatch('select', { params: e.detail });
+  }
+
+  $: console.log('currentModelValue:', currentModelValue);
 </script>
 
-<div class="p-4">
-  <h2 class="text-xl font-semibold mb-4">示例卡片</h2>
-  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4 md:gap-6">
-    {#each examples as { image, prompt: examplePrompt }}
-      <!-- 直接渲染优化后的卡片结构 -->
-      <div
-        class="cursor-pointer border rounded-lg overflow-hidden shadow-lg hover:scale-105 transition-transform"
-        on:click={() => handleClick(examplePrompt)}
-      >
-        <img src={image} alt={examplePrompt} class="w-full md:h-24 object-cover rounded-t-lg" />
-      </div>
-    {/each}
+<div class="md:p-0 mt-4">
+  <div class="flex items-center justify-between mb-3 px-1">
+    <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">
+      示例展示 <span class="text-xs font-normal text-gray-500 ml-2">点击应用同款参数</span>
+    </h2>
   </div>
+
+  {#key currentModelValue}
+    <div
+      in:fade={{ duration: 200 }}
+      class="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4"
+    >
+      {#each examples as item (item.id)}
+        <VideoPreview
+          src={item.videoUrl}
+          poster={item.coverUrl}
+          title={item.title}
+          params={item.params}
+          on:apply={handleApply}
+        />
+      {/each}
+
+      {#if examples.length === 0}
+        <div
+          class="col-span-full text-center text-gray-500 text-xs py-6 bg-gray-50 dark:bg-white/5 rounded-lg border border-dashed border-gray-200 dark:border-white/10"
+        >
+          该模型暂无示例数据
+        </div>
+      {/if}
+    </div>
+  {/key}
 </div>

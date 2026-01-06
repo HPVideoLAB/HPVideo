@@ -46,10 +46,6 @@
 </script>
 
 <section class="flex flex-col gap-3 rounded-3xl border border-white/5 p-3 shadow-2xl">
-  <div class="flex items-center justify-between">
-    <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">生成参数</h2>
-  </div>
-
   <form class="flex flex-col gap-3" on:submit|preventDefault={() => !isLoading && dispatch('generate')}>
     <div class="space-y-3">
       <div class="space-y-1.5">

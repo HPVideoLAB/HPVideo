@@ -44,11 +44,6 @@
 </script>
 
 <section class="rounded-2xl border border-gray-200 bg-transparent p-3 dark:border-gray-850">
-  <div class="mb-3 flex items-center justify-between">
-    <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">生成参数</h2>
-    <div class="text-xs text-gray-600 dark:text-gray-400">总时长：{totalDuration()}s / {MAX_TOTAL_DURATION}s</div>
-  </div>
-
   <!-- 表单容器：字段下方可放校验信息；支持回车提交 -->
   <form class="space-y-3" on:submit|preventDefault={onSubmit}>
     <!-- 表单级错误（例如 transitions 数量不匹配、总时长超限等） -->

@@ -22,7 +22,7 @@ export const proModel = [
     imagemodel: 'pika/pika-v2.2-pikaframes',
 
     // 是否带音频（你 UI 会在 audio=false 时显示静音 icon）
-    audio: true,
+    audio: false,
 
     // 可选时长档位（你的 toolInfo.duration 会用）
     // Pikaframes 通过 transitions 可以做到更长，总长度可到 ~25s（WaveSpeed 模型页/README 有提）
@@ -95,7 +95,7 @@ export const proModel = [
     textmodel: 'wavespeed-ai/wan-2.1/v2v-480p-ultra-fast',
     imagemodel: 'wavespeed-ai/wan-2.1/v2v-480p-ultra-fast',
 
-    audio: false,
+    audio: true,
 
     // WaveSpeed 这条 v2v 文档常见是 5~10s；你 UI 先给 5 起步最稳
     duration: [5],
@@ -116,3 +116,10 @@ export const proModel = [
     modelinfo: 'wavespeed-ai/wan-2.1/v2v-480p-ultra-fast',
   },
 ];
+
+// 模型对应预估生成时间
+export const modelDuration = {
+  pika: '5-10',
+  'wan-2.1': '1-5',
+  sam3: '1-5',
+};

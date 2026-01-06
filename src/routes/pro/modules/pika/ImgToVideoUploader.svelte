@@ -130,13 +130,6 @@
     disabled={status === 'uploading'}
   >
     <div class="flex flex-col items-center gap-3 text-center">
-      <div
-        class="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-700
-               dark:border-gray-850 dark:bg-gray-950 dark:text-gray-300"
-      >
-        ⬆
-      </div>
-
       <div class="space-y-1">
         <p class="text-sm font-medium text-gray-900 dark:text-gray-100">把图片拖到这里，或点击选择图片</p>
         <p class="text-xs text-gray-600 dark:text-gray-400">PNG/JPG 最多 5 张 · 作为关键帧</p>

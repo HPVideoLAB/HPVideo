@@ -46,14 +46,28 @@
         <ResVideo item={activeItem} />
       {/key}
     {:else}
-      <div class="flex-1 flex flex-col items-center justify-center text-gray-600">
-        <div class="text-4xl mb-2 opacity-30">🎬</div>
-        <p class="text-sm font-medium opacity-50">等待生成...</p>
+      <div class="flex-1 flex flex-col items-center justify-center text-center p-3">
+        <!-- Icon + glow -->
+        <div class="relative mb-2">
+          <!-- subtle glow -->
+          <div
+            class="pointer-events-none absolute inset-0 -z-10 h-16 w-16 rounded-full blur-2xl opacity-30
+                 bg-primary-500/30 dark:bg-primary-500/20"
+          />
+          <iconify-icon icon="mdi:creation-outline" class="text-7xl text-primary-500/70 dark:text-primary-400/70" />
+        </div>
+
+        <!-- Text -->
+        <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+          释放你的创造潜力，体验 <span class="text-primary-500/90 dark:text-primary-400">HPVideo AI</span> 的魔力。
+        </p>
+
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">选择模型并上传素材，即可开始生成。</p>
       </div>
     {/if}
   </div>
 
-  <aside class="w-full lg:w-[140px] shrink-0 h-full overflow-hidden">
+  <aside class="w-full lg:w-[140px] shrink-0 md:h-full overflow-hidden">
     <History {items} selectedId={activeItem?.id} on:select={handleHistorySelect} />
   </aside>
 </div>

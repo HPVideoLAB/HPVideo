@@ -5,6 +5,7 @@
   import { toast } from 'svelte-sonner';
   import MyButton from '$lib/components/common/MyButton.svelte';
   import Tooltip from '$lib/components/common/Tooltip.svelte';
+  import { modelDuration } from '../../../constants/pro-model';
 
   type Status = 'processing' | 'completed' | 'failed';
 
@@ -15,6 +16,7 @@
     status: Status;
     prompt: string;
     outputUrl?: string;
+    duration?: '';
   };
 
   export let item: ResVideoItem | undefined;
@@ -56,6 +58,7 @@
   }
 
   function downloadVideo(url?: string) {
+    console.log('8888888', item, url);
     if (!url) return;
     const a = document.createElement('a');
     a.href = url;
@@ -79,9 +82,9 @@
     {
       label: $i18n.t('Download'),
       icon: 'mdi:download',
-      action: (item) => downloadVideo(item.outputUrl),
+      action: (item: any) => downloadVideo(item.thumbUrl),
       tooltip: $i18n.t('Download'),
-      disabled: !item.outputUrl,
+      disabled: false,
     },
     {
       label: $i18n.t('Good'),
@@ -112,28 +115,28 @@
     {$i18n.t('No preview')}
   </div>
 {:else}
-  <section class="rounded-2xl flex flex-col gap-4 border border-border-light p-3 sm:p-4 dark:border-border-dark">
+  <section class="rounded-2xl flex flex-col gap-2 border border-border-light p-3 dark:border-border-dark">
     <!-- 顶部信息条：时间 / 模型 / 状态 + 操作（贴近你 History 的那套样式） -->
     <div class="flex items-center justify-between gap-3">
-      <div class="min-w-0">
-        <div class="flex flex-wrap items-center gap-2">
+      <div class="w-full">
+        <div class="flex flex-wrap items-center justify-between gap-2 w-full">
           <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            {dayjs(item.createdAt * 1000).format('YYYY-MM-DD HH:mm')}
+            {dayjs(item.createdAt).format('YYYY-MM-DD HH:mm:ss')}
           </div>
 
-          <span class="text-xs text-gray-600 dark:text-gray-400">·</span>
+          <div class="flex gap-2 items-center">
+            <div class="truncate text-sm text-gray-700 dark:text-gray-300">
+              {item.model}
+            </div>
 
-          <div class="truncate text-sm text-gray-700 dark:text-gray-300">
-            {item.model}
+            <span
+              class={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] ${statusBadgeClass(
+                item.status
+              )}`}
+            >
+              {statusText(item.status)}
+            </span>
           </div>
-
-          <span
-            class={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] ${statusBadgeClass(
-              item.status
-            )}`}
-          >
-            {statusText(item.status)}
-          </span>
         </div>
       </div>
     </div>
@@ -145,7 +148,9 @@
           <div class={`${stageClass(item.status)}`} style={boxStyle()}>
             <div class="animate-pulse flex flex-col items-center justify-center">
               <img class="size-10" src="/creator/static/video/video_generating.png" alt="" />
-              <span class="text-sm text-gray-50 mt-2">{$i18n.t('Video Generating...')}</span>
+              <span class="text-sm text-gray-50 mt-2"
+                >{$i18n.t('Video Generating...')}(预估需要{modelDuration[item.model]}分钟)</span
+              >
               <span class="text-xs text-gray-100/80 mt-1 px-6 text-center">
                 {$i18n.t('Please keep this page open')}
               </span>
@@ -178,7 +183,7 @@
     <div class="flex flex-wrap justify-end gap-2">
       {#each buttons as button (button.label)}
         <Tooltip content={button.tooltip} placement="top">
-          <MyButton circle disabled={button.disabled} on:click={button.action}>
+          <MyButton circle disabled={button.disabled} on:click={() => button.action(item)}>
             <iconify-icon class="text-base" icon={button.icon} />
           </MyButton>
         </Tooltip>
