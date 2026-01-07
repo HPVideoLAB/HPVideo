@@ -41,7 +41,9 @@
   $: console.log(resolution);
 </script>
 
-<section class="rounded-2xl border border-gray-200 bg-transparent p-3 dark:border-gray-850">
+<section
+  class="rounded-2xl border border-border-light bg-bg-light p-3 shadow-sm dark:border-border-dark dark:bg-bg-dark"
+>
   <!-- 表单容器：字段下方可放校验信息；支持回车提交 -->
   <form class="space-y-3" on:submit|preventDefault={onSubmit}>
     <textarea
@@ -49,15 +51,15 @@
       rows={1}
       placeholder="请输入提示词..."
       class={`w-full resize-none rounded-2xl border px-4 py-3 text-sm
-            bg-bg-light dark:bg-bg-dark
-            text-gray-900 dark:text-gray-100
-            placeholder:text-gray-500 dark:placeholder:text-gray-600
-            outline-none transition-all
-            ${
-              errors.globalPrompt
-                ? 'border-red-500/50 focus:border-red-500 focus:ring-1 focus:ring-red-500/20'
-                : 'border-white/10 hover:border-white/20 focus:border-primary-500 focus:ring-1 focus:ring-primary-500/30'
-            }`}
+        bg-bg-light dark:bg-bg-dark
+        text-text-light dark:text-text-dark
+        placeholder:text-text-lightSecondary dark:placeholder:text-text-darkSecondary
+        outline-none transition-all
+        ${
+          errors.globalPrompt
+            ? 'border-error-500/60 focus:border-error-500 focus:ring-1 focus:ring-error-500/20'
+            : 'border-border-light dark:border-border-dark focus:border-primary-500 focus:ring-1 focus:ring-primary-500/30'
+        }`}
     />
 
     {#if errors.globalPrompt}
@@ -66,16 +68,20 @@
 
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <div>
-        <label class="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">分辨率（resolution）</label>
+        <label class="mb-1 block text-[10px] xl:text-xs font-medium text-gray-700 dark:text-gray-300"
+          >分辨率（resolution）</label
+        >
         <select
           bind:value={resolution}
-          class={`w-full rounded-xl border bg-transparent px-3 py-2 text-sm bg-bg-light dark:bg-bg-dark
-                 text-gray-900 focus:outline-none dark:text-gray-100
-                 ${
-                   errors.resolution
-                     ? 'border-red-400 focus:border-red-500 dark:border-red-600'
-                     : 'border-gray-300 focus:border-primary-500 dark:border-gray-700'
-                 }`}
+          class={`w-full rounded-xl border px-3 py-2 text-sm
+            bg-bg-light dark:bg-bg-dark
+            text-text-light dark:text-text-dark
+            focus:outline-none
+            ${
+              errors.resolution
+                ? 'border-error-500/60 focus:border-error-500 dark:border-error-700'
+                : 'border-border-light dark:border-border-dark focus:border-primary-500'
+            }`}
         >
           <option value="720p">720p</option>
           <option value="1080p">1080p</option>
@@ -86,7 +92,7 @@
       </div>
 
       <div>
-        <label class="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+        <label class="mb-1 block text-nowrap text-[10px] xl:text-xs font-medium text-gray-700 dark:text-gray-300">
           Seed（-1 随机；0~{MAX_SEED}）
         </label>
         <input
@@ -95,14 +101,16 @@
           max={MAX_SEED}
           step="1"
           bind:value={seed}
-          class={`w-full rounded-xl border bg-transparent px-3 py-2 text-sm bg-bg-light dark:bg-bg-dark
-                 text-gray-900 placeholder:text-gray-500 focus:outline-none
-                 dark:text-gray-100
-                 ${
-                   errors.seed
-                     ? 'border-red-400 focus:border-red-500 dark:border-red-600'
-                     : 'border-gray-300 focus:border-primary-500 dark:border-gray-700'
-                 }`}
+          class={`w-full rounded-xl border px-3 py-2 text-sm
+            bg-bg-light dark:bg-bg-dark
+            text-text-light dark:text-text-dark
+            placeholder:text-text-lightSecondary dark:placeholder:text-text-darkSecondary
+            focus:outline-none
+            ${
+              errors.seed
+                ? 'border-error-500/60 focus:border-error-500 dark:border-error-700'
+                : 'border-border-light dark:border-border-dark focus:border-primary-500'
+            }`}
         />
         {#if errors.seed}
           <div class="mt-1 text-[11px] text-red-600 dark:text-red-300">{errors.seed}</div>
@@ -119,7 +127,7 @@
 
         <div class="space-y-2">
           {#each transitions as t, i}
-            <div class="rounded-2xl border border-gray-200 p-3 dark:border-gray-850">
+            <div class="rounded-2xl border border-border-light bg-gray-50 p-3 dark:border-border-dark dark:bg-gray-950">
               <div class="mb-2 flex items-center justify-between">
                 <div class="text-xs font-medium text-gray-700 dark:text-gray-300">段 {i + 1}</div>
               </div>
@@ -133,13 +141,15 @@
                     max={MAX_TOTAL_DURATION}
                     step="1"
                     bind:value={t.duration}
-                    class={`w-full rounded-xl border bg-transparent px-3 py-2 text-sm
-                           text-gray-900 focus:outline-none dark:text-gray-100
-                           ${
-                             errors.transitions?.[i]?.duration
-                               ? 'border-red-400 focus:border-red-500 dark:border-red-600'
-                               : 'border-gray-300 focus:border-primary-500 dark:border-gray-700'
-                           }`}
+                    class={`w-full rounded-xl border px-3 py-2 text-sm
+                      bg-bg-light dark:bg-bg-dark
+                      text-text-light dark:text-text-dark
+                      focus:outline-none
+                      ${
+                        errors.transitions?.[i]?.duration
+                          ? 'border-error-500/60 focus:border-error-500 dark:border-error-700'
+                          : 'border-border-light dark:border-border-dark focus:border-primary-500'
+                      }`}
                   />
                   {#if errors.transitions?.[i]?.duration}
                     <div class="mt-1 text-[11px] text-red-600 dark:text-red-300">{errors.transitions[i].duration}</div>
@@ -179,9 +189,9 @@
         type="submit"
         disabled={isLoading}
         class="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-primary-600 to-violet-600 px-4 py-3
-             text-sm font-bold text-white shadow-lg shadow-primary-900/30 transition-all
-             hover:scale-[1.02] hover:shadow-primary-900/50 active:scale-[0.98]
-             disabled:cursor-not-allowed disabled:opacity-50"
+        text-sm font-bold text-white shadow-lg shadow-primary-900/30 dark:shadow-black/30 transition-all
+        hover:scale-[1.02] hover:shadow-primary-900/50 dark:hover:shadow-black/40 active:scale-[0.98]
+        disabled:cursor-not-allowed disabled:opacity-50"
       >
         <span class="relative z-10 flex w-full items-center justify-center">
           <!-- 主文案（居中） -->

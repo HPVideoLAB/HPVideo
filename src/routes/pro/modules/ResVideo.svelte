@@ -109,23 +109,28 @@
 
 {#if !item}
   <div
-    class="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-700
-           dark:border-gray-850 dark:bg-gray-950 dark:text-gray-300"
+    class="rounded-2xl border border-border-light bg-bg-light p-6 text-center text-sm
+       text-text-lightSecondary
+       dark:border-border-dark dark:bg-bg-dark dark:text-text-darkSecondary"
   >
     {$i18n.t('No preview')}
   </div>
 {:else}
-  <section class="rounded-2xl flex flex-col gap-2 border border-border-light p-3 dark:border-border-dark">
+  <section
+    class="rounded-2xl flex flex-col gap-2
+         border border-border-light bg-bg-light p-3 shadow-sm
+         dark:border-border-dark dark:bg-bg-dark"
+  >
     <!-- 顶部信息条：时间 / 模型 / 状态 + 操作（贴近你 History 的那套样式） -->
     <div class="flex items-center justify-between gap-3">
       <div class="w-full">
         <div class="flex flex-wrap items-center justify-between gap-2 w-full">
-          <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <div class="text-sm font-semibold text-text-light dark:text-text-dark">
             {dayjs(item.createdAt).format('YYYY-MM-DD HH:mm:ss')}
           </div>
 
           <div class="flex gap-2 items-center">
-            <div class="truncate text-sm text-gray-700 dark:text-gray-300">
+            <div class="truncate text-sm text-text-lightSecondary dark:text-text-darkSecondary">
               {item.model}
             </div>
 
@@ -145,7 +150,7 @@
     <div class=" w-full">
       {#if item.status === 'processing'}
         <div class="w-full mx-auto">
-          <div class={`${stageClass(item.status)}`} style={boxStyle()}>
+          <div class={`${stageClass(item.status)} text-white bg-gray-900 dark:bg-gray-900`} style={boxStyle()}>
             <div class="animate-pulse flex flex-col items-center justify-center">
               <img class="size-10" src="/creator/static/video/video_generating.png" alt="" />
               <span class="text-sm text-gray-50 mt-2"
@@ -171,7 +176,7 @@
         <div class="w-full mx-auto">
           <video
             style={boxStyle()}
-            class="w-full rounded-2xl border border-gray-200 dark:border-gray-850 bg-black"
+            class="w-full rounded-2xl border border-border-light dark:border-border-dark bg-black shadow-sm"
             controls
             preload="metadata"
             src={item.outputUrl}
@@ -184,7 +189,7 @@
       {#each buttons as button (button.label)}
         <Tooltip content={button.tooltip} placement="top">
           <MyButton circle disabled={button.disabled} on:click={() => button.action(item)}>
-            <iconify-icon class="text-base" icon={button.icon} />
+            <iconify-icon class="text-base text-text-light dark:text-text-dark" icon={button.icon} />
           </MyButton>
         </Tooltip>
       {/each}

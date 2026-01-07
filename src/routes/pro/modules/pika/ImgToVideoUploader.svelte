@@ -1,7 +1,7 @@
 <!-- ImgToVideoUploader.svelte -->
 <script lang="ts">
   import { createEventDispatcher, onDestroy } from 'svelte';
-
+  import MyButton from '$lib/components/common/MyButton.svelte';
   type UploadStatus = 'idle' | 'valid' | 'uploading' | 'success' | 'error';
 
   export let files: File[] = [];

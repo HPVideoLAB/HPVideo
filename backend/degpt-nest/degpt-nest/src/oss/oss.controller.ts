@@ -9,6 +9,8 @@ import {
   Post,
   UploadedFiles,
   UseInterceptors,
+  Query,
+  Res,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { OssService } from './oss.service';
@@ -18,6 +20,19 @@ import { UpdateOssDto } from './dto/update-oss.dto';
 @Controller('oss')
 export class OssController {
   constructor(private readonly ossService: OssService) {}
+
+  // ==========================================
+  // [新增] 代理接口 (原生 fetch + Buffer 模式)
+  // GET /oss/proxy?url=http://...
+  // ==========================================
+  @Get('proxy')
+  async proxy(@Query('url') url: string, @Res() res: Response) {
+    if (!url) {
+      throw new BadRequestException('url parameter is required');
+    }
+    // 把 Response 传进去，方便 Service 设置 Header 和发送数据
+    return this.ossService.proxyFile(url, res);
+  }
 
   // 新增：上传接口
   // POST /oss/upload

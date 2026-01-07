@@ -12,7 +12,7 @@
   import ExampleCard from './modules/ExampleCard.svelte';
   import MySelect from '$lib/components/common/MySelect.svelte';
   import { toast } from 'svelte-sonner';
-
+  import { urlToFileApi } from '$lib/apis/model/pika';
   // --- 常量与工具 ---
   import { proModel } from '../../constants/pro-model';
   import { useVideoGeneration } from '$lib/hooks/useVideoGeneration';
@@ -24,6 +24,7 @@
     validateWanForm,
     validateSamForm,
   } from './modules/form';
+  import { tick } from 'svelte';
 
   // --- 初始化 ---
   const { isGenerating, history, submitPika, submitWan, submitSam, loadHistory } = useVideoGeneration();
@@ -188,51 +189,149 @@
     );
   };
 
-  // 历史记录点击回填逻辑 (省略，保持原样)
+  // 辅助延迟函数：给 DOM 渲染留出缓冲时间
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
   // ==========================================
   // ⚡️ 2. 点击历史记录 -> 回填参数
   // ==========================================
-  function handleHistorySelect(e: CustomEvent) {
-    const item = e.detail; // 从 MyVideo 传出来的 item
+  async function handleHistorySelect(e: CustomEvent) {
+    const item = e.detail;
     if (!item || !item.params) return;
 
-    const p = item.params; // 数据库里的 params 对象
+    const p = item.params;
 
-    // 1. 切换到对应的模型 Tab
-    // 注意：后端存的是 'pika', 'wan-2.1'，你需要映射回 proModel 里的完整 ID
-    // 假设你的 proModel ID 包含了关键词
+    // 1. 切换模型 Tab
     const targetModel = proModel.find((m) => m.model.includes(p.model));
     if (targetModel) {
       currentModelValue = targetModel.model;
     }
 
-    // 2. 根据模型回填数据
-    if (p.model === 'pika') {
-      pikaPrompt = p.prompt || '';
-      pikaResolution = p.resolution || '720p';
-      pikaSeed = p.seed ?? -1;
-      pikaTransitions = p.transitions || [];
+    // 等待 Tab 切换完成
+    await tick();
 
-      // ⚠️ Pika 的图片无法直接回填到 File[]，只能给个提示
-      toast.warning('Pika 参数已恢复 (图片需重新上传)');
-    } else if (p.model === 'wan-2.1') {
-      wanPrompt = p.prompt || '';
-      wanNegPrompt = p.negative_prompt || '';
-      wanStrength = p.strength ?? 0.9;
-      wanSeed = p.seed ?? -1;
-      wanDuration = p.duration || 5;
-      wanSteps = p.num_inference_steps || 30;
-      wanCfg = p.guidance_scale || 5;
-      wanFlow = p.flow_shift || 3;
-      // loras 是数组，需要深拷贝一下防止引用问题
-      wanLoras = p.loras ? JSON.parse(JSON.stringify(p.loras)) : [];
+    try {
+      // =================================================
+      // 🟢 Pika 逻辑 (已修复转场参数被覆盖的问题)
+      // =================================================
+      if (p.model === 'pika') {
+        pikaPrompt = p.prompt || '';
+        pikaResolution = p.resolution || '720p';
+        pikaSeed = p.seed ?? -1;
 
-      toast.warning('Wan 参数已恢复 (视频需重新上传)');
-    } else if (p.model === 'sam3') {
-      samPrompt = p.prompt || '';
-      samMask = p.apply_mask ?? true;
+        // ❌ 不要直接赋值 pikaTransitions，会被响应式逻辑覆盖
+        // pikaTransitions = p.transitions || [];
 
-      toast.warning('Sam 参数已恢复 (视频需重新上传)');
+        // ✅ 先把转场参数暂存起来
+        const savedTransitions = p.transitions || [];
+
+        if (Array.isArray(p.images) && p.images.length > 0) {
+          toast.promise(
+            async () => {
+              // 1. 下载图片
+              const filePromises = p.images.map((url: string, index: number) =>
+                urlToFileApi(url, `pika_restored_${Date.now()}_${index}.jpg`)
+              );
+              const files = await Promise.all(filePromises);
+
+              // 2. 赋值图片
+              pikaFiles = files;
+
+              // 3. ⏳ 关键：等待 Svelte 响应 syncTransitions 逻辑
+              // 因为 pikaFiles 变了，syncTransitions 会先运行一次初始化结构
+              await tick();
+
+              // 4. ✅ 覆盖回填：此时结构已稳定，将保存的 params 填进去
+              pikaTransitions = savedTransitions;
+
+              // 5. 等待渲染
+              await wait(100);
+
+              return 'Pika 素材恢复成功';
+            },
+            {
+              loading: '正在下载 Pika 图片素材...',
+              success: (msg) => msg,
+              error: '下载失败，请检查网络',
+            }
+          );
+        } else {
+          pikaFiles = [];
+          // 如果没有图片，直接赋值即可
+          pikaTransitions = savedTransitions;
+          toast.success('Pika 参数已恢复 (无图片)');
+        }
+
+        // =================================================
+        // 🔵 Wan 逻辑
+        // =================================================
+      } else if (p.model === 'wan-2.1') {
+        wanPrompt = p.prompt || '';
+        wanNegPrompt = p.negative_prompt || '';
+        wanStrength = p.strength ?? 0.9;
+        wanSeed = p.seed ?? -1;
+        wanDuration = p.duration || 5;
+        wanSteps = p.num_inference_steps || 30;
+        wanCfg = p.guidance_scale || 5;
+        wanFlow = p.flow_shift || 3;
+        wanLoras = p.loras ? JSON.parse(JSON.stringify(p.loras)) : [];
+
+        if (p.video && typeof p.video === 'string') {
+          toast.promise(
+            async () => {
+              const file = await urlToFileApi(p.video, `wan_restored_${Date.now()}.mp4`);
+              wanVideo = file;
+
+              // 等待 <video> 渲染第一帧
+              await tick();
+              await wait(200);
+
+              return 'Wan 视频素材恢复成功';
+            },
+            {
+              loading: '正在下载 Wan 原视频，可能需要几秒...',
+              success: (msg) => msg,
+              error: '下载失败，请检查网络',
+            }
+          );
+        } else {
+          wanVideo = null;
+          toast.success('Wan 参数已恢复 (无视频)');
+        }
+
+        // =================================================
+        // 🟣 Sam 逻辑
+        // =================================================
+      } else if (p.model === 'sam3') {
+        samPrompt = p.prompt || '';
+        samMask = p.apply_mask ?? true;
+
+        if (p.video && typeof p.video === 'string') {
+          toast.promise(
+            async () => {
+              const file = await urlToFileApi(p.video, `sam_restored_${Date.now()}.mp4`);
+              samVideo = file;
+
+              // 等待 <video> 渲染第一帧
+              await tick();
+              await wait(200);
+
+              return 'Sam 视频素材恢复成功';
+            },
+            {
+              loading: '正在下载 Sam 原视频...',
+              success: (msg) => msg,
+              error: '下载失败，请检查网络',
+            }
+          );
+        } else {
+          samVideo = null;
+          toast.success('Sam 参数已恢复 (无视频)');
+        }
+      }
+    } catch (error) {
+      console.error('参数恢复系统错误:', error);
+      toast.error('系统错误，无法恢复参数');
     }
   }
 
@@ -242,7 +341,7 @@
 
 <div class="flex flex-col min-h-screen bg-bg-light dark:bg-bg-dark text-text-light dark:text-text-dark">
   <nav
-    class="fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center backdrop-blur-md border-b border-border-light dark:border-border-dark"
+    class="fixed top-0 w-full z-[999999] px-6 py-2.5 md:py-4 flex justify-between items-center backdrop-blur-md border-b border-border-light dark:border-border-dark"
   >
     <a href="/" class="flex items-center cursor-pointer select-none">
       <span
@@ -251,7 +350,7 @@
              bg-clip-text text-transparent
              drop-shadow-[0_1px_10px_rgba(194,19,242,0.22)]"
       >
-        HP Video Pro
+        HPVideo Pro
       </span>
     </a>
 
@@ -262,7 +361,7 @@
     class="w-full flex flex-col gap-5 md:flex-row pt-[80px] pb-3 px-4 h-screen overflow-auto md:overflow-hidden md:px-6"
   >
     <div
-      class="border-border-light flex flex-col gap-4 pr-4 relative dark:border-border-dark border-r flex-[1.7] md:overflow-y-auto scroll-fade"
+      class="border-border-light flex flex-col gap-4 pr-4 relative dark:border-border-dark border-r flex-[2.5] xl:flex-[1.7] md:overflow-y-auto scroll-fade"
     >
       <div class="w-[200px]">
         <MySelect options={modelOptions} bind:value={currentModelValue} />
@@ -293,8 +392,9 @@
       <ExampleCard {currentModelValue} on:select={handleHistorySelect} />
 
       <div
-        class="bg-bg-light dark:bg-bg-dark rounded-2xl md:sticky md:bottom-0 md:left-0 z-[9] border-t border-black/10 dark:border-white/5
-         shadow-[0_-10px_20px_rgba(0,0,0,0.7)]"
+        class="bg-bg-light dark:bg-bg-dark rounded-2xl md:sticky md:bottom-0 md:left-0 z-[99]
+             border-t border-border-light dark:border-border-dark
+             shadow-[0_-10px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-10px_20px_rgba(0,0,0,0.7)]"
       >
         {#if currentModelValue === 'pika-v2.2-pikaframes'}
           <ImgToVideoParams

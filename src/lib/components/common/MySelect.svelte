@@ -50,24 +50,29 @@
     type="button"
     on:click={toggle}
     class="flex items-center justify-between w-full px-4 py-2.5
-           bg-[#2A2A2A] hover:bg-[#333333] active:bg-[#222222]
-           border border-gray-700/50
+           bg-bg-light dark:bg-bg-dark
+           hover:bg-gray-100 dark:hover:bg-gray-800
+           active:bg-gray-200 dark:active:bg-gray-850
+           border border-border-light dark:border-border-dark
            rounded-full transition-all duration-200 ease-in-out
-           text-white text-sm font-medium shadow-sm group"
+           text-text-light dark:text-text-dark
+           text-sm font-medium shadow-sm group"
   >
     <div class="flex items-center gap-2 truncate flex-1">
       {#if selectedOption?.icon}
         <img src={selectedOption.icon} alt="icon" class="w-5 h-5 object-contain rounded-full" />
       {/if}
 
-      <span class={!selectedOption ? 'text-gray-400' : 'truncate'}>
+      <span class={!selectedOption ? 'text-text-lightSecondary dark:text-text-darkSecondary' : 'truncate'}>
         {selectedOption?.label || placeholder}
       </span>
 
       {#if selectedOption}
         <div
           class="flex items-center justify-center ml-1 px-1.5 py-0.5 rounded text-xs gap-0.5
-                 {selectedOption.hasAudio ? 'bg-green-500/10 text-green-400' : 'bg-gray-600/20 text-gray-400'}"
+                 {selectedOption.hasAudio
+            ? 'bg-success-500/10 text-success-600 dark:text-success-300'
+            : 'bg-gray-200/70 text-text-lightSecondary dark:bg-gray-700/30 dark:text-text-darkSecondary'}"
           title={selectedOption.hasAudio ? 'Supports Audio Generation' : 'Silent / No Audio'}
         >
           <iconify-icon icon={selectedOption.hasAudio ? 'lucide:volume-2' : 'lucide:volume-x'} class="text-sm" />
@@ -79,7 +84,9 @@
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 20 20"
       fill="currentColor"
-      class="w-5 h-5 text-gray-400 ml-2 transition-transform duration-200 {isOpen ? 'rotate-180' : ''}"
+      class="w-5 h-5 ml-2 transition-transform duration-200
+             text-gray-500 dark:text-gray-400
+             {isOpen ? 'rotate-180' : ''}"
     >
       <path
         fill-rule="evenodd"
@@ -93,7 +100,9 @@
     <div
       transition:slide={{ duration: 150 }}
       class="absolute left-0 right-0 z-50 mt-2 origin-top-right
-             bg-[#2A2A2A] border border-gray-700 rounded-xl shadow-xl
+             bg-bg-light dark:bg-bg-dark
+             border border-border-light dark:border-border-dark
+             rounded-xl shadow-xl
              max-h-60 overflow-y-auto overflow-x-hidden p-1"
     >
       <div class="py-1 space-y-1" role="none">
@@ -103,29 +112,37 @@
             class="group flex items-center justify-between w-full px-4 py-2.5 text-sm text-left
                    rounded-lg transition-colors
                    {value === option.value
-              ? 'bg-purple-600/20 text-purple-400'
-              : 'text-gray-300 hover:bg-[#383838] hover:text-white'}"
+              ? 'bg-primary-500/10 text-primary-600 dark:text-primary-300'
+              : 'text-text-lightSecondary dark:text-text-darkSecondary hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-text-light dark:hover:text-text-dark'}"
           >
             <div class="flex items-center gap-3 truncate">
               {#if option.icon}
                 <img src={option.icon} alt="" class="w-5 h-5 object-contain" />
               {/if}
-              <span class="truncate font-medium">{option.label}</span>
+
+              <span class="truncate font-medium text-text-light dark:text-text-dark">
+                {option.label}
+              </span>
 
               <div class="flex items-center" title={option.hasAudio ? 'Supports Audio' : 'No Audio'}>
                 <iconify-icon
                   icon={option.hasAudio ? 'lucide:volume-2' : 'lucide:volume-x'}
                   class="text-base {option.hasAudio
                     ? value === option.value
-                      ? 'text-green-400'
-                      : 'text-gray-500 group-hover:text-green-400'
-                    : 'text-gray-600 opacity-50'}"
+                      ? 'text-success-600 dark:text-success-300'
+                      : 'text-gray-500 dark:text-gray-500 group-hover:text-success-600 dark:group-hover:text-success-300'
+                    : 'text-gray-400 dark:text-gray-600 opacity-60'}"
                 />
               </div>
             </div>
 
             {#if value === option.value}
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 ml-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                class="w-4 h-4 ml-2 text-primary-600 dark:text-primary-300"
+              >
                 <path
                   fill-rule="evenodd"
                   d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
@@ -137,7 +154,7 @@
         {/each}
 
         {#if options.length === 0}
-          <div class="px-4 py-2 text-sm text-gray-500">No options found</div>
+          <div class="px-4 py-2 text-sm text-text-lightSecondary dark:text-text-darkSecondary">No options found</div>
         {/if}
       </div>
     </div>

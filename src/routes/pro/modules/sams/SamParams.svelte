@@ -12,61 +12,92 @@
   $: isLoading = taskStatus === 'submitting' || taskStatus === 'processing';
 </script>
 
-<section class="flex flex-col gap-3 rounded-2xl border border-gray-800 bg-transparent p-4 h-full">
+<section
+  class="flex flex-col gap-3 rounded-2xl
+         border border-border-light dark:border-border-dark
+         bg-bg-light/60 dark:bg-bg-dark/40
+         p-4 h-full shadow-sm"
+>
   <form class="flex flex-col gap-3" on:submit|preventDefault={() => !isLoading && dispatch('generate')}>
-    <div class="flex flex-col gap-3 md:flex-row">
+    <div class="flex flex-col gap-3 md:flex-row md:items-center">
       <!-- 提示词 -->
       <div class="space-y-1.5 flex-1">
-        <div class="relative group">
+        <div class="relative">
           <input
             type="text"
             bind:value={globalPrompt}
             placeholder="输入英文单词，如: person, car, dog..."
-            class={`w-full rounded-xl border bg-bg-light dark:bg-bg-dark px-4 py-3 text-sm text-gray-100 placeholder:text-gray-500 outline-none transition-all
-          ${
-            errors.globalPrompt
-              ? 'border-red-500/50 focus:border-red-500'
-              : 'border-gray-800 hover:border-gray-700 focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20'
-          }`}
+            class={`w-full rounded-xl border px-4 py-3 text-sm
+                    bg-bg-light dark:bg-bg-dark
+                    text-text-light dark:text-text-dark
+                    placeholder:text-text-lightSecondary dark:placeholder:text-text-darkSecondary
+                    outline-none transition-all
+                    focus-visible:ring-2 focus-visible:ring-primary-500/25
+                    focus-visible:ring-offset-2 focus-visible:ring-offset-bg-light dark:focus-visible:ring-offset-bg-dark
+                    ${
+                      errors.globalPrompt
+                        ? 'border-error-500/60 focus-visible:ring-error-500/25 focus:border-error-500'
+                        : 'border-border-light dark:border-border-dark focus:border-primary-500'
+                    }`}
           />
           {#if errors.globalPrompt}
-            <div class="mt-1 text-[11px] text-red-600 dark:text-red-300">{errors.globalPrompt}</div>
+            <div class="mt-1 text-[11px] text-error-600 dark:text-error-300">{errors.globalPrompt}</div>
           {/if}
         </div>
       </div>
+
       <!-- 开关 -->
-      <div class="flex items-center justify-between rounded-xl gap-2">
+      <div class="flex items-center justify-between gap-3 rounded-xl md:mt-[2px]">
         <label class="relative inline-flex cursor-pointer items-center">
           <input type="checkbox" bind:checked={applyMask} class="peer sr-only" />
+
+          <!-- Track -->
           <div
-            class="peer h-6 w-11 rounded-full bg-gray-800 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-gray-400 after:transition-all after:content-[''] peer-checked:bg-primary-600 peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-none border border-gray-700 peer-checked:border-primary-500"
-          />
+            class="relative h-6 w-11 rounded-full transition-colors
+                   bg-gray-200 dark:bg-gray-800
+                   border border-border-light dark:border-border-dark
+                   peer-checked:bg-primary-600 peer-checked:border-primary-500
+                   peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500/25
+                   peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-bg-light dark:peer-focus-visible:ring-offset-bg-dark"
+          >
+            <!-- Thumb -->
+            <div
+              class="absolute left-[2px] top-[2px] h-5 w-5 rounded-full transition-transform
+                     bg-white dark:bg-gray-200
+                     shadow-sm
+                     peer-checked:translate-x-5"
+            />
+          </div>
         </label>
-        <div class="text-xs">应用蒙版</div>
+
+        <div class="text-xs font-medium text-text-lightSecondary dark:text-text-darkSecondary select-none">
+          应用蒙版
+        </div>
       </div>
     </div>
 
     <button
       type="submit"
       disabled={isLoading}
-      class="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-primary-600 to-violet-600 px-4 py-3
-             text-sm font-bold text-white shadow-lg shadow-primary-900/30 transition-all
-             hover:scale-[1.02] hover:shadow-primary-900/50 active:scale-[0.98]
-             disabled:cursor-not-allowed disabled:opacity-50"
+      class="group relative w-full overflow-hidden rounded-xl
+             bg-gradient-to-r from-primary-600 to-violet-600
+             px-4 py-3 text-sm font-bold text-white
+             shadow-lg shadow-primary-900/20 transition-all
+             hover:scale-[1.02] hover:shadow-primary-900/35 active:scale-[0.98]
+             disabled:cursor-not-allowed disabled:opacity-50
+             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40
+             focus-visible:ring-offset-2 focus-visible:ring-offset-bg-light dark:focus-visible:ring-offset-bg-dark"
     >
       <span class="relative z-10 flex w-full items-center justify-center">
-        <!-- 主文案（居中） -->
         <span class="flex items-center gap-2">
           {#if isLoading}
             <iconify-icon icon="eos-icons:loading" class="text-lg" />
             生成中...
           {:else}
             <iconify-icon icon="mdi:sparkles" class="text-xl text-warning-400" />
-            生成视频 <!-- 费用（右侧 pill，不挤主文案） -->
+            生成视频
             {#if !isLoading && costUsd !== null}
-              <span class="">
-                (${costUsd.toFixed(5)}/次)
-              </span>
+              <span class="font-semibold">(${costUsd.toFixed(5)}/次)</span>
             {/if}
           {/if}
         </span>

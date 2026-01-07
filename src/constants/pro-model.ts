@@ -63,7 +63,7 @@ export const proModel = [
     textmodel: 'wavespeed-ai/sam3-video',
     imagemodel: 'wavespeed-ai/sam3-video',
 
-    audio: true,
+    audio: false,
 
     // 你 UI 以档位形式展示时长；SAM3 编辑类一般不太按这个选项限制，先给常用档位
     duration: [5, 10, 30, 60],
@@ -95,7 +95,7 @@ export const proModel = [
     textmodel: 'wavespeed-ai/wan-2.1/v2v-480p-ultra-fast',
     imagemodel: 'wavespeed-ai/wan-2.1/v2v-480p-ultra-fast',
 
-    audio: true,
+    audio: false,
 
     // WaveSpeed 这条 v2v 文档常见是 5~10s；你 UI 先给 5 起步最稳
     duration: [5],

@@ -32,6 +32,52 @@ export class OssService {
     );
   }
 
+  // oss.service.ts
+
+  // ==========================================
+  // [修改后] 增加 User-Agent 头，防止被 CDN 拦截
+  // ==========================================
+  async proxyFile(fileUrl: string, res: any) {
+    try {
+      // 🔥 核心修改：添加 Headers
+      const response = await fetch(fileUrl, {
+        headers: {
+          // 伪装成浏览器，防止 CloudFront/S3 等 CDN 拦截空 User-Agent 的请求
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          // 可选：接受任意类型
+          Accept: '*/*',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Fetch failed with status: ${response.status} ${response.statusText}`,
+        );
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      res.set({
+        'Content-Type':
+          response.headers.get('content-type') || 'application/octet-stream',
+        'Access-Control-Allow-Origin': '*',
+        'Content-Length': buffer.length.toString(),
+      });
+
+      res.send(buffer);
+    } catch (e) {
+      // 建议打印完整错误，方便排查
+      this.logger.error(`Proxy failed for url=${fileUrl}: ${e.message}`);
+      if (!res.headersSent) {
+        res
+          .status(400)
+          .send({ message: 'Failed to proxy file', error: e.message });
+      }
+    }
+  }
+
   async uploadFiles(files: any[], dir = 'uploads') {
     try {
       const urls = await Promise.all(files.map((f) => this.uploadOne(f, dir)));

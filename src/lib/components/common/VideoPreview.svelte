@@ -33,7 +33,7 @@
    * - overlay: 封面左上按钮（填充参数 / 播放）
    * - dialog: 弹窗右上按钮（编辑=填充参数 / 下载 / 关闭）
    */
-  export let actions: Action[] = [
+  export let actions: any = [
     { key: 'apply', icon: 'mdi:pencil-outline', title: '填充参数', placement: 'overlay', variant: 'neutral' },
     { key: 'open', icon: 'mdi:play', title: '播放/预览', placement: 'overlay', variant: 'primary' },
 
@@ -131,15 +131,19 @@
 <!-- 封面卡片：整体可点击打开 -->
 <button
   type="button"
-  class="group relative w-full overflow-hidden rounded-2xl bg-bg-light dark:bg-bg-dark
-         transition hover:border-gray-700 hover:shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+  class="group relative w-full overflow-hidden rounded-2xl
+         bg-bg-light dark:bg-bg-dark
+         border border-border-light dark:border-border-dark
+         transition
+         hover:border-gray-300 dark:hover:border-gray-700
+         hover:shadow-[0_10px_30px_rgba(0,0,0,0.12)] dark:hover:shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
   on:click={open}
   aria-label={title ? `Open video: ${title}` : 'Open video'}
 >
   <div class={`relative w-full ${aspectClass}`}>
     <!-- 骨架屏 -->
     {#if !isPosterReady}
-      <div class="absolute inset-0 z-20 overflow-hidden bg-gray-200 dark:bg-[#1a1a1a]">
+      <div class="absolute inset-0 z-20 overflow-hidden bg-gray-200 dark:bg-gray-850">
         <div class="skeleton-shimmer" />
 
         <div class="absolute inset-0 flex items-center justify-center opacity-10 dark:opacity-20">
@@ -152,7 +156,7 @@
       <img
         src={poster}
         alt={title || 'video'}
-        class={`h-full w-full object-cover transition ${
+        class={`h-full w-full min-h-[90px] object-cover transition ${
           isPosterReady ? 'opacity-95 group-hover:opacity-100' : 'opacity-0'
         }`}
         loading="lazy"
@@ -176,24 +180,32 @@
     {/if}
 
     <!-- hover 暗幕 -->
-    <div class="absolute inset-0 bg-black/25 opacity-0 transition group-hover:opacity-100" />
+    <div class="absolute inset-0 bg-black/15 dark:bg-black/25 opacity-0 transition group-hover:opacity-100" />
 
     <!-- 左上 actions（数据驱动） -->
     <div
-      class="absolute left-1/2 top-1/2 z-10 flex items-center gap-2
+      class="absolute left-1/2 top-1/2 z-10 flex items-center gap-1
          -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity duration-150
          group-hover:opacity-100 focus-within:opacity-100"
     >
       {#each overlayActions as a (a.key + a.icon)}
         <button
           type="button"
-          class={`flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-black/45
-                  text-gray-200 backdrop-blur transition hover:bg-black/55 ${btnHover(a.variant)}`}
+          class={`flex h-9 w-9 items-center justify-center rounded-xl
+          border border-border-light dark:border-white/10
+          bg-white/70 dark:bg-black/45
+          text-text-light dark:text-gray-200
+          backdrop-blur transition
+          hover:bg-white/85 dark:hover:bg-black/55
+          ${btnHover(a.variant)}`}
           on:click={(e) => runAction(a.key, e)}
           title={a.title}
           aria-label={a.title}
         >
-          <iconify-icon icon={a.icon} class={` text-xl ${a.key === 'open' ? 'text-primary-400' : ''}`} />
+          <iconify-icon
+            icon={a.icon}
+            class={`text-xl ${a.key === 'open' ? 'text-primary-500 dark:text-primary-400' : ''}`}
+          />
         </button>
       {/each}
     </div>
@@ -209,43 +221,69 @@
   <div class="fixed inset-0 flex items-center justify-center p-3 md:p-6">
     <!-- 外壳 -->
     <div
-      class="relative z-10 w-[min(980px,94vw)] max-h-[90vh] overflow-hidden rounded-2xl border border-gray-800 bg-[#0f0f0f] flex flex-col"
+      class="relative z-10 w-[min(980px,94vw)] max-h-[90vh] overflow-hidden rounded-2xl
+           border border-border-light dark:border-border-dark
+           bg-bg-light dark:bg-gray-950
+           flex flex-col"
     >
       <!-- 顶栏 -->
-      <div class="shrink-0 flex items-center justify-between border-b border-gray-800 px-4 py-3">
+      <div
+        class="shrink-0 flex items-center justify-between border-b border-border-light dark:border-border-dark px-4 py-3"
+      >
         <div class="min-w-0">
-          <p class="truncate text-sm font-semibold text-gray-100">{title || 'Preview'}</p>
+          <p class="truncate text-sm font-semibold text-text-light dark:text-text-dark">{title || 'Preview'}</p>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1">
           {#each dialogActions as a (a.key + a.icon)}
             {#if a.key === 'download'}
-              <a
-                class={`inline-flex items-center gap-2 rounded-xl border border-gray-800 bg-[#141414]
-                        px-3 py-2 text-xs font-medium text-gray-200 transition ${btnHover(a.variant)}`}
+              <MyButton
+                type="default"
+                size="small"
+                ghost
                 href={src}
                 download
                 target="_blank"
                 rel="noreferrer"
                 title={a.title}
                 aria-label={a.title}
+                class="shadow-sm"
               >
-                <iconify-icon icon={a.icon} class="text-lg" />
-                {#if a.label}<span class="hidden sm:inline">{a.label}</span>{/if}
-              </a>
-            {:else}
-              <button
-                type="button"
-                class={`inline-flex items-center gap-2 rounded-xl border border-gray-800 bg-[#141414]
-                        ${a.key === 'close' && !a.label ? 'h-9 w-9 justify-center px-0' : 'px-3 py-2'}
-                        text-xs font-medium text-gray-200 transition ${btnHover(a.variant)}`}
-                on:click={(e) => runAction(a.key, e)}
+                <div class="flex items-center gap-1">
+                  <iconify-icon icon={a.icon} class="text-lg" />
+                  {#if a.label}<span class="hidden sm:inline">{a.label}</span>{/if}
+                </div>
+              </MyButton>
+            {:else if a.key === 'close' && !a.label}
+              <MyButton
+                type="default"
+                size="small"
+                text
+                circle
                 title={a.title}
                 aria-label={a.title}
+                on:click={(e) => runAction(a.key, e)}
+                class="h-9 w-9 shadow-sm hover:bg-gray-100 dark:hover:bg-gray-800"
               >
-                <iconify-icon icon={a.icon} class={a.key === 'close' && !a.label ? 'text-xl' : 'text-lg'} />
-                {#if a.label}<span class="hidden sm:inline">{a.label}</span>{/if}
-              </button>
+                <div class="flex items-center gap-1">
+                  <iconify-icon icon={a.icon} class="text-xl" />
+                </div>
+              </MyButton>
+            {:else}
+              <MyButton
+                type={a.key === 'edit' ? 'primary' : 'default'}
+                size="small"
+                ghost={a.key !== 'edit'}
+                title={a.title}
+                aria-label={a.title}
+                on:click={(e) => runAction(a.key, e)}
+                class="shadow-sm"
+              >
+                <div class="flex items-center gap-1">
+                  <iconify-icon icon={a.icon} class="text-lg" />
+                  {#if a.label}<span class="hidden sm:inline">{a.label}</span>{/if}
+                </div>
+              </MyButton>
             {/if}
           {/each}
         </div>

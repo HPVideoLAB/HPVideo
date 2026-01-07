@@ -103,3 +103,27 @@ export async function getHistoryList(address: string) {
   if (!res.ok) throw new Error('获取历史记录失败');
   return data;
 }
+// ==========================================
+// 🔥 [新增] 通过后端代理将 URL 转为 File 对象
+// ==========================================
+export async function urlToFileApi(url: string, filename: string = 'image.png'): Promise<File> {
+  // 拼接代理地址，复用 NEST_API_BASE_URL
+  // 最终请求类似于：http://localhost:8080/nest-proxy/oss/proxy?url=...
+  const proxyUrl = `${NEST_API_BASE_URL}/oss/proxy?url=${encodeURIComponent(url)}`;
+
+  try {
+    const res = await fetch(proxyUrl);
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => 'Unknown error');
+      throw new Error(`Proxy fetch failed (${res.status}): ${errText}`);
+    }
+
+    const blob = await res.blob();
+    // 使用后端返回的 Content-Type，或者 blob 自己的 type
+    return new File([blob], filename, { type: blob.type });
+  } catch (err) {
+    console.error('urlToFile error:', err);
+    throw err;
+  }
+}

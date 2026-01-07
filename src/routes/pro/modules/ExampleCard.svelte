@@ -28,7 +28,7 @@
   $: console.log('currentModelValue:', currentModelValue);
 </script>
 
-<div class="md:p-0 mt-4">
+<div class="p-3 border border-gray-200 dark:border-gray-850 rounded-2xl">
   <div class="flex items-center justify-between mb-3 px-1">
     <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">
       示例展示 <span class="text-xs font-normal text-gray-500 ml-2">点击应用同款参数</span>
@@ -36,10 +36,7 @@
   </div>
 
   {#key currentModelValue}
-    <div
-      in:fade={{ duration: 200 }}
-      class="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4"
-    >
+    <div in:fade={{ duration: 200 }} class="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {#each examples as item (item.id)}
         <VideoPreview
           src={item.videoUrl}

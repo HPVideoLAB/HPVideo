@@ -1,34 +1,48 @@
-<!-- VideoUploader.svelte -->
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onDestroy } from 'svelte'; // 1. 引入 onDestroy
 
   export let videoFile: File | null = null;
-  export let status: string = 'idle';
   export let message = '';
 
   const dispatch = createEventDispatcher<{ fileChange: File | null }>();
 
   let isDragging = false;
   let fileInput: HTMLInputElement | null = null;
+
+  // 2. previewUrl 只需要定义，不需要手动赋值，全靠下面的响应式逻辑
   let previewUrl: string | null = null;
+
+  // 🔥🔥🔥 核心修改：监听 videoFile 变化，自动生成/销毁预览链接 🔥🔥🔥
+  // 无论是用户上传，还是父组件回填，只要 videoFile 变了，这里就会执行
+  $: if (videoFile) {
+    // 释放旧的 URL 避免内存泄漏
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    // 生成新的 URL
+    previewUrl = URL.createObjectURL(videoFile);
+  } else {
+    // 如果文件被清空，清理 URL
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    previewUrl = null;
+  }
+
+  // 3. 组件销毁时清理内存
+  onDestroy(() => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+  });
 
   function handleFile(f: File | null) {
     if (!f) return;
     // 简单限制 100MB
     if (f.size > 100 * 1024 * 1024) return alert('视频大小请控制在 100MB 以内');
 
+    // 4. 这里只负责更新数据和派发事件，不用管 previewUrl 了（上面响应式会管）
     videoFile = f;
-    // 生成预览
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    previewUrl = URL.createObjectURL(f);
-
     dispatch('fileChange', f);
   }
 
   function clear() {
     videoFile = null;
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    previewUrl = null;
+    // 也不用手动清理 previewUrl，上面的响应式逻辑 else 分支会处理
     dispatch('fileChange', null);
   }
 
@@ -40,7 +54,7 @@
   }
 </script>
 
-<section class="rounded-2xl border border-gray-200 bg-transparent dark:border-gray-850 flex flex-col h-full">
+<section class="rounded-2xl border border-gray-200 bg-transparent dark:border-gray-850 flex flex-col h-full p-3">
   <div class="mb-3">
     <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">源视频 (Source Video)</h2>
   </div>

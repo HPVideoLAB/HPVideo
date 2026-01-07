@@ -39,14 +39,20 @@
   }
 </script>
 
-<div class="w-full flex flex-col lg:flex-row gap-3 h-full">
-  <div class="flex-1 min-w-0 h-full flex flex-col rounded-2xl border border-white/5 overflow-hidden relative">
+<div class="w-full flex flex-col md:flex-row gap-3 h-full">
+  <div
+    class="flex-1 min-w-0 h-full flex flex-col border border-border-light rounded-2xl
+dark:border-border-dark border-white/5 md:overflow-hidden relative"
+  >
     {#if activeItem}
       {#key activeItem.id}
         <ResVideo item={activeItem} />
       {/key}
     {:else}
-      <div class="flex-1 flex flex-col items-center justify-center text-center p-3">
+      <div
+        class="flex-1 flex flex-col items-center justify-center text-center p-10 md:p-3 border rounded-2xl border-border-light
+dark:border-border-dark"
+      >
         <!-- Icon + glow -->
         <div class="relative mb-2">
           <!-- subtle glow -->

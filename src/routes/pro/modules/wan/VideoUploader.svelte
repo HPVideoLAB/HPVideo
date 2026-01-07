@@ -1,6 +1,5 @@
-<!-- VideoUploader.svelte -->
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onDestroy } from 'svelte';
 
   export let videoFile: File | null = null;
   export let status: string = 'idle';
@@ -10,25 +9,41 @@
 
   let isDragging = false;
   let fileInput: HTMLInputElement | null = null;
+
+  // 预览地址变量，初始为 null
   let previewUrl: string | null = null;
+
+  // 🔥🔥🔥 核心修复：添加响应式监听 🔥🔥🔥
+  // 只要 videoFile 发生变化（无论是父组件回填的，还是刚刚上传的），这里都会执行
+  $: if (videoFile) {
+    // 1. 如果有旧的预览链接，先销毁，释放内存
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    // 2. 为新的 File 对象生成 Blob URL
+    previewUrl = URL.createObjectURL(videoFile);
+  } else {
+    // 3. 如果 videoFile 被清空，清理预览链接
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    previewUrl = null;
+  }
+
+  // 组件销毁时，确保释放内存
+  onDestroy(() => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+  });
 
   function handleFile(f: File | null) {
     if (!f) return;
     // 简单限制 100MB
     if (f.size > 100 * 1024 * 1024) return alert('视频大小请控制在 100MB 以内');
 
+    // 修改：只负责赋值 videoFile，URL 的生成交给上面的 $: 逻辑
     videoFile = f;
-    // 生成预览
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    previewUrl = URL.createObjectURL(f);
-
     dispatch('fileChange', f);
   }
 
   function clear() {
+    // 修改：只负责清空变量，URL 的清理交给上面的 $: 逻辑
     videoFile = null;
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    previewUrl = null;
     dispatch('fileChange', null);
   }
 
