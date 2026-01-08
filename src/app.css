@@ -115,5 +115,72 @@ input::-webkit-inner-spin-button {
 input[type='number'] {
   -moz-appearance: textfield; /* Firefox */
 }
+[data-sonner-toaster][data-theme='light'] {
+  width: 100% !important;
+  --normal-text: #171717; /* text.light */
+}
+/* =========================
+   Sonner loading bar 颜色适配
+   ========================= */
 
-/* dark:bg-white dark:text-zinc-950 bg-black text-gray-100 */
+/* 亮色模式 */
+[data-sonner-toaster][data-theme='light'] .sonner-loading-bar {
+  background-color: rgba(23, 23, 23, 0.65); /* text.light (#171717) */
+}
+
+/* 暗黑模式 */
+.dark [data-sonner-toaster] .sonner-loading-bar,
+[data-sonner-toaster][data-theme='dark'] .sonner-loading-bar {
+  background-color: rgba(249, 249, 249, 0.75); /* text.dark (#f9f9f9) */
+}
+
+/* 暗黑模式也一起修：用 text.dark */
+.dark [data-sonner-toaster][data-theme='dark'],
+.dark [data-sonner-toaster][data-theme='light'] {
+  --normal-text: #f9f9f9; /* text.dark */
+}
+
+/* 3) 外壳胶囊 + 磨砂（仅外观，不动内部内容/配色） */
+li[data-sonner-toast][data-styled='true'] {
+  position: fixed !important;
+  top: 66px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 99999999 !important;
+  width: fit-content !important;
+  border-radius: 9999px !important;
+  padding: 13px 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px;
+  /* --- 2. 形状调整：大圆角 (胶囊形) --- */
+  border-radius: 36px !important; /* 拉满圆角，变成药丸形状 */
+  font-size: 15px !important;
+  /* --- 3. 毛玻璃核心 --- */
+  backdrop-filter: blur(20px) !important; /* 模糊度加大，磨砂感更强 */
+  -webkit-backdrop-filter: blur(20px) !important; /* 兼容 Safari */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important; /* 悬浮阴影 */
+
+  /* 强制 GPU 渲染防止闪烁 */
+  transform: translateZ(0);
+  background-color: rgba(255, 255, 255, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+}
+/* 移动端下 */
+@media screen and (max-width: 768px) {
+  li[data-sonner-toast][data-styled='true'] {
+    width: max-content !important;
+
+    max-width: 100% !important;
+  }
+}
+
+/* 暗黑外壳基底（不写死 color，避免吃掉 rich-colors） */
+.dark li[data-sonner-toast][data-styled='true'] {
+  background: rgba(23, 23, 23, 0.55) !important;
+  border: 1px solid rgba(51, 51, 51, 0.55) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+li[data-sonner-toast][data-styled='true'] {
+  pointer-events: none !important;
+}

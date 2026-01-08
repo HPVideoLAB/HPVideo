@@ -114,6 +114,13 @@
     return ethers.hexlify(randomBytes);
   }
   const walletLogin = async (address: string) => {
+    // 👇👇👇【核心修复】加上这行保命判断 👇👇👇
+    if (!address || typeof address !== 'string') {
+      console.log('Wallet address is not ready yet');
+      return;
+    }
+    // 👆👆👆 修复结束 👆👆👆
+
     const randomMessage = generateRandomMessage(32);
     let combinedText = '';
     for (let i = 0; i < randomMessage.length; i++) {
@@ -272,7 +279,7 @@
               $showPriceView = true;
             }}
           >
-            <div class=" m-auto self-center">
+            <div class=" m-auto self-center hidden md:block">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 1024 1024"

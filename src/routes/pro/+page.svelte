@@ -78,7 +78,6 @@
   // ==========================================
   // ⚡️ 提交处理 (调用时必须传 Address 和 Callback)
   // ==========================================
-
   const handlePikaGenerate = async () => {
     if (pikaFiles.length === 0) {
       toast.warning('Please upload video');
@@ -363,7 +362,7 @@
     <div
       class="border-border-light flex flex-col gap-4 pr-4 relative dark:border-border-dark border-r flex-[2.5] xl:flex-[1.7] md:overflow-y-auto scroll-fade"
     >
-      <div class="w-[200px]">
+      <div class="max-w-[270px]">
         <MySelect options={modelOptions} bind:value={currentModelValue} />
       </div>
 
@@ -376,11 +375,7 @@
           on:clear={() => (pikaFiles = [])}
         />
       {:else if currentModelValue === 'sam3-video'}
-        <SamVideoUploader
-          bind:videoFile={samVideo}
-          status={$isGenerating ? 'uploading' : 'idle'}
-          on:fileChange={(e) => (samVideo = e.detail)}
-        />
+        <SamVideoUploader bind:videoFile={samVideo} on:fileChange={(e) => (samVideo = e.detail)} />
       {:else}
         <WanVideoUploader
           bind:videoFile={wanVideo}
