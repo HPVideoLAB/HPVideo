@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { onMount, getContext } from 'svelte';
+  import { onMount, getContext, onDestroy } from 'svelte'; // 🔥 引入 onDestroy
   import { user, theme, threesideAccount } from '$lib/stores';
+  import MyButton from '$lib/components/common/MyButton.svelte';
 
   // 👇 1. 引入和 Navbar 一模一样的 Web3 依赖
   import { watchAccount, getAccount } from '@wagmi/core';
@@ -9,15 +10,30 @@
   import { Base64 } from 'js-base64';
   import { ethers } from 'ethers';
 
-  // 复用设置组件，这样用户登录后能看到同样的下拉菜单
+  // 复用设置组件
   import Setting from '$lib/components/layout/Navbar/Setting.svelte';
 
   const i18n: any = getContext('i18n');
 
+  // 🔥 定义加载状态变量
+  let isLoading = false;
+
+  // 用于清理监听器
+  let unwatchAccount: () => void;
+  let unsubscribeModal: () => void;
+
   // 👇 2. 完全复用 watchAccount 逻辑
-  // 这确保了 MetaMask 切换账号时，你的应用能实时响应
-  watchAccount(wconfig, {
+  unwatchAccount = watchAccount(wconfig, {
     async onChange() {
+      const currentStatus = getAccount(wconfig).status;
+
+      // 状态变化时的 Loading 控制
+      if (currentStatus === 'reconnecting' || currentStatus === 'connecting') {
+        isLoading = true;
+      } else if (currentStatus === 'disconnected') {
+        isLoading = false;
+      }
+
       try {
         if ($threesideAccount?.address) {
           clearConnector();
@@ -25,44 +41,75 @@
           await signIn();
         } else {
           let account = getAccount(wconfig);
-          // 如果检测到钱包连接，自动执行签名登录
           if (account?.address) {
-            await walletLogin(account?.address);
-            $threesideAccount = account;
+            isLoading = true;
+            try {
+              await walletLogin(account?.address);
+              $threesideAccount = account;
+            } finally {
+              isLoading = false;
+            }
           }
         }
       } catch (error) {
         console.log('wallet login error:', error);
+        isLoading = false;
       }
     },
   });
 
-  // 打开钱包选择弹窗 (Web3Modal)
+  // 🔥 初始化与监听
+  onMount(() => {
+    // 1. 初始状态检查
+    const account = getAccount(wconfig);
+    if (account.status === 'reconnecting' || (account.status === 'connected' && !$threesideAccount?.address)) {
+      isLoading = true;
+    }
+
+    // 2. 🔥🔥🔥 核心修复：监听 Web3Modal 弹窗状态
+    // 如果用户打开了弹窗，然后点击了右上角关闭或者点击遮罩层关闭，
+    // 此时 open 变为 false，且状态依然是 disconnected，说明用户取消了连接。
+    unsubscribeModal = modal.subscribeState((state) => {
+      if (!state.open) {
+        // 弹窗关闭了
+        const currentAccount = getAccount(wconfig);
+        // 如果此时钱包依然是断开状态，说明用户取消了操作 -> 关闭 Loading
+        if (currentAccount.status === 'disconnected') {
+          isLoading = false;
+        }
+      }
+    });
+  });
+
+  // 组件销毁时清理所有监听
+  onDestroy(() => {
+    if (unwatchAccount) unwatchAccount();
+    if (unsubscribeModal) unsubscribeModal();
+  });
+
+  // 打开钱包选择弹窗
   const connect = () => {
+    isLoading = true;
     checkModalTheme();
     modal.open();
   };
 
   const checkModalTheme = () => {
-    // 简化了逻辑，但效果一致
     modal.setThemeMode($theme === 'light' ? 'light' : 'dark');
   };
 
-  // 👇 3. 【核心安全逻辑】生成随机数
-  // 必须保留，否则签名无效
+  // 👇 3. 【核心安全逻辑】(完全未动)
   function generateRandomMessage(length: number) {
     const randomBytes = new Uint8Array(length);
     crypto.getRandomValues(randomBytes);
     return ethers.hexlify(randomBytes);
   }
 
-  // 👇 4. 【核心安全逻辑】签名与登录
-  // 这段逻辑完全复制自 Navbar，包含那个特殊的 XOR 循环
+  // 👇 4. 【核心安全逻辑】(完全未动)
   const walletLogin = async (address: string) => {
     const randomMessage = generateRandomMessage(32);
     let combinedText = '';
 
-    // 这里的循环逻辑必须和后端匹配
     for (let i = 0; i < randomMessage.length; i++) {
       let charCode = randomMessage.charCodeAt(i);
       let vectorCharCode = address.charCodeAt(i % address.length);
@@ -71,7 +118,6 @@
 
     const signature = Base64.encode(combinedText);
 
-    // 调用 API
     const walletSignInResult = await walletSignIn({
       address,
       nonce: randomMessage,
@@ -81,18 +127,14 @@
       id: localStorage.visitor_id || '',
     });
 
-    // 处理登录结果
     if (walletSignInResult?.token) {
       localStorage.removeItem('token');
       localStorage.token = walletSignInResult.token;
       user.set(walletSignInResult);
-
-      // 注意：Pro 页面不需要加载聊天列表 (getChatList)，所以我去掉了那部分
-      // 这会让 Pro 页面加载更快，且不影响登录状态
     }
   };
 
-  // 游客登录逻辑 (退出钱包时使用)
+  // 游客登录逻辑 (完全未动)
   async function signIn() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -106,20 +148,22 @@
 
 <div class="flex items-center">
   {#if $threesideAccount?.address}
-    <div class="bg-gray-100 dark:bg-gray-800 rounded-full p-1 flex items-center pr-2">
-      <div class="px-3 py-1 text-sm font-medium text-gray-700 dark:text-gray-200 font-mono">
+    <div
+      class="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full p-1 pl-3 flex items-center pr-2 transition-all"
+    >
+      <iconify-icon icon="lucide:wallet" class="text-gray-500 dark:text-gray-400 mr-2 text-base" />
+
+      <div class="text-sm font-medium text-gray-700 dark:text-gray-200 font-mono mr-1">
         {$threesideAccount.address.slice(0, 6)}...{$threesideAccount.address.slice(-4)}
       </div>
-
       <Setting />
     </div>
+  {:else if isLoading}
+    <MyButton type="primary" round size="small" loading disabled>Connecting...</MyButton>
   {:else}
-    <button
-      id="connect-wallet-btn"
-      class="bg-[#9903E6] hover:bg-[#8602ca] text-white px-5 py-2 rounded-xl text-sm font-bold transition shadow-lg shadow-purple-500/20 active:scale-95"
-      on:click={connect}
-    >
+    <MyButton size="small" round type="primary" on:click={() => connect()}>
+      <iconify-icon slot="icon" icon="lucide:wallet" class="text-lg" />
       {$i18n.t('Connect Wallet')}
-    </button>
+    </MyButton>
   {/if}
 </div>

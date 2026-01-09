@@ -1,49 +1,63 @@
 <script lang="ts">
-  import { createEventDispatcher, onDestroy } from 'svelte'; // 1. 引入 onDestroy
+  import { createEventDispatcher, onDestroy } from 'svelte';
 
   export let videoFile: File | null = null;
   export let message = '';
 
-  const dispatch = createEventDispatcher<{ fileChange: File | null }>();
+  const dispatch = createEventDispatcher<{
+    fileChange: File | null;
+    durationChange: number;
+  }>();
 
   let isDragging = false;
   let fileInput: HTMLInputElement | null = null;
-
-  // 2. previewUrl 只需要定义，不需要手动赋值，全靠下面的响应式逻辑
   let previewUrl: string | null = null;
 
-  // 🔥🔥🔥 核心修改：监听 videoFile 变化，自动生成/销毁预览链接 🔥🔥🔥
-  // 无论是用户上传，还是父组件回填，只要 videoFile 变了，这里就会执行
-  $: if (videoFile) {
-    // 释放旧的 URL 避免内存泄漏
+  // 🔥 修复关键 1：记录上一次的文件引用，防止父组件重绘导致 URL 重新生成
+  let lastVideoFile: File | null = null;
+
+  // 🔥 修复关键 2：只有当文件引用真的变了，才重新生成 URL
+  $: if (videoFile !== lastVideoFile) {
+    lastVideoFile = videoFile; // 更新记录
+
+    // 1. 清理旧链接
     if (previewUrl) URL.revokeObjectURL(previewUrl);
-    // 生成新的 URL
-    previewUrl = URL.createObjectURL(videoFile);
-  } else {
-    // 如果文件被清空，清理 URL
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    previewUrl = null;
+
+    if (videoFile) {
+      // 2. 生成新链接
+      previewUrl = URL.createObjectURL(videoFile);
+    } else {
+      // 3. 清空
+      previewUrl = null;
+      dispatch('durationChange', 0);
+    }
   }
 
-  // 3. 组件销毁时清理内存
   onDestroy(() => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
   });
 
   function handleFile(f: File | null) {
     if (!f) return;
-    // 简单限制 100MB
     if (f.size > 100 * 1024 * 1024) return alert('视频大小请控制在 100MB 以内');
 
-    // 4. 这里只负责更新数据和派发事件，不用管 previewUrl 了（上面响应式会管）
+    // 赋值给 videoFile 会触发上面的 reactive statement
     videoFile = f;
     dispatch('fileChange', f);
   }
 
   function clear() {
     videoFile = null;
-    // 也不用手动清理 previewUrl，上面的响应式逻辑 else 分支会处理
     dispatch('fileChange', null);
+  }
+
+  // 获取时长
+  function onVideoMetadata(e: Event) {
+    const video = e.target as HTMLVideoElement;
+    if (video && video.duration) {
+      // console.log('视频时长:', video.duration);
+      dispatch('durationChange', video.duration);
+    }
   }
 
   function onDrop(e: DragEvent) {
@@ -69,7 +83,7 @@
   {#if !videoFile}
     <button
       type="button"
-      class={`rounded-2xl  flex-1 border-2 border-dashed bg-transparent p-4 transition flex flex-col items-center justify-center gap-3
+      class={`rounded-2xl flex-1 border-2 border-dashed bg-transparent p-4 transition flex flex-col items-center justify-center gap-3
         ${isDragging ? 'border-primary-500 bg-primary-50/10' : 'border-gray-300 hover:border-primary-500'}
         dark:border-gray-700`}
       on:click={() => fileInput?.click()}
@@ -84,10 +98,20 @@
       </div>
     </button>
   {:else}
-    <div class="relative w-full rounded-xl overflow-hidden bg-black border border-gray-200 dark:border-gray-800 group">
-      <video src={previewUrl} controls class="w-full max-h-[240px] object-contain mx-auto" />
+    <div
+      class="relative w-full rounded-xl overflow-hidden bg-black border border-gray-200 dark:border-gray-850 group min-h-[240px] flex items-center justify-center"
+    >
+      {#if previewUrl}
+        <video
+          src={previewUrl}
+          controls
+          class="w-full max-h-[240px] object-contain mx-auto"
+          on:loadedmetadata={onVideoMetadata}
+        />
+      {/if}
+
       <button
-        class="absolute top-2 right-2 bg-red-600/80 hover:bg-red-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition backdrop-blur-sm"
+        class="absolute top-2 right-2 bg-red-600/80 hover:bg-red-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition backdrop-blur-sm z-10"
         on:click|stopPropagation={clear}
       >
         移除

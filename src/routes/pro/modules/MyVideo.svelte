@@ -34,6 +34,8 @@
 
   function handleHistorySelect(e: CustomEvent) {
     const item = e.detail;
+    console.log(item, 'itemitemitem');
+
     manualSelection = item;
     dispatch('select', item); // 回填参数给父组件
   }

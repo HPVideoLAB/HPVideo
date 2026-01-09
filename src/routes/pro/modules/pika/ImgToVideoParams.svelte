@@ -204,7 +204,7 @@
               生成视频 <!-- 费用（右侧 pill，不挤主文案） -->
               {#if !isLoading && costUsd !== null}
                 <span class="">
-                  (${costUsd.toFixed(5)}/次)
+                  (${costUsd.toFixed(3)}/次)
                 </span>
               {/if}
             {/if}

@@ -2,49 +2,60 @@
   import { createEventDispatcher, onDestroy } from 'svelte';
 
   export let videoFile: File | null = null;
-  export let status: string = 'idle';
   export let message = '';
 
-  const dispatch = createEventDispatcher<{ fileChange: File | null }>();
+  const dispatch = createEventDispatcher<{
+    fileChange: File | null;
+    durationChange: number;
+  }>();
 
   let isDragging = false;
   let fileInput: HTMLInputElement | null = null;
-
-  // 预览地址变量，初始为 null
   let previewUrl: string | null = null;
 
-  // 🔥🔥🔥 核心修复：添加响应式监听 🔥🔥🔥
-  // 只要 videoFile 发生变化（无论是父组件回填的，还是刚刚上传的），这里都会执行
-  $: if (videoFile) {
-    // 1. 如果有旧的预览链接，先销毁，释放内存
+  // 🔥 1. 新增：记录上一次的文件引用，用于对比
+  let lastVideoFile: File | null = null;
+
+  // 🔥 2. 修改：增加对比逻辑，防止重复生成 URL
+  $: if (videoFile !== lastVideoFile) {
+    // 更新记录
+    lastVideoFile = videoFile;
+
+    // 清理旧链接
     if (previewUrl) URL.revokeObjectURL(previewUrl);
-    // 2. 为新的 File 对象生成 Blob URL
-    previewUrl = URL.createObjectURL(videoFile);
-  } else {
-    // 3. 如果 videoFile 被清空，清理预览链接
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    previewUrl = null;
+
+    if (videoFile) {
+      // 生成新链接
+      previewUrl = URL.createObjectURL(videoFile);
+    } else {
+      // 清空
+      previewUrl = null;
+      dispatch('durationChange', 0);
+    }
   }
 
-  // 组件销毁时，确保释放内存
   onDestroy(() => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
   });
 
   function handleFile(f: File | null) {
     if (!f) return;
-    // 简单限制 100MB
     if (f.size > 100 * 1024 * 1024) return alert('视频大小请控制在 100MB 以内');
-
-    // 修改：只负责赋值 videoFile，URL 的生成交给上面的 $: 逻辑
+    // 这里不仅更新 prop，也会触发上面的 reactive statement
     videoFile = f;
     dispatch('fileChange', f);
   }
 
   function clear() {
-    // 修改：只负责清空变量，URL 的清理交给上面的 $: 逻辑
     videoFile = null;
     dispatch('fileChange', null);
+  }
+
+  function onVideoMetadata(e: Event) {
+    const video = e.target as HTMLVideoElement;
+    if (video && video.duration) {
+      dispatch('durationChange', video.duration);
+    }
   }
 
   function onDrop(e: DragEvent) {
@@ -86,10 +97,20 @@
       </div>
     </button>
   {:else}
-    <div class="relative w-full rounded-xl overflow-hidden bg-black border border-gray-200 dark:border-gray-800 group">
-      <video src={previewUrl} controls class="w-full max-h-[240px] object-contain mx-auto" />
+    <div
+      class="relative w-full rounded-xl overflow-hidden bg-black border border-gray-200 dark:border-gray-800 group min-h-[240px] flex items-center justify-center"
+    >
+      {#if previewUrl}
+        <video
+          src={previewUrl}
+          controls
+          class="w-full max-h-[240px] object-contain mx-auto"
+          on:loadedmetadata={onVideoMetadata}
+        />
+      {/if}
+
       <button
-        class="absolute top-2 right-2 bg-red-600/80 hover:bg-red-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition backdrop-blur-sm"
+        class="absolute top-2 right-2 bg-red-600/80 hover:bg-red-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition backdrop-blur-sm z-10"
         on:click|stopPropagation={clear}
       >
         移除

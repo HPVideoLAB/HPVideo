@@ -2,7 +2,13 @@
   import WalletConnect from '$lib/components/wallet/WalletConnect.svelte';
   import MyVideo from './modules/MyVideo.svelte';
   import { walletAddress } from '$lib/stores/wallet';
-  // --- 子组件引入 ---
+  import { ensureWalletConnected } from '$lib/utils/wallet/check';
+  import { calculateCost } from '$lib/utils/pro/pricing';
+
+  // 🔥 新引入的恢复工具
+  import { restoreProParams } from '$lib/utils/pro/history-restore';
+
+  // 子组件
   import ImgToVideoUploader from './modules/pika/ImgToVideoUploader.svelte';
   import ImgToVideoParams from './modules/pika/ImgToVideoParams.svelte';
   import SamParams from './modules/sams/SamParams.svelte';
@@ -12,8 +18,8 @@
   import ExampleCard from './modules/ExampleCard.svelte';
   import MySelect from '$lib/components/common/MySelect.svelte';
   import { toast } from 'svelte-sonner';
-  import { urlToFileApi } from '$lib/apis/model/pika';
-  // --- 常量与工具 ---
+
+  // Hooks & Constants
   import { proModel } from '../../constants/pro-model';
   import { useVideoGeneration } from '$lib/hooks/useVideoGeneration';
   import { usePayment } from '$lib/hooks/useProPayment';
@@ -26,315 +32,219 @@
   } from './modules/form';
   import { tick } from 'svelte';
 
-  // --- 初始化 ---
   const { isGenerating, history, submitPika, submitWan, submitSam, loadHistory } = useVideoGeneration();
   const { pay } = usePayment();
 
-  // --- 状态 ---
-  $: modelOptions = proModel.map((m) => ({ value: m.model, label: m.name, icon: m.modelicon, hasAudio: m.audio }));
-  let currentModelValue = proModel[0]?.model || '';
-
-  // Pika Vars
-  let pikaFiles: File[] = [];
-  let pikaPrompt = '';
-  let pikaResolution: '720p' | '1080p' = '720p';
-  let pikaSeed = -1;
-  let pikaTransitions: any[] = [];
-  let pikaErrors: any = {};
-  $: pikaTransitions = syncTransitions(pikaFiles.length, pikaTransitions);
-
-  // Wan Vars
-  let wanVideo: File | null = null;
-  let wanPrompt = '';
-  let wanNegPrompt = '';
-  let wanStrength = 0.9;
-  let wanSeed = -1;
-  let wanLoras: any[] = [];
-  let wanDuration = 5;
-  let wanSteps = 30;
-  let wanCfg = 5;
-  let wanFlow = 3;
-
-  // Sam Vars
-  let samVideo: File | null = null;
-  let samPrompt = '';
-  let samMask = true;
-  // Wan Vars ...
-  let wanErrors: any = {};
-
-  // Sam Vars ...
-  let samErrors: any = {};
+  // --- 模型选择 ---
+  $: modelOptions = proModel.map((m) => ({
+    value: m.model,
+    label: m.name,
+    icon: m.modelicon,
+    hasAudio: m.audio,
+    desc: m.desc,
+  }));
+  let currentModelValue = proModel[2]?.model || '';
 
   // ==========================================
-  // 🔥 回调函数：任务成功后，刷新历史记录
+  // 🟢 Pika State (聚合)
   // ==========================================
-  const handleTaskSuccess = () => {
-    if ($walletAddress) {
-      console.log('🔄 任务完成 (Callback)，正在同步后端数据...', $walletAddress);
-      loadHistory($walletAddress);
-    }
+  let pikaForm = {
+    files: [] as File[],
+    prompt: '',
+    resolution: '720p' as '720p' | '1080p',
+    seed: -1,
+    transitions: [] as any[],
+    errors: {} as any,
   };
 
+  // 响应式逻辑
+  $: pikaForm.transitions = syncTransitions(pikaForm.files.length, pikaForm.transitions);
+  $: pikaDuration = Math.max(totalDuration(pikaForm.transitions), 5);
+  $: pikaCost = calculateCost('pika', {
+    resolution: pikaForm.resolution,
+    duration: totalDuration(pikaForm.transitions),
+  });
+
   // ==========================================
-  // ⚡️ 提交处理 (调用时必须传 Address 和 Callback)
+  // 🔵 Wan State (聚合)
+  // ==========================================
+  let wanForm = {
+    video: null as File | null,
+    prompt: '',
+    negative_prompt: '',
+    strength: 0.9,
+    seed: -1,
+    loras: [] as any[],
+    duration: 5,
+    steps: 30,
+    cfg: 5,
+    flow: 3,
+    errors: {} as any,
+  };
+
+  $: wanCost = calculateCost('wan', { duration: wanForm.duration });
+
+  // ==========================================
+  // 🟣 Sam State (聚合)
+  // ==========================================
+  let samForm = {
+    video: null as File | null,
+    prompt: '',
+    mask: true,
+    duration: 5, // 真实时长
+    errors: {} as any,
+  };
+
+  $: samCost = calculateCost('sam', { duration: samForm.duration });
+
+  // ==========================================
+  // ⚡️ 逻辑：历史记录回填 (极简版)
+  // ==========================================
+  async function handleHistorySelect(e: CustomEvent) {
+    const item = e.detail;
+    if (!item?.params) return;
+
+    // 自动切 Tab
+    const targetModel = proModel.find((m) => m.model.includes(item.params.model));
+    if (targetModel) currentModelValue = targetModel.model;
+    await tick();
+
+    // 🔥 调用抽离的工具函数
+    await restoreProParams(item.params, {
+      setPika: (data) => {
+        // 支持部分更新 (合并)
+        pikaForm = { ...pikaForm, ...data };
+        if (data.transitions) pikaForm.transitions = data.transitions; // 强制覆盖转场
+      },
+      setWan: (data) => {
+        wanForm = { ...wanForm, ...data };
+      },
+      setSam: (data) => {
+        samForm = { ...samForm, ...data, mask: data.apply_mask ?? true };
+      },
+    });
+  }
+
+  // ==========================================
+  // ⚡️ 提交处理 (代码结构保持，但使用聚合对象)
   // ==========================================
   const handlePikaGenerate = async () => {
-    if (pikaFiles.length === 0) {
-      toast.warning('Please upload video');
-      return false;
-    }
+    const address = await ensureWalletConnected();
+    if (!address) return;
+    if (pikaForm.files.length < 2) return toast.warning('Please upload images');
 
     const check = validateImgToVideoForm({
-      filesLen: pikaFiles.length,
-      globalPrompt: pikaPrompt,
-      transitions: pikaTransitions,
-      seed: pikaSeed,
+      filesLen: pikaForm.files.length,
+      globalPrompt: pikaForm.prompt,
+      transitions: pikaForm.transitions,
+      seed: pikaForm.seed,
     });
     if (!check.ok) {
-      pikaErrors = check.errors;
+      pikaForm.errors = check.errors;
       return;
     }
-    pikaErrors = {};
+    pikaForm.errors = {};
 
     const payment = await pay({
-      amount: 0.0001,
+      amount: pikaCost,
       model: 'pika',
-      resolution: pikaResolution,
-      duration: totalDuration(pikaTransitions),
+      resolution: pikaForm.resolution,
+      duration: pikaDuration,
     });
     if (!payment.success) return;
 
     await submitPika(
       {
-        files: pikaFiles,
-        prompt: pikaPrompt,
-        resolution: pikaResolution,
-        transitions: pikaTransitions,
-        seed: pikaSeed,
+        files: pikaForm.files,
+        prompt: pikaForm.prompt,
+        resolution: pikaForm.resolution,
+        transitions: pikaForm.transitions,
+        seed: pikaForm.seed,
       },
       $walletAddress,
-      handleTaskSuccess
+      () => loadHistory($walletAddress)
     );
   };
 
   const handleWanGenerate = async () => {
-    if (!wanVideo) {
-      toast.warning('Please upload video');
-      return false;
-    }
+    const address = await ensureWalletConnected();
+    if (!address) return;
+    if (!wanForm.video) return toast.warning('Please upload video');
 
     const check = validateWanForm({
-      hasVideo: !!wanVideo,
-      prompt: wanPrompt,
-      duration: wanDuration,
-      num_inference_steps: wanSteps,
-      guidance_scale: wanCfg,
-      flow_shift: wanFlow,
-      seed: wanSeed,
-      loras: wanLoras,
+      hasVideo: !!wanForm.video,
+      prompt: wanForm.prompt,
+      duration: wanForm.duration,
+      num_inference_steps: wanForm.steps,
+      guidance_scale: wanForm.cfg,
+      flow_shift: wanForm.flow,
+      seed: wanForm.seed,
+      loras: wanForm.loras,
     });
-
     if (!check.ok) {
-      wanErrors = check.errors;
+      wanForm.errors = check.errors;
       return;
     }
-    wanErrors = {};
+    wanForm.errors = {};
 
-    const payment = await pay({ amount: 0.0001, model: 'wan-2.1', resolution: '720p', duration: wanDuration });
+    const payment = await pay({
+      amount: wanCost,
+      model: 'wan-2.1',
+      resolution: '720p',
+      duration: wanForm.duration,
+    });
     if (!payment.success) return;
 
     await submitWan(
       {
-        videoFile: wanVideo!, // ✅ 关键：非空断言
-        prompt: wanPrompt,
-        negative_prompt: wanNegPrompt,
-        strength: wanStrength,
-        seed: wanSeed,
-        loras: wanLoras,
-        duration: wanDuration,
-        num_inference_steps: wanSteps,
-        guidance_scale: wanCfg,
-        flow_shift: wanFlow,
+        videoFile: wanForm.video!,
+        prompt: wanForm.prompt,
+        negative_prompt: wanForm.negative_prompt,
+        strength: wanForm.strength,
+        seed: wanForm.seed,
+        loras: wanForm.loras,
+        duration: wanForm.duration,
+        num_inference_steps: wanForm.steps,
+        guidance_scale: wanForm.cfg,
+        flow_shift: wanForm.flow,
       },
       $walletAddress,
-      handleTaskSuccess
+      () => loadHistory($walletAddress)
     );
   };
 
   const handleSamGenerate = async () => {
-    if (!samVideo) {
-      toast.warning('Please upload video');
-      return false;
-    }
+    const address = await ensureWalletConnected();
+    if (!address) return;
+    if (!samForm.video) return toast.warning('Please upload video');
 
-    const check = validateSamForm({
-      hasVideo: !!samVideo,
-      prompt: samPrompt,
-    });
-
+    const check = validateSamForm({ hasVideo: !!samForm.video, prompt: samForm.prompt });
     if (!check.ok) {
-      samErrors = check.errors;
+      samForm.errors = check.errors;
       return;
     }
-    samErrors = {};
+    samForm.errors = {};
 
-    const payment = await pay({ amount: 0.0001, model: 'sam3', resolution: 'original', duration: 5 });
+    const payment = await pay({
+      amount: samCost,
+      model: 'sam3',
+      resolution: 'original',
+      duration: samForm.duration,
+    });
     if (!payment.success) return;
 
     await submitSam(
-      { videoFile: samVideo!, prompt: samPrompt, apply_mask: samMask }, // ✅ 关键：非空断言
+      {
+        videoFile: samForm.video!,
+        prompt: samForm.prompt,
+        apply_mask: samForm.mask,
+      },
       $walletAddress,
-      handleTaskSuccess
+      () => loadHistory($walletAddress)
     );
   };
 
-  // 辅助延迟函数：给 DOM 渲染留出缓冲时间
-  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-  // ==========================================
-  // ⚡️ 2. 点击历史记录 -> 回填参数
-  // ==========================================
-  async function handleHistorySelect(e: CustomEvent) {
-    const item = e.detail;
-    if (!item || !item.params) return;
-
-    const p = item.params;
-
-    // 1. 切换模型 Tab
-    const targetModel = proModel.find((m) => m.model.includes(p.model));
-    if (targetModel) {
-      currentModelValue = targetModel.model;
-    }
-
-    // 等待 Tab 切换完成
-    await tick();
-
-    try {
-      // =================================================
-      // 🟢 Pika 逻辑 (已修复转场参数被覆盖的问题)
-      // =================================================
-      if (p.model === 'pika') {
-        pikaPrompt = p.prompt || '';
-        pikaResolution = p.resolution || '720p';
-        pikaSeed = p.seed ?? -1;
-
-        // ❌ 不要直接赋值 pikaTransitions，会被响应式逻辑覆盖
-        // pikaTransitions = p.transitions || [];
-
-        // ✅ 先把转场参数暂存起来
-        const savedTransitions = p.transitions || [];
-
-        if (Array.isArray(p.images) && p.images.length > 0) {
-          toast.promise(
-            async () => {
-              // 1. 下载图片
-              const filePromises = p.images.map((url: string, index: number) =>
-                urlToFileApi(url, `pika_restored_${Date.now()}_${index}.jpg`)
-              );
-              const files = await Promise.all(filePromises);
-
-              // 2. 赋值图片
-              pikaFiles = files;
-
-              // 3. ⏳ 关键：等待 Svelte 响应 syncTransitions 逻辑
-              // 因为 pikaFiles 变了，syncTransitions 会先运行一次初始化结构
-              await tick();
-
-              // 4. ✅ 覆盖回填：此时结构已稳定，将保存的 params 填进去
-              pikaTransitions = savedTransitions;
-
-              // 5. 等待渲染
-              await wait(100);
-
-              return 'Pika 素材恢复成功';
-            },
-            {
-              loading: '正在下载 Pika 图片素材...',
-              success: (msg) => msg,
-              error: '下载失败，请检查网络',
-            }
-          );
-        } else {
-          pikaFiles = [];
-          // 如果没有图片，直接赋值即可
-          pikaTransitions = savedTransitions;
-          toast.success('Pika 参数已恢复 (无图片)');
-        }
-
-        // =================================================
-        // 🔵 Wan 逻辑
-        // =================================================
-      } else if (p.model === 'wan-2.1') {
-        wanPrompt = p.prompt || '';
-        wanNegPrompt = p.negative_prompt || '';
-        wanStrength = p.strength ?? 0.9;
-        wanSeed = p.seed ?? -1;
-        wanDuration = p.duration || 5;
-        wanSteps = p.num_inference_steps || 30;
-        wanCfg = p.guidance_scale || 5;
-        wanFlow = p.flow_shift || 3;
-        wanLoras = p.loras ? JSON.parse(JSON.stringify(p.loras)) : [];
-
-        if (p.video && typeof p.video === 'string') {
-          toast.promise(
-            async () => {
-              const file = await urlToFileApi(p.video, `wan_restored_${Date.now()}.mp4`);
-              wanVideo = file;
-
-              // 等待 <video> 渲染第一帧
-              await tick();
-              await wait(200);
-
-              return 'Wan 视频素材恢复成功';
-            },
-            {
-              loading: '正在下载 Wan 原视频，可能需要几秒...',
-              success: (msg) => msg,
-              error: '下载失败，请检查网络',
-            }
-          );
-        } else {
-          wanVideo = null;
-          toast.success('Wan 参数已恢复 (无视频)');
-        }
-
-        // =================================================
-        // 🟣 Sam 逻辑
-        // =================================================
-      } else if (p.model === 'sam3') {
-        samPrompt = p.prompt || '';
-        samMask = p.apply_mask ?? true;
-
-        if (p.video && typeof p.video === 'string') {
-          toast.promise(
-            async () => {
-              const file = await urlToFileApi(p.video, `sam_restored_${Date.now()}.mp4`);
-              samVideo = file;
-
-              // 等待 <video> 渲染第一帧
-              await tick();
-              await wait(200);
-
-              return 'Sam 视频素材恢复成功';
-            },
-            {
-              loading: '正在下载 Sam 原视频...',
-              success: (msg) => msg,
-              error: '下载失败，请检查网络',
-            }
-          );
-        } else {
-          samVideo = null;
-          toast.success('Sam 参数已恢复 (无视频)');
-        }
-      }
-    } catch (error) {
-      console.error('参数恢复系统错误:', error);
-      toast.error('系统错误，无法恢复参数');
-    }
-  }
-
-  // 🔥 自动加载历史
+  // 自动加载
   $: loadHistory($walletAddress);
 </script>
 
@@ -344,15 +254,11 @@
   >
     <a href="/" class="flex items-center cursor-pointer select-none">
       <span
-        class="text-sm md:text-2xl font-bold tracking-tight
-             bg-gradient-to-r from-primary-400 via-primary-500 to-violet-400
-             bg-clip-text text-transparent
-             drop-shadow-[0_1px_10px_rgba(194,19,242,0.22)]"
+        class="text-sm md:text-2xl font-bold tracking-tight bg-gradient-to-r from-primary-400 via-primary-500 to-violet-400 bg-clip-text text-transparent drop-shadow-[0_1px_10px_rgba(194,19,242,0.22)]"
       >
         HPVideo Pro
       </span>
     </a>
-
     <div><WalletConnect /></div>
   </nav>
 
@@ -368,62 +274,64 @@
 
       {#if currentModelValue === 'pika-v2.2-pikaframes'}
         <ImgToVideoUploader
-          bind:files={pikaFiles}
+          bind:files={pikaForm.files}
           status={$isGenerating ? 'uploading' : 'idle'}
-          on:filesChange={(e) => (pikaFiles = e.detail)}
-          on:removeFile={(e) => (pikaFiles = pikaFiles.filter((_, i) => i !== e.detail))}
-          on:clear={() => (pikaFiles = [])}
+          on:filesChange={(e) => (pikaForm.files = e.detail)}
+          on:removeFile={(e) => (pikaForm.files = pikaForm.files.filter((_, i) => i !== e.detail))}
+          on:clear={() => (pikaForm.files = [])}
         />
       {:else if currentModelValue === 'sam3-video'}
-        <SamVideoUploader bind:videoFile={samVideo} on:fileChange={(e) => (samVideo = e.detail)} />
+        <SamVideoUploader
+          bind:videoFile={samForm.video}
+          on:fileChange={(e) => (samForm.video = e.detail)}
+          on:durationChange={(e) => (samForm.duration = e.detail)}
+        />
       {:else}
         <WanVideoUploader
-          bind:videoFile={wanVideo}
+          bind:videoFile={wanForm.video}
           status={$isGenerating ? 'uploading' : 'idle'}
-          on:fileChange={(e) => (wanVideo = e.detail)}
+          on:fileChange={(e) => (wanForm.video = e.detail)}
         />
       {/if}
 
       <ExampleCard {currentModelValue} on:select={handleHistorySelect} />
 
       <div
-        class="bg-bg-light dark:bg-bg-dark rounded-2xl md:sticky md:bottom-0 md:left-0 z-[99]
-             border-t border-border-light dark:border-border-dark
-             shadow-[0_-10px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-10px_20px_rgba(0,0,0,0.7)]"
+        class="bg-bg-light dark:bg-bg-dark rounded-2xl md:sticky md:bottom-0 md:left-0 z-[99] border-t border-border-light dark:border-border-dark shadow-[0_-10px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-10px_20px_rgba(0,0,0,0.7)]"
       >
         {#if currentModelValue === 'pika-v2.2-pikaframes'}
           <ImgToVideoParams
-            bind:globalPrompt={pikaPrompt}
-            bind:resolution={pikaResolution}
-            bind:seed={pikaSeed}
-            bind:transitions={pikaTransitions}
-            costUsd={0.00001}
-            errors={pikaErrors}
+            bind:globalPrompt={pikaForm.prompt}
+            bind:resolution={pikaForm.resolution}
+            bind:seed={pikaForm.seed}
+            bind:transitions={pikaForm.transitions}
+            costUsd={pikaCost}
+            errors={pikaForm.errors}
             taskStatus={$isGenerating ? 'submitting' : 'idle'}
             on:generate={handlePikaGenerate}
           />
         {:else if currentModelValue === 'sam3-video'}
           <SamParams
-            bind:globalPrompt={samPrompt}
-            bind:applyMask={samMask}
-            costUsd={0.00001}
-            errors={samErrors}
+            bind:globalPrompt={samForm.prompt}
+            bind:applyMask={samForm.mask}
+            costUsd={samCost}
+            errors={samForm.errors}
             taskStatus={$isGenerating ? 'submitting' : 'idle'}
             on:generate={handleSamGenerate}
           />
         {:else}
           <WanParams
-            bind:globalPrompt={wanPrompt}
-            bind:negativePrompt={wanNegPrompt}
-            bind:strength={wanStrength}
-            bind:seed={wanSeed}
-            bind:loras={wanLoras}
-            bind:duration={wanDuration}
-            bind:num_inference_steps={wanSteps}
-            bind:guidance_scale={wanCfg}
-            bind:flow_shift={wanFlow}
-            costUsd={0.00001}
-            errors={wanErrors}
+            bind:globalPrompt={wanForm.prompt}
+            bind:negativePrompt={wanForm.negative_prompt}
+            bind:strength={wanForm.strength}
+            bind:seed={wanForm.seed}
+            bind:loras={wanForm.loras}
+            bind:duration={wanForm.duration}
+            bind:num_inference_steps={wanForm.steps}
+            bind:guidance_scale={wanForm.cfg}
+            bind:flow_shift={wanForm.flow}
+            costUsd={wanCost}
+            errors={wanForm.errors}
             taskStatus={$isGenerating ? 'submitting' : 'idle'}
             on:generate={handleWanGenerate}
           />
@@ -440,48 +348,36 @@
 <style>
   .scroll-fade {
     scrollbar-gutter: stable;
-    --sb-thumb: rgba(180, 180, 180, 0); /* 默认透明 */
+    --sb-thumb: rgba(180, 180, 180, 0);
     --sb-thumb-dark: rgba(180, 180, 180, 0);
-    transition: --sb-thumb 200ms ease, --sb-thumb-dark 200ms ease; /* 有些浏览器不认，但不影响 */
+    transition: --sb-thumb 200ms ease, --sb-thumb-dark 200ms ease;
   }
-
-  /* 用 hover 改变量（过渡由“容器状态变化”驱动） */
   .scroll-fade:hover {
     --sb-thumb: rgba(180, 180, 180, 0.35);
     --sb-thumb-dark: rgba(180, 180, 180, 0.25);
   }
-
-  /* WebKit */
   .scroll-fade::-webkit-scrollbar {
     width: 10px;
   }
-
   .scroll-fade::-webkit-scrollbar-track {
     background: transparent;
   }
-
   .scroll-fade::-webkit-scrollbar-thumb {
     background-color: var(--sb-thumb);
     border-radius: 999px;
     border: 3px solid transparent;
     background-clip: padding-box;
   }
-
-  /* 暗色：thumb 读另一个变量 */
   .dark .scroll-fade::-webkit-scrollbar-thumb {
     background-color: var(--sb-thumb-dark);
   }
-
-  /* Firefox */
   .scroll-fade {
     scrollbar-width: thin;
     scrollbar-color: rgba(180, 180, 180, 0) transparent;
   }
-
   .scroll-fade:hover {
     scrollbar-color: rgba(180, 180, 180, 0.35) transparent;
   }
-
   .dark .scroll-fade:hover {
     scrollbar-color: rgba(180, 180, 180, 0.25) transparent;
   }

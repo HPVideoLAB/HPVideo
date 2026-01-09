@@ -121,7 +121,7 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-1 xl:grid-cols-2 gap-3 mt-3">
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-3">
         <div class="col-span-3 space-y-1">
           <div class="flex justify-between items-center px-1">
             {#if currentStyle.triggerWord}
@@ -343,7 +343,7 @@
             <iconify-icon icon="mdi:sparkles" class="text-xl text-warning-400" />
             生成视频
             {#if !isLoading && costUsd !== null}
-              <span class="font-semibold">(${costUsd.toFixed(5)}/次)</span>
+              <span class="font-semibold">(${costUsd.toFixed(3)}/次)</span>
             {/if}
           {/if}
         </span>

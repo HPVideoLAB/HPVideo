@@ -82,7 +82,7 @@
     {
       label: $i18n.t('Download'),
       icon: 'mdi:download',
-      action: (item: any) => downloadVideo(item.thumbUrl),
+      action: (item: any) => downloadVideo(item.outputUrl),
       tooltip: $i18n.t('Download'),
       disabled: false,
     },
