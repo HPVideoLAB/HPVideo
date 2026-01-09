@@ -2,7 +2,7 @@ export const proModel = [
   {
     name: 'Pika V2.2 Pikaframes',
     model: 'pika-v2.2-pikaframes',
-    modelicon: '/creator/static/icon/pika.png',
+    modelicon: '/creator/icon/pika.png',
     audio: false,
     // 精简后：强调核心机制（多图关键帧 + 转场）.
     desc: '多关键帧图生视频：支持自定义转场，生成连贯流畅的动画。',
@@ -10,7 +10,7 @@ export const proModel = [
   {
     name: 'SAM3 Video',
     model: 'sam3-video',
-    modelicon: '/creator/static/icon/sam.png',
+    modelicon: '/creator/icon/sam.png',
     audio: false,
     // 精简后：强调核心功能（移除/替换对象）
     desc: '视频智能编辑：精准分割、移除或替换画面中的特定对象。',

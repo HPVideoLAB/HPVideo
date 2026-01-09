@@ -287,11 +287,7 @@
           on:durationChange={(e) => (samForm.duration = e.detail)}
         />
       {:else}
-        <WanVideoUploader
-          bind:videoFile={wanForm.video}
-          status={$isGenerating ? 'uploading' : 'idle'}
-          on:fileChange={(e) => (wanForm.video = e.detail)}
-        />
+        <WanVideoUploader bind:videoFile={wanForm.video} on:fileChange={(e) => (wanForm.video = e.detail)} />
       {/if}
 
       <ExampleCard {currentModelValue} on:select={handleHistorySelect} />
