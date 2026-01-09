@@ -4,7 +4,7 @@ export const proModel = [
     model: 'pika-v2.2-pikaframes',
     modelicon: '/creator/static/icon/pika.png',
     audio: false,
-    // 精简后：强调核心机制（多图关键帧 + 转场）
+    // 精简后：强调核心机制（多图关键帧 + 转场）.
     desc: '多关键帧图生视频：支持自定义转场，生成连贯流畅的动画。',
   },
   {
