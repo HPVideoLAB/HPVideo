@@ -1,6 +1,6 @@
 <!-- ImgToVideoParams.svelte -->
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, getContext } from 'svelte';
 
   type Resolution = '720p' | '1080p';
   type Transition = { duration: number; prompt?: string };
@@ -26,7 +26,7 @@
   export let errors: FormErrors = {};
 
   const dispatch = createEventDispatcher<{ generate: void }>();
-
+  const i18n: any = getContext('i18n');
   const MAX_TOTAL_DURATION = 25;
   const MAX_SEED = 2147483647;
 
@@ -44,12 +44,11 @@
 <section
   class="rounded-2xl border border-border-light bg-bg-light p-3 shadow-sm dark:border-border-dark dark:bg-bg-dark"
 >
-  <!-- 表单容器：字段下方可放校验信息；支持回车提交 -->
   <form class="space-y-3" on:submit|preventDefault={onSubmit}>
     <textarea
       bind:value={globalPrompt}
       rows={1}
-      placeholder="请输入提示词..."
+      placeholder={$i18n.t('Enter prompts...')}
       class={`w-full resize-none rounded-2xl border px-4 py-3 text-sm
         bg-bg-light dark:bg-bg-dark
         text-text-light dark:text-text-dark
@@ -69,7 +68,7 @@
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <div>
         <label class="mb-1 block text-[10px] xl:text-xs font-medium text-gray-700 dark:text-gray-300"
-          >分辨率（resolution）</label
+          >{$i18n.t('Resolution')}</label
         >
         <select
           bind:value={resolution}
@@ -93,7 +92,7 @@
 
       <div>
         <label class="mb-1 block text-nowrap text-[10px] xl:text-xs font-medium text-gray-700 dark:text-gray-300">
-          Seed（-1 随机；0~{MAX_SEED}）
+          {$i18n.t('Seed (-1 random; 0~')}{MAX_SEED})
         </label>
         <input
           type="number"
@@ -121,20 +120,25 @@
     {#if transitions.length > 0}
       <div class="pt-1">
         <div class="mb-2 flex items-center justify-between">
-          <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">转场（transitions，可选）</div>
-          <div class="text-xs text-gray-600 dark:text-gray-400">数量：{transitions.length}（必须 = 图片数 - 1）</div>
+          <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">{$i18n.t('Transitions (optional)')}</div>
+          <div class="text-xs text-gray-600 dark:text-gray-400">
+            {$i18n.t('Count:')}
+            {transitions.length}（{$i18n.t('Must equal image count - 1')}）
+          </div>
         </div>
 
         <div class="space-y-2">
           {#each transitions as t, i}
             <div class="rounded-2xl border border-border-light bg-gray-50 p-3 dark:border-border-dark dark:bg-gray-950">
               <div class="mb-2 flex items-center justify-between">
-                <div class="text-xs font-medium text-gray-700 dark:text-gray-300">段 {i + 1}</div>
+                <div class="text-xs font-medium text-gray-700 dark:text-gray-300">{$i18n.t('Segment')} {i + 1}</div>
               </div>
 
               <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <div>
-                  <label class="mb-1 block text-[11px] text-gray-600 dark:text-gray-400">duration（秒，正整数）</label>
+                  <label class="mb-1 block text-[11px] text-gray-600 dark:text-gray-400"
+                    >{$i18n.t('Duration (seconds, integer)')}</label
+                  >
                   <input
                     type="number"
                     min="1"
@@ -157,11 +161,13 @@
                 </div>
 
                 <div>
-                  <label class="mb-1 block text-[11px] text-gray-600 dark:text-gray-400">prompt（可选，仅该段）</label>
+                  <label class="mb-1 block text-[11px] text-gray-600 dark:text-gray-400"
+                    >{$i18n.t('Prompt (optional, specific segment)')}</label
+                  >
                   <input
                     type="text"
                     bind:value={t.prompt}
-                    placeholder="该段局部提示（可选）"
+                    placeholder={$i18n.t('Local prompt for this segment (optional)')}
                     class={`w-full rounded-xl border bg-transparent px-3 py-2 text-sm
                            text-gray-900 placeholder:text-gray-500 focus:outline-none
                            dark:text-gray-100 dark:placeholder:text-gray-500
@@ -183,8 +189,6 @@
     {/if}
 
     <div class="pt-1">
-      <!-- submit 按钮：loading 时禁用，并显示不同文案 -->
-
       <button
         type="submit"
         disabled={isLoading}
@@ -194,17 +198,16 @@
         disabled:cursor-not-allowed disabled:opacity-50"
       >
         <span class="relative z-10 flex w-full items-center justify-center">
-          <!-- 主文案（居中） -->
           <span class="flex items-center gap-2">
             {#if isLoading}
               <iconify-icon icon="eos-icons:loading" class="text-lg" />
-              生成中...
+              {$i18n.t('Generating...')}
             {:else}
               <iconify-icon icon="mdi:sparkles" class="text-xl text-warning-400" />
-              生成视频 <!-- 费用（右侧 pill，不挤主文案） -->
+              {$i18n.t('Generate Video')}
               {#if !isLoading && costUsd !== null}
                 <span class="">
-                  (${costUsd.toFixed(3)}/次)
+                  (${costUsd.toFixed(3)}{$i18n.t('/time')})
                 </span>
               {/if}
             {/if}

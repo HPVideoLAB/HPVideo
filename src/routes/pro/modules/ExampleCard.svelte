@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, getContext } from 'svelte';
   import VideoPreview from '$lib/components/common/VideoPreview.svelte';
   import { exampleData } from '../../../constants/example-data';
   // 引入 fade 动画可以让切换更丝滑（可选）
@@ -8,6 +8,7 @@
   export let currentModelValue: string = '';
 
   const dispatch = createEventDispatcher();
+  const i18n: any = getContext('i18n');
 
   $: examples = (() => {
     if (!currentModelValue) return [];
@@ -31,7 +32,8 @@
 <div class="p-3 border border-gray-200 dark:border-gray-850 rounded-2xl">
   <div class="flex items-center justify-between mb-3 px-1">
     <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">
-      示例展示 <span class="text-xs font-normal text-gray-500 ml-2">点击应用同款参数</span>
+      {$i18n.t('Example Showcase')}
+      <span class="text-xs font-normal text-gray-500 ml-2">{$i18n.t('Click to apply parameters')}</span>
     </h2>
   </div>
 
@@ -51,7 +53,7 @@
         <div
           class="col-span-full text-center text-gray-500 text-xs py-6 bg-gray-50 dark:bg-white/5 rounded-lg border border-dashed border-gray-200 dark:border-white/10"
         >
-          该模型暂无示例数据
+          {$i18n.t('No example data for this model')}
         </div>
       {/if}
     </div>

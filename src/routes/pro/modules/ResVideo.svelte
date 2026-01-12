@@ -1,4 +1,3 @@
-<!-- ResVideo.svelte -->
 <script lang="ts">
   import { getContext } from 'svelte';
   import dayjs from 'dayjs';
@@ -70,8 +69,8 @@
     a.remove();
   }
 
-  //按钮
-  const buttons = [
+  //按钮 (注意：为了让语言切换时按钮文案也能变，建议这里用 reactive $:)
+  $: buttons = [
     {
       label: $i18n.t('Copy Prompt'),
       icon: 'mdi:clipboard-text',
@@ -121,7 +120,6 @@
          border border-border-light bg-bg-light p-3 shadow-sm
          dark:border-border-dark dark:bg-bg-dark"
   >
-    <!-- 顶部信息条：时间 / 模型 / 状态 + 操作（贴近你 History 的那套样式） -->
     <div class="flex items-center justify-between gap-3">
       <div class="w-full">
         <div class="flex flex-wrap items-center justify-between gap-2 w-full">
@@ -146,16 +144,16 @@
       </div>
     </div>
 
-    <!-- 主预览区域：只显示一个 -->
     <div class=" w-full">
       {#if item.status === 'processing'}
         <div class="w-full mx-auto">
           <div class={`${stageClass(item.status)} text-white bg-gray-900 dark:bg-gray-900`} style={boxStyle()}>
             <div class="animate-pulse flex flex-col items-center justify-center">
               <img class="size-10" src="/creator/static/video/video_generating.png" alt="" />
-              <span class="text-sm text-gray-50 mt-2"
-                >{$i18n.t('Video Generating...')}(预估需要{modelDuration[item.model]}分钟)</span
-              >
+              <span class="text-sm text-gray-50 mt-2">
+                {$i18n.t('Video Generating...')}
+                ({$i18n.t('(Estimated: ')}{modelDuration[item.model]}{$i18n.t(' minutes)')})
+              </span>
               <span class="text-xs text-gray-100/80 mt-1 px-6 text-center">
                 {$i18n.t('Please keep this page open')}
               </span>

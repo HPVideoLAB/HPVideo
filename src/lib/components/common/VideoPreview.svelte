@@ -5,7 +5,7 @@
   - 无 Svelte a11y 警告：不在 div/dialog 上绑 click；全部用 button/a
 -->
 <script lang="ts">
-  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+  import { createEventDispatcher, onDestroy, onMount, getContext } from 'svelte';
   import MyButton from '$lib/components/common/MyButton.svelte';
   type VideoPreviewParams = Record<string, any>;
   type Aspect = 'video' | 'square' | '4/3';
@@ -27,6 +27,7 @@
   export let title: string = '';
   export let params: VideoPreviewParams = {};
   export let aspect: Aspect = 'video';
+  const i18n: any = getContext('i18n');
 
   /**
    * 数据驱动 actions：
@@ -34,30 +35,47 @@
    * - dialog: 弹窗右上按钮（编辑=填充参数 / 下载 / 关闭）
    */
   export let actions: any = [
-    { key: 'apply', icon: 'mdi:pencil-outline', title: '填充参数', placement: 'overlay', variant: 'neutral' },
-    { key: 'open', icon: 'mdi:play', title: '播放/预览', placement: 'overlay', variant: 'primary' },
+    {
+      key: 'apply',
+      icon: 'mdi:pencil-outline',
+      title: $i18n.t('Fill Parameters'),
+      placement: 'overlay',
+      variant: 'neutral',
+    },
+    {
+      key: 'open',
+      icon: 'mdi:play',
+      title: $i18n.t('Play/Preview'),
+      placement: 'overlay',
+      variant: 'primary',
+    },
 
     {
       key: 'apply',
       icon: 'mdi:pencil-outline',
-      title: '编辑（填充参数）',
-      label: '编辑',
+      title: $i18n.t('Edit (Fill Parameters)'),
+      label: $i18n.t('Edit'),
       placement: 'dialog',
       variant: 'primary',
     },
     {
       key: 'download',
       icon: 'mdi:download',
-      title: '下载视频',
-      label: '下载',
+      title: $i18n.t('Download Video'),
+      label: $i18n.t('Download'),
       placement: 'dialog',
       variant: 'primary',
     },
-    { key: 'close', icon: 'mdi:close', title: '关闭', placement: 'dialog', variant: 'primary' },
+    {
+      key: 'close',
+      icon: 'mdi:close',
+      title: $i18n.t('Close'),
+      placement: 'dialog',
+      variant: 'primary',
+    },
   ];
 
   const dispatch = createEventDispatcher<{ apply: VideoPreviewParams }>();
-
   let dialogEl: HTMLDialogElement | null = null;
 
   // 用于弹窗播放的 video

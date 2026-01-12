@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, getContext } from 'svelte';
 
   const dispatch = createEventDispatcher<{ select: HistoryItem }>();
+  const i18n: any = getContext('i18n');
 
   type Status = 'processing' | 'completed' | 'failed';
 
@@ -32,7 +33,6 @@
          bg-bg-light dark:bg-bg-dark shadow-sm overflow-hidden
          md:h-[calc(100vh-90px)] md:overflow-y-auto scroll-fade"
 >
-  <!-- Header -->
   <div
     class="sticky top-0 z-10
            p-3 flex items-center justify-between gap-2
@@ -41,7 +41,7 @@
            supports-[backdrop-filter]:backdrop-blur
            supports-[backdrop-filter]:bg-bg-light/75 supports-[backdrop-filter]:dark:bg-bg-dark/60"
   >
-    <div class="text-sm font-semibold text-text-light dark:text-text-dark">历史</div>
+    <div class="text-sm font-semibold text-text-light dark:text-text-dark">{$i18n.t('History')}</div>
     <div class="text-xs text-text-lightSecondary dark:text-text-darkSecondary">{items.length}</div>
   </div>
 
@@ -53,7 +53,7 @@
                px-4 py-8 text-center text-sm
                text-text-lightSecondary dark:text-text-darkSecondary"
       >
-        暂无记录
+        {$i18n.t('No records')}
       </div>
     {:else}
       {#each items as it (it.id)}
@@ -70,7 +70,6 @@
             }`}
         >
           <div class="flex flex-col gap-2">
-            <!-- Media -->
             <div
               class={`w-full aspect-video rounded-xl overflow-hidden relative
                       bg-gray-100 dark:bg-gray-950
@@ -86,12 +85,12 @@
                   {#if it.status === 'processing'}
                     <div class="flex flex-col items-center text-text-lightSecondary dark:text-text-darkSecondary">
                       <iconify-icon icon="eos-icons:loading" class="text-2xl mb-1" />
-                      <span class="text-[10px]">生成中...</span>
+                      <span class="text-[10px]">{$i18n.t('Generating...')}</span>
                     </div>
                   {:else if it.status === 'failed'}
                     <div class="flex flex-col items-center text-error-600 dark:text-error-400">
                       <iconify-icon icon="mdi:alert-circle-outline" class="text-2xl mb-1" />
-                      <span class="text-[10px]">失败</span>
+                      <span class="text-[10px]">{$i18n.t('Failed')}</span>
                     </div>
                   {:else}
                     <iconify-icon icon="mdi:video-outline" class="text-2xl opacity-25 dark:opacity-30" />
@@ -100,7 +99,6 @@
               {/if}
 
               {#if it.outputUrl}
-                <!-- svelte-ignore a11y-media-has-caption -->
                 <video
                   src={it.outputUrl}
                   class={`w-full h-full object-cover transition-opacity duration-500
@@ -114,13 +112,11 @@
                 />
               {/if}
 
-              <!-- Selected indicator (subtle) -->
               {#if it.id === selectedId}
                 <div class="absolute inset-0 ring-1 ring-primary-500/60 pointer-events-none rounded-xl" />
               {/if}
             </div>
 
-            <!-- Meta -->
             <div class="px-1">
               <p class="text-xs text-text-lightSecondary dark:text-text-darkSecondary line-clamp-1 truncate">
                 {it.prompt}
@@ -135,8 +131,6 @@
                 >
                   {it.model}
                 </span>
-
-                <!-- 右侧可留给状态/时间（不改结构的话先不加） -->
               </div>
             </div>
           </div>

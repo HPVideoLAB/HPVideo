@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onDestroy } from 'svelte';
+  import { createEventDispatcher, onDestroy, getContext } from 'svelte';
 
   export let videoFile: File | null = null;
   export let message = '';
@@ -8,10 +8,13 @@
     fileChange: File | null;
     durationChange: number;
   }>();
-
+  const i18n: any = getContext('i18n');
   let isDragging = false;
   let fileInput: HTMLInputElement | null = null;
   let previewUrl: string | null = null;
+
+  // 提取 Alert 消息为响应式变量，以便在 JS 中使用 i18n
+  $: limitMsg = $i18n.t('Please keep video size under 100MB');
 
   // 🔥 修复关键 1：记录上一次的文件引用，防止父组件重绘导致 URL 重新生成
   let lastVideoFile: File | null = null;
@@ -39,7 +42,7 @@
 
   function handleFile(f: File | null) {
     if (!f) return;
-    if (f.size > 100 * 1024 * 1024) return alert('视频大小请控制在 100MB 以内');
+    if (f.size > 100 * 1024 * 1024) return alert(limitMsg);
 
     // 赋值给 videoFile 会触发上面的 reactive statement
     videoFile = f;
@@ -70,7 +73,7 @@
 
 <section class="rounded-2xl border border-gray-200 bg-transparent dark:border-gray-850 flex flex-col h-full p-3">
   <div class="mb-3">
-    <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">源视频 (Source Video)</h2>
+    <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{$i18n.t('Source Video')}</h2>
   </div>
   <input
     bind:this={fileInput}
@@ -93,8 +96,8 @@
     >
       <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-50 text-2xl dark:bg-gray-800">🎬</div>
       <div class="text-center flex flex-col md:flex-row gap-1 items-center">
-        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">点击上传或拖拽视频</p>
-        <p class="text-xs text-gray-500">(MP4 / MOV / WebM)</p>
+        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{$i18n.t('Click to upload or drag video')}</p>
+        <p class="text-xs text-gray-500">{$i18n.t('(MP4 / MOV / WebM)')}</p>
       </div>
     </button>
   {:else}
@@ -114,7 +117,7 @@
         class="absolute top-2 right-2 bg-red-600/80 hover:bg-red-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition backdrop-blur-sm z-10"
         on:click|stopPropagation={clear}
       >
-        移除
+        {$i18n.t('Remove')}
       </button>
     </div>
     {#if message}

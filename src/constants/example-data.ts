@@ -1,5 +1,4 @@
 // src/constants/example-data.ts
-// src/constants/example-data.ts
 
 export type ExampleItem = {
   id: string;
@@ -16,17 +15,19 @@ export const exampleData: Record<string, ExampleItem[]> = {
   // DTO 允许字段：model, prompt, seed, images, resolution, transitions
   // 你当前示例里额外带 video/apply_mask 为 null：这里保持一致
   // ====================================================
+
   'pika-v2.2-pikaframes': [
     {
       id: 'pika-1',
-      title: '电影人像转场',
+      title: 'Cinematic Portrait Transition',
       model: 'pika',
       coverUrl:
         'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/f7fe8a67-cc5a-4579-a232-2bafbc296f54.jpg',
       videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/59b706c7720e4b1d80104cd4188489d1/1.mp4',
       params: {
         model: 'pika',
-        prompt: '电影级特写人像，柔光，浅景深，镜头轻微推进，发丝细节清晰，肤色自然，高级质感，画面稳定无抖动',
+        prompt:
+          'Cinematic close-up portrait, soft lighting, shallow depth of field, subtle camera push-in, clear hair details, natural skin tone, premium texture, stable footage without jitter',
         seed: -1,
         images: [
           'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/f7fe8a67-cc5a-4579-a232-2bafbc296f54.jpg',
@@ -40,7 +41,7 @@ export const exampleData: Record<string, ExampleItem[]> = {
     },
     {
       id: 'pika-2',
-      title: '赛博朋克霓虹雨夜',
+      title: 'Cyberpunk Neon Rainy Night',
       model: 'pika',
       coverUrl:
         'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/bc48ba88-057c-432f-b276-cbb7e1746e27.jpg',
@@ -48,7 +49,7 @@ export const exampleData: Record<string, ExampleItem[]> = {
       params: {
         model: 'pika',
         prompt:
-          '赛博朋克城市街景，霓虹灯在湿地面反射，雨丝与薄雾，镜头平滑横移，细节丰富，灯牌文字稳定清晰，避免闪烁抖动',
+          'Cyberpunk city street view, neon lights reflecting on wet ground, rain and mist, smooth camera pan, rich details, stable and clear neon sign text, avoid flickering',
         seed: 3416,
         images: [
           'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/bc48ba88-057c-432f-b276-cbb7e1746e27.jpg',
@@ -62,14 +63,15 @@ export const exampleData: Record<string, ExampleItem[]> = {
     },
     {
       id: 'pika-3',
-      title: '产品广告微距质感',
+      title: 'Product Commercial Macro',
       model: 'pika',
       coverUrl:
         'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/768d75c6-213d-4c3e-8dfe-b4f4329eda9b.jpg',
       videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/df8f4618f5b345ceb16e9fd2b8ebc334/1.mp4',
       params: {
         model: 'pika',
-        prompt: '产品广告镜头，干净背景，影棚柔光，高级高光与材质细节，微距特写，镜头缓慢环绕，画面稳定无抖动',
+        prompt:
+          'Product commercial shot, clean background, soft studio lighting, high-quality highlights and material details, macro close-up, slow camera orbit, stable footage without jitter',
         seed: 202401,
         images: [
           'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/768d75c6-213d-4c3e-8dfe-b4f4329eda9b.jpg',
@@ -83,14 +85,15 @@ export const exampleData: Record<string, ExampleItem[]> = {
     },
     {
       id: 'pika-4',
-      title: '卡通3D角色动效',
+      title: '3D Cartoon Character Motion',
       model: 'pika',
       coverUrl:
         'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/e1772859-e0b3-4485-b7c4-fbd24f1bb448.jpg',
       videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/ac3c4eb522a741459230586acff598a6/1.mp4',
       params: {
         model: 'pika',
-        prompt: '可爱3D卡通角色，皮克斯风格，柔和光照与高饱和色彩，角色轻微跳跃动作，镜头稳定，边缘干净无闪烁',
+        prompt:
+          'Cute 3D cartoon character, Pixar style, soft lighting and high saturation colors, slight jumping action, stable camera, clean edges without flickering',
         seed: -1,
         images: [
           'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/e1772859-e0b3-4485-b7c4-fbd24f1bb448.jpg',
@@ -112,7 +115,7 @@ export const exampleData: Record<string, ExampleItem[]> = {
   'wan-2.1-v2v': [
     {
       id: 'wan-1',
-      title: '电影胶片调色',
+      title: 'Cinematic Film Grading',
       model: 'wan-2.1',
       coverUrl:
         'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/02d60835-ab71-459f-8d93-b0e1dd14eaa3.png',
@@ -136,7 +139,7 @@ export const exampleData: Record<string, ExampleItem[]> = {
     },
     {
       id: 'wan-2',
-      title: '二次元动漫化',
+      title: 'Anime Style Transformation',
       model: 'wan-2.1',
       coverUrl:
         'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/c2cca37c-cbc2-469c-bca0-9e05322f71d8.png',
@@ -160,7 +163,7 @@ export const exampleData: Record<string, ExampleItem[]> = {
     },
     {
       id: 'wan-3',
-      title: '粘土动画风格',
+      title: 'Claymation Style',
       model: 'wan-2.1',
       coverUrl:
         'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/404b7026-a407-4a3f-bfe6-918020dafc3e.png',
@@ -184,7 +187,7 @@ export const exampleData: Record<string, ExampleItem[]> = {
     },
     {
       id: 'wan-4',
-      title: '黑白老电影复古',
+      title: 'Vintage Black & White Film',
       model: 'wan-2.1',
       coverUrl:
         'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/99050830-c420-41fe-b26d-77d74f905528.png',
@@ -216,7 +219,7 @@ export const exampleData: Record<string, ExampleItem[]> = {
   'sam3-video': [
     {
       id: 'sam-1',
-      title: '人物智能分割',
+      title: 'Smart Person Segmentation',
       model: 'sam3',
       coverUrl:
         'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/5dc55255-ea62-4455-8fcc-c6a685790bf1.png',
@@ -232,7 +235,7 @@ export const exampleData: Record<string, ExampleItem[]> = {
     },
     {
       id: 'sam-2',
-      title: '汽车主体抠图',
+      title: 'Car Subject Matting',
       model: 'sam3',
       coverUrl:
         'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/b62dd559-fb11-4e6f-9985-1ffe33bef460.png',
@@ -248,7 +251,7 @@ export const exampleData: Record<string, ExampleItem[]> = {
     },
     {
       id: 'sam-3',
-      title: '宠物动态识别',
+      title: 'Pet Motion Recognition',
       model: 'sam3',
       coverUrl:
         'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/d6199a07-fd39-49b1-9f8e-237df92da44a.png',
@@ -264,7 +267,7 @@ export const exampleData: Record<string, ExampleItem[]> = {
     },
     {
       id: 'sam-4',
-      title: '电商高跟鞋产品抠图',
+      title: 'E-commerce High Heels Matting',
       model: 'sam3',
       coverUrl:
         'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/093a9726-a807-4d6e-a7fe-6b99106dfc71.png',

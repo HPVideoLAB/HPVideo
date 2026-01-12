@@ -1,7 +1,6 @@
-<!-- WanParams.svelte -->
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
   import { VIDEO_STYLES } from '../../../../constants/videoStyles';
+  import { createEventDispatcher, onDestroy, getContext } from 'svelte';
 
   // Props
   export let globalPrompt = '';
@@ -21,6 +20,7 @@
   export let taskStatus = 'idle';
   export let errors: any = {};
 
+  const i18n: any = getContext('i18n');
   const dispatch = createEventDispatcher<{ generate: void }>();
   $: isLoading = taskStatus === 'submitting' || taskStatus === 'processing';
 
@@ -58,7 +58,7 @@
         <textarea
           bind:value={globalPrompt}
           rows={1}
-          placeholder="描述视频内容..."
+          placeholder={$i18n.t('Describe video content...')}
           class={`w-full resize-none rounded-2xl border px-4 py-3 text-sm
                   bg-bg-light dark:bg-bg-dark
                   text-text-light dark:text-text-dark
@@ -78,12 +78,11 @@
       </div>
     </div>
 
-    <!-- Strength + Params Panel -->
     <div class="rounded-2xl border border-border-light dark:border-border-dark px-3 py-2">
       <div>
         <div class="flex justify-between items-end mb-2">
           <label class="text-xs font-medium text-text-lightSecondary dark:text-text-darkSecondary">
-            重绘幅度 (Strength)
+            {$i18n.t('Strength (Redraw)')}
           </label>
 
           <div
@@ -95,7 +94,6 @@
           </div>
         </div>
 
-        <!-- Slider (视觉轨道) -->
         <div class="relative flex items-center h-5">
           <input
             type="range"
@@ -132,15 +130,16 @@
                        transition flex items-center gap-1 opacity-80 hover:opacity-100"
                 on:click={() => addTrigger(currentStyle.triggerWord)}
               >
-                <span class="truncate max-w-[120px]">+ 推荐词</span>
+                <span class="truncate max-w-[120px]">{$i18n.t('+ Recommended')}</span>
               </button>
             {/if}
           </div>
         </div>
 
-        <!-- Style select -->
         <div class="col-span-3 xl:col-span-1 space-y-1">
-          <label class="text-xs font-medium text-text-lightSecondary dark:text-text-darkSecondary px-1">风格滤镜</label>
+          <label class="text-xs font-medium text-text-lightSecondary dark:text-text-darkSecondary px-1"
+            >{$i18n.t('Style Filter')}</label
+          >
 
           <div class="relative group">
             <select
@@ -162,9 +161,10 @@
           </div>
         </div>
 
-        <!-- Seed -->
         <div class="col-span-3 xl:col-span-1 space-y-1">
-          <label class="text-xs font-medium text-text-lightSecondary dark:text-text-darkSecondary px-1">随机种子</label>
+          <label class="text-xs font-medium text-text-lightSecondary dark:text-text-darkSecondary px-1"
+            >{$i18n.t('Random Seed')}</label
+          >
 
           <div class="relative group">
             <input
@@ -191,17 +191,16 @@
           </div>
         </div>
 
-        <!-- Negative prompt -->
         <div class="col-span-3 xl:col-span-1 space-y-1">
           <label class="text-xs font-medium text-text-lightSecondary dark:text-text-darkSecondary px-1"
-            >负向提示词</label
+            >{$i18n.t('Negative Prompt')}</label
           >
 
           <div class="relative group">
             <input
               type="text"
               bind:value={negativePrompt}
-              placeholder="负向提示词..."
+              placeholder={$i18n.t('Negative prompts...')}
               class="w-full xl:w-[180px] rounded-xl border px-4 py-2.5 text-xs
                      bg-bg-light dark:bg-bg-dark
                      text-text-light dark:text-text-dark
@@ -217,7 +216,6 @@
       </div>
     </div>
 
-    <!-- Advanced -->
     <div>
       <button
         type="button"
@@ -227,7 +225,7 @@
                transition-colors"
         on:click={() => (showAdvanced = !showAdvanced)}
       >
-        <span>高级参数 (Advanced)</span>
+        <span>{$i18n.t('Advanced Parameters')}</span>
         <span class={`transform transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''} opacity-60`}
           >▼</span
         >
@@ -243,7 +241,7 @@
             <label
               class="text-[10px] text-text-lightSecondary dark:text-text-darkSecondary uppercase tracking-wider font-bold"
             >
-              Duration
+              {$i18n.t('Duration')}
             </label>
             <div class="relative">
               <select
@@ -265,7 +263,7 @@
             <label
               class="text-[10px] text-text-lightSecondary dark:text-text-darkSecondary uppercase tracking-wider font-bold"
             >
-              Steps
+              {$i18n.t('Steps')}
             </label>
             <input
               type="number"
@@ -284,7 +282,7 @@
             <label
               class="text-[10px] text-text-lightSecondary dark:text-text-darkSecondary uppercase tracking-wider font-bold"
             >
-              CFG Scale
+              {$i18n.t('CFG Scale')}
             </label>
             <input
               type="number"
@@ -304,7 +302,7 @@
             <label
               class="text-[10px] text-text-lightSecondary dark:text-text-darkSecondary uppercase tracking-wider font-bold"
             >
-              Flow Shift
+              {$i18n.t('Flow Shift')}
             </label>
             <input
               type="number"
@@ -323,7 +321,6 @@
       {/if}
     </div>
 
-    <!-- Submit -->
     <button
       type="submit"
       disabled={isLoading}
@@ -338,12 +335,12 @@
         <span class="flex items-center gap-2">
           {#if isLoading}
             <iconify-icon icon="eos-icons:loading" class="text-lg" />
-            生成中...
+            {$i18n.t('Generating...')}
           {:else}
             <iconify-icon icon="mdi:sparkles" class="text-xl text-warning-400" />
-            生成视频
+            {$i18n.t('Generate Video')}
             {#if !isLoading && costUsd !== null}
-              <span class="font-semibold">(${costUsd.toFixed(3)}/次)</span>
+              <span class="font-semibold">(${costUsd.toFixed(3)}{$i18n.t('/time')})</span>
             {/if}
           {/if}
         </span>

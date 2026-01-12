@@ -4,7 +4,7 @@
   import { walletAddress } from '$lib/stores/wallet';
   import { ensureWalletConnected } from '$lib/utils/wallet/check';
   import { calculateCost } from '$lib/utils/pro/pricing';
-
+  import { getContext } from 'svelte';
   // 🔥 新引入的恢复工具
   import { restoreProParams } from '$lib/utils/pro/history-restore';
 
@@ -34,6 +34,7 @@
 
   const { isGenerating, history, submitPika, submitWan, submitSam, loadHistory } = useVideoGeneration();
   const { pay } = usePayment();
+  const i18n: any = getContext('i18n');
 
   // --- 模型选择 ---
   $: modelOptions = proModel.map((m) => ({
@@ -41,7 +42,8 @@
     label: m.name,
     icon: m.modelicon,
     hasAudio: m.audio,
-    desc: m.desc,
+    desc: $i18n.t(`model_desc_${m.model}`)
+
   }));
   let currentModelValue = proModel[2]?.model || '';
 
@@ -131,7 +133,7 @@
   const handlePikaGenerate = async () => {
     const address = await ensureWalletConnected();
     if (!address) return;
-    if (pikaForm.files.length < 2) return toast.warning('Please upload images');
+    if (pikaForm.files.length < 2) return toast.warning($i18n.t('Please upload images'));
 
     const check = validateImgToVideoForm({
       filesLen: pikaForm.files.length,
@@ -169,7 +171,7 @@
   const handleWanGenerate = async () => {
     const address = await ensureWalletConnected();
     if (!address) return;
-    if (!wanForm.video) return toast.warning('Please upload video');
+    if (!wanForm.video) return toast.warning($i18n.t('Please upload video'));
 
     const check = validateWanForm({
       hasVideo: !!wanForm.video,
@@ -216,7 +218,7 @@
   const handleSamGenerate = async () => {
     const address = await ensureWalletConnected();
     if (!address) return;
-    if (!samForm.video) return toast.warning('Please upload video');
+    if (!samForm.video) return toast.warning($i18n.t('Please upload video'));
 
     const check = validateSamForm({ hasVideo: !!samForm.video, prompt: samForm.prompt });
     if (!check.ok) {

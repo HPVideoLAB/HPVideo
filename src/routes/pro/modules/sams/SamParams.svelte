@@ -1,6 +1,5 @@
-<!-- SamParams.svelte -->
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, getContext } from 'svelte';
 
   export let globalPrompt = '';
   export let applyMask = true;
@@ -8,6 +7,7 @@
   export let errors: any = {};
   export let costUsd: number | null = null; // 例如 0.12；null 表示不显示
 
+  const i18n: any = getContext('i18n');
   const dispatch = createEventDispatcher<{ generate: void }>();
   $: isLoading = taskStatus === 'submitting' || taskStatus === 'processing';
 </script>
@@ -20,13 +20,12 @@
 >
   <form class="flex flex-col gap-3" on:submit|preventDefault={() => !isLoading && dispatch('generate')}>
     <div class="flex flex-col gap-3 md:flex-row md:items-center">
-      <!-- 提示词 -->
       <div class="space-y-1.5 flex-1">
         <div class="relative">
           <input
             type="text"
             bind:value={globalPrompt}
-            placeholder="输入英文单词，如: person, car, dog..."
+            placeholder={$i18n.t('Enter English words, e.g., person, car, dog...')}
             class={`w-full rounded-xl border px-4 py-3 text-sm
                     bg-bg-light dark:bg-bg-dark
                     text-text-light dark:text-text-dark
@@ -46,12 +45,10 @@
         </div>
       </div>
 
-      <!-- 开关 -->
       <div class="flex items-center justify-between gap-3 rounded-xl md:mt-[2px]">
         <label class="relative inline-flex cursor-pointer items-center">
           <input type="checkbox" bind:checked={applyMask} class="peer sr-only" />
 
-          <!-- Track -->
           <div
             class="relative h-6 w-11 rounded-full transition-colors
                    bg-gray-200 dark:bg-gray-800
@@ -60,7 +57,6 @@
                    peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500/25
                    peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-bg-light dark:peer-focus-visible:ring-offset-bg-dark"
           >
-            <!-- Thumb -->
             <div
               class="absolute left-[2px] top-[2px] h-5 w-5 rounded-full transition-transform
                      bg-white dark:bg-gray-200
@@ -71,7 +67,7 @@
         </label>
 
         <div class="text-xs font-medium text-text-lightSecondary dark:text-text-darkSecondary select-none">
-          应用蒙版
+          {$i18n.t('Apply Mask')}
         </div>
       </div>
     </div>
@@ -92,12 +88,12 @@
         <span class="flex items-center gap-2">
           {#if isLoading}
             <iconify-icon icon="eos-icons:loading" class="text-lg" />
-            生成中...
+            {$i18n.t('Generating...')}
           {:else}
             <iconify-icon icon="mdi:sparkles" class="text-xl text-warning-400" />
-            生成视频
+            {$i18n.t('Generate Video')}
             {#if !isLoading && costUsd !== null}
-              <span class="font-semibold">(${costUsd.toFixed(3)}/次)</span>
+              <span class="font-semibold">(${costUsd.toFixed(3)}{$i18n.t('/time')})</span>
             {/if}
           {/if}
         </span>

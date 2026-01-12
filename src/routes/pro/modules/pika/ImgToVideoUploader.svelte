@@ -1,6 +1,5 @@
-<!-- ImgToVideoUploader.svelte -->
 <script lang="ts">
-  import { createEventDispatcher, onDestroy } from 'svelte';
+  import { createEventDispatcher, onDestroy, getContext } from 'svelte';
   import MyButton from '$lib/components/common/MyButton.svelte';
   type UploadStatus = 'idle' | 'valid' | 'uploading' | 'success' | 'error';
 
@@ -16,6 +15,7 @@
 
   const ACCEPT_TEXT = 'image/png,image/jpeg';
   const MAX_FILES = 5;
+  const i18n: any = getContext('i18n');
 
   let isDragging = false;
   let fileInput: HTMLInputElement | null = null;
@@ -101,12 +101,10 @@
 </script>
 
 <section class="rounded-2xl border border-gray-200 bg-transparent p-3 dark:border-gray-850 flex flex-col h-full">
-  <!-- 标题 -->
   <div class="mb-3">
-    <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">关键帧图片（images）</h2>
+    <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{$i18n.t('Keyframe Images (images)')}</h2>
   </div>
 
-  <!-- 上传区域 -->
   <input
     bind:this={fileInput}
     class="hidden"
@@ -116,7 +114,6 @@
     on:change={onFileInputChange}
     disabled={status === 'uploading'}
   />
-  <!-- 上传按钮 -->
   <button
     type="button"
     class={`rounded-2xl flex-1 border-2 border-dashed bg-transparent p-4 transition
@@ -131,8 +128,10 @@
   >
     <div class="flex flex-col items-center gap-3 text-center">
       <div class="space-y-1">
-        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">把图片拖到这里，或点击选择图片</p>
-        <p class="text-xs text-gray-600 dark:text-gray-400">PNG/JPG 最多 5 张 · 作为关键帧</p>
+        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+          {$i18n.t('Drag images here, or click to select')}
+        </p>
+        <p class="text-xs text-gray-600 dark:text-gray-400">{$i18n.t('PNG/JPG up to 5 images · as keyframes')}</p>
       </div>
 
       <div class="flex flex-wrap items-center justify-center gap-2">
@@ -147,7 +146,7 @@
           on:click={openPicker}
           disabled={status === 'uploading'}
         >
-          选择图片
+          {$i18n.t('Select Images')}
         </button>
 
         <button
@@ -158,7 +157,7 @@
           on:click|stopPropagation={() => dispatch('clear')}
           disabled={status === 'uploading' || files.length === 0}
         >
-          清空
+          {$i18n.t('Clear')}
         </button>
       </div>
 
@@ -174,12 +173,11 @@
     </div>
   </button>
 
-  <!-- 文件预览 -->
   {#if files.length > 0}
     <div class="mt-3">
       <div class="mb-2 flex items-center justify-between">
-        <div class="text-xs font-medium text-gray-700 dark:text-gray-300">图片预览（最多 5 张）</div>
-        <div class="text-xs text-gray-600 dark:text-gray-400">{files.length} 张</div>
+        <div class="text-xs font-medium text-gray-700 dark:text-gray-300">{$i18n.t('Image Preview (max 5)')}</div>
+        <div class="text-xs text-gray-600 dark:text-gray-400">{files.length} {$i18n.t('Images Count')}</div>
       </div>
 
       <div class="grid grid-cols-5 gap-2">
@@ -193,7 +191,7 @@
               on:click|stopPropagation={() => dispatch('removeFile', idx)}
               disabled={status === 'uploading'}
             >
-              移除
+              {$i18n.t('Remove')}
             </button>
           </div>
         {/each}

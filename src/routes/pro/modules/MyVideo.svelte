@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, getContext } from 'svelte';
   import ResVideo from './ResVideo.svelte';
   import History from './History.svelte';
 
@@ -17,6 +17,7 @@
   export let items: HistoryItem[] = [];
 
   const dispatch = createEventDispatcher();
+  const i18n: any = getContext('i18n');
 
   let manualSelection: HistoryItem | null = null;
 
@@ -55,9 +56,7 @@ dark:border-border-dark border-white/5 md:overflow-hidden relative"
         class="flex-1 flex flex-col items-center justify-center text-center p-10 md:p-3 border rounded-2xl border-border-light
 dark:border-border-dark"
       >
-        <!-- Icon + glow -->
         <div class="relative mb-2">
-          <!-- subtle glow -->
           <div
             class="pointer-events-none absolute inset-0 -z-10 h-16 w-16 rounded-full blur-2xl opacity-30
                  bg-primary-500/30 dark:bg-primary-500/20"
@@ -65,12 +64,15 @@ dark:border-border-dark"
           <iconify-icon icon="mdi:creation-outline" class="text-7xl text-primary-500/70 dark:text-primary-400/70" />
         </div>
 
-        <!-- Text -->
         <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
-          释放你的创造潜力，体验 <span class="text-primary-500/90 dark:text-primary-400">HPVideo AI</span> 的魔力。
+          {$i18n.t('Unleash your creative potential, experience')}
+          <span class="text-primary-500/90 dark:text-primary-400">HPVideo AI</span>
+          {$i18n.t("'s magic.")}
         </p>
 
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">选择模型并上传素材，即可开始生成。</p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">
+          {$i18n.t('Select a model and upload assets to start generating.')}
+        </p>
       </div>
     {/if}
   </div>

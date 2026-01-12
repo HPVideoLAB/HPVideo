@@ -12,7 +12,7 @@ export interface VideoStyle {
 export const VIDEO_STYLES: VideoStyle[] = [
   {
     id: 'none',
-    label: '默认 (无风格)',
+    label: 'Default (No Style)',
     value: '',
     triggerWord: '',
     strength: 0.5,
@@ -20,7 +20,7 @@ export const VIDEO_STYLES: VideoStyle[] = [
   },
   {
     id: 'shinkai',
-    label: '新海诚动漫',
+    label: 'Shinkai Anime',
     value: 'Cseti/wan-14b-shinkai-anime-style-lora-v1',
     triggerWord: 'sh1nka1 animation style, anime style, highly detailed',
     strength: 0.85,
@@ -28,7 +28,7 @@ export const VIDEO_STYLES: VideoStyle[] = [
   },
   {
     id: 'wallace',
-    label: '粘土定格动画',
+    label: 'Clay Stop Motion',
     value: 'Cseti/wan-14b-wallace_and_gromit-style-lora-v1',
     triggerWord: 'wallace and gromit style, claymation, stop motion',
     strength: 0.9,
@@ -36,7 +36,7 @@ export const VIDEO_STYLES: VideoStyle[] = [
   },
   {
     id: 'rick_morty',
-    label: '瑞克和莫蒂 (美漫)',
+    label: 'Rick and Morty Style',
     value: 'DeverStyle/rick-and-morty-style-wan-21',
     triggerWord: 'rick and morty style, flat color, cartoon',
     strength: 0.85,
@@ -44,7 +44,7 @@ export const VIDEO_STYLES: VideoStyle[] = [
   },
   {
     id: 'mix3d',
-    label: '3D 盲盒公仔',
+    label: '3D Blind Box Toy',
     value: 'Ashmotv/mix3d_style_wan-lora',
     triggerWord: 'mix3d style, 3d render, c4d, blender, cute',
     strength: 0.8,
@@ -52,7 +52,7 @@ export const VIDEO_STYLES: VideoStyle[] = [
   },
   {
     id: 'vector',
-    label: '扁平矢量插画',
+    label: 'Flat Vector Art',
     value: 'Ashmotv/vect0r_style_wan_v2-lora',
     triggerWord: 'vector art, flat illustration, minimal',
     strength: 0.8,
