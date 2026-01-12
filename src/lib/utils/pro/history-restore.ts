@@ -2,9 +2,15 @@
 import { toast } from 'svelte-sonner';
 import { tick } from 'svelte';
 import { urlToFileApi } from '$lib/apis/model/pika';
+// 👇 引入 i18n store 和 get 方法
+import { get } from 'svelte/store';
+import i18n from '$lib/i18n'; // 请根据你项目的实际 i18n store 路径调整，通常是 '$lib/i18n' 或 '$lib/i18n/index'
 
 // 辅助延迟
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// 👇 辅助翻译函数
+const t = (key: string) => get(i18n).t(key);
 
 /**
  * 核心恢复逻辑
@@ -53,9 +59,13 @@ export async function restoreProParams(
               transitions: savedTransitions,
             });
             await wait(100);
-            return 'Pika 素材恢复成功';
+            return t('Pika material restored successfully'); // 👇 国际化
           },
-          { loading: '正在恢复 Pika 素材...', success: (m) => m, error: '素材下载失败' }
+          {
+            loading: t('Restoring Pika materials...'), // 👇 国际化
+            success: (m) => m,
+            error: t('Material download failed'), // 👇 国际化
+          }
         );
       } else {
         // 无图片情况
@@ -66,7 +76,7 @@ export async function restoreProParams(
           seed: params.seed ?? -1,
           transitions: savedTransitions,
         });
-        toast.success('Pika 参数已恢复');
+        toast.success(t('Pika parameters restored')); // 👇 国际化
       }
 
       // ================= Wan 2.1 =================
@@ -90,13 +100,17 @@ export async function restoreProParams(
             callbacks.setWan({ ...basicData, video: file });
             await tick();
             await wait(200);
-            return 'Wan 视频恢复成功';
+            return t('Wan video restored successfully'); // 👇 国际化
           },
-          { loading: '正在下载源视频...', success: (m) => m, error: '视频下载失败' }
+          {
+            loading: t('Downloading source video...'), // 👇 国际化
+            success: (m) => m,
+            error: t('Video download failed'), // 👇 国际化
+          }
         );
       } else {
         callbacks.setWan({ ...basicData, video: null });
-        toast.success('Wan 参数已恢复');
+        toast.success(t('Wan parameters restored')); // 👇 国际化
       }
 
       // ================= Sam 3 =================
@@ -113,17 +127,21 @@ export async function restoreProParams(
             callbacks.setSam({ ...basicData, video: file });
             await tick();
             await wait(200);
-            return 'Sam 视频恢复成功';
+            return t('Sam video restored successfully'); // 👇 国际化
           },
-          { loading: '正在下载源视频...', success: (m) => m, error: '视频下载失败' }
+          {
+            loading: t('Downloading source video...'), // 👇 国际化
+            success: (m) => m,
+            error: t('Video download failed'), // 👇 国际化
+          }
         );
       } else {
         callbacks.setSam({ ...basicData, video: null });
-        toast.success('Sam 参数已恢复');
+        toast.success(t('Sam parameters restored')); // 👇 国际化
       }
     }
   } catch (error) {
     console.error('Restore Error:', error);
-    toast.error('参数恢复系统错误');
+    toast.error(t('Parameter restoration system error')); // 👇 国际化
   }
 }

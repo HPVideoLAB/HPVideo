@@ -1084,5 +1084,16 @@
   "Payment canceled": "결제 취소됨",
   "model_desc_pika-v2.2-pikaframes": "다중 키프레임 비디오 생성: 사용자 지정 전환 효과 지원, 매끄러운 애니메이션 생성.",
   "model_desc_sam3-video": "스마트 비디오 편집: 특정 객체를 정밀하게 분할, 제거 또는 교체.",
-  "model_desc_wan-2.1-v2v": "비디오 스타일 변환: 원래 동작 리듬을 유지하면서 스타일과 조명을 재구성."
+  "model_desc_wan-2.1-v2v": "비디오 스타일 변환: 원래 동작 리듬을 유지하면서 스타일과 조명을 재구성.",
+  "Pika material restored successfully": "Pika 자료 복구 성공",
+  "Restoring Pika materials...": "Pika 자료 복구 중...",
+  "Material download failed": "자료 다운로드 실패",
+  "Pika parameters restored": "Pika 매개변수 복구됨",
+  "Wan video restored successfully": "Wan 비디오 복구 성공",
+  "Downloading source video...": "소스 비디오 다운로드 중...",
+  "Video download failed": "비디오 다운로드 실패",
+  "Wan parameters restored": "Wan 매개변수 복구됨",
+  "Sam video restored successfully": "Sam 비디오 복구 성공",
+  "Sam parameters restored": "Sam 매개변수 복구됨",
+  "Parameter restoration system error": "매개변수 복구 시스템 오류"
 }

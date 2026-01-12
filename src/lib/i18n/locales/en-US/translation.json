@@ -1083,5 +1083,16 @@
   "Payment canceled": "Payment canceled",
   "model_desc_pika-v2.2-pikaframes": "Multi-keyframe Image-to-Video: Supports custom transitions for smooth animation.",
   "model_desc_sam3-video": "Smart Video Editing: Accurately segment, remove, or replace specific objects.",
-  "model_desc_wan-2.1-v2v": "Video Style Transfer: Maintain original motion rhythm while redrawing style and lighting."
+  "model_desc_wan-2.1-v2v": "Video Style Transfer: Maintain original motion rhythm while redrawing style and lighting.",
+  "Pika material restored successfully": "Pika material restored successfully",
+  "Restoring Pika materials...": "Restoring Pika materials...",
+  "Material download failed": "Material download failed",
+  "Pika parameters restored": "Pika parameters restored",
+  "Wan video restored successfully": "Wan video restored successfully",
+  "Downloading source video...": "Downloading source video...",
+  "Video download failed": "Video download failed",
+  "Wan parameters restored": "Wan parameters restored",
+  "Sam video restored successfully": "Sam video restored successfully",
+  "Sam parameters restored": "Sam parameters restored",
+  "Parameter restoration system error": "Parameter restoration system error"
 }
