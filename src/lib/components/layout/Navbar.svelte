@@ -269,7 +269,7 @@
         </div>
 
         <MyButton round size="small" type="primary" on:click={() => goto('/creator/pro')} class="ml-2"
-          >{$i18n.t('Advanced Mode')}</MyButton
+          >{$i18n.t('Creative Mode')}</MyButton
         >
         <div class="ml-1">
           <button
