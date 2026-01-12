@@ -12,7 +12,7 @@ export const projectId = '59443aa943b8865491317c04a19a8be3';
 const metadata = {
   name: 'HPVideo',
   description: 'BNB Chain USDT Payment',
-  url: 'http://www.hpvideo.io',
+  url: 'https://hpvideo.io',
   icons: ['https://avatars.githubusercontent.com/u/37784886'],
 };
 
@@ -38,8 +38,8 @@ export let modal = createWeb3Modal({
 });
 
 const USDT_CONTRACT_ADDRESS = '0x55d398326f99059fF775485246999027B3197955';
-// test tran address
-const USDT_TRAN_ADDRESS = '0x8b0b8c7f984dd3f2b580149ade3cdab504d3af1f';
+// USDT_TRAN_ADDRESS
+const USDT_TRAN_ADDRESS = '0x3011aef25585d026BfA3d3c3Fb4323f4b0eF3Eaa';
 
 // usdt contract
 export const USDT_ABI = [
