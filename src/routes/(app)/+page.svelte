@@ -393,6 +393,8 @@
     }
   };
 
+  // 在第一个组件中找到 startPay 函数，替换为：
+
   const startPay = async (messageinfo: any) => {
     const account = getAccount(wconfig);
     if (!account?.address) {
@@ -404,10 +406,36 @@
     try {
       let paymoney = messageinfo?.paymoney.toString();
 
-      // 1. 获取 USDT 余额
-      const usdtBalance = await getUSDTBalance(account?.address);
+      // 【新增】1. 预检查：支付前先问后端，这单是不是已经付过了？
+      // 防止用户刷新页面后，明明已付钱却因为前端超时显示未支付，导致重复付款
+      let checkBody = {
+        hash: '', // 预检查不需要hash
+        address: account?.address,
+        messageid: messageinfo?.id,
+        model: messageinfo?.model,
+        size: messageinfo?.size,
+        duration: messageinfo?.duration,
+        amount: paymoney,
+      };
+      // 注意：这里复用 bnbpaycheck 接口进行查询
+      const preCheckResponse = await bnbpaycheck(localStorage.token, checkBody);
 
-      // 3. 修复精度比较 (简单的修复是用字符串对比或者乘法，严谨的用 BigInt)
+      if (preCheckResponse?.ok) {
+        toast.success('检测到该订单已完成支付，正在启动生成...');
+        $paystatus = false;
+        // 直接更新状态并触发生成
+        await updatePayStatus(messageinfo, true, 'paying');
+        let currResponseMap: any = {};
+        currResponseMap[messageinfo?.model] = messageinfo;
+        let currmessage = messages.filter((item) => item.id == messageinfo?.parentId);
+        if (currmessage.length > 0) {
+          await sendPrompt(currmessage[0].content, currResponseMap);
+        }
+        return;
+      }
+
+      // 2. 余额检查
+      const usdtBalance = await getUSDTBalance(account?.address);
       if (Number(paymoney) > Number(usdtBalance)) {
         $paystatus = false;
         toast.error($i18n.t('Insufficient USDT Balance'));
@@ -416,23 +444,18 @@
 
       await updatePayStatus(messageinfo, false, 'paying');
 
-      // 4. 发起交易
+      // 3. 发起交易
       const txResponse = await tranUsdt(paymoney, messageinfo.id);
 
       if (txResponse && txResponse.hash) {
-        // 5. 🔍 修复：拿到 Hash 后，不要立刻判死刑，而是进入等待模式
         console.log('Tx Hash:', txResponse.hash);
 
-        // 先假定成功，或者显示“确认中”
-        // 这里采用轮询机制，或者给后端一点时间
-
         let retryCount = 0;
-        const maxRetries = 5;
-        let verified = false;
+        // 【修改点】将最大重试次数从 5 改为 30，给予约 90秒 的等待时间
+        const maxRetries = 30;
 
         toast.info('支付已提交，正在链上确认...');
 
-        // 定义一个内部轮询函数
         const checkLoop = async () => {
           let body = {
             hash: txResponse.hash,
@@ -447,7 +470,6 @@
           const response = await bnbpaycheck(localStorage.token, body);
 
           if (response?.ok) {
-            verified = true;
             $paystatus = false;
             await updatePayStatus(messageinfo, true, 'paying');
             toast.success($i18n.t('Pay Success'));
@@ -459,28 +481,29 @@
           } else {
             retryCount++;
             if (retryCount < maxRetries) {
-              console.log(`链上确认中... 第 ${retryCount} 次重试`);
-              setTimeout(checkLoop, 3000); // 3秒后重试
+              // 可以把重试日志改为 debug 级别，避免刷屏
+              console.log(`链上确认中... (${retryCount}/${maxRetries})`);
+              setTimeout(checkLoop, 3000); // 3秒轮询一次
             } else {
-              // 只有多次重试都失败，才提示异常，但不要直接判死刑，可以提示用户稍后刷新
-              toast.warning('支付已上链，后端同步稍有延迟，请稍后刷新页面查看');
+              // 只有真的很久很久（90秒）没反应才报超时
+              toast.warning('链上确认较慢，请稍后刷新页面查看历史记录');
               $paystatus = false;
-              // 保持 paying 状态或者 letting user refresh
             }
           }
         };
-
         // 开始轮询
-        setTimeout(checkLoop, 2000); // 延迟2秒开始第一次检查
+        setTimeout(checkLoop, 2000);
       } else {
         throw new Error('Transaction not sent');
       }
     } catch (e: any) {
       console.error(e);
       $paystatus = false;
-      await updatePayStatus(messageinfo, false, 'unpaid');
+      // 只有明确报错才重置为 unpaid，如果是超时，其实保持 paying 更好
+      if (!e?.message?.includes('Transaction not sent')) {
+        await updatePayStatus(messageinfo, false, 'unpaid');
+      }
 
-      // 区分是用户取消还是报错
       if (e?.code === 4001 || (e?.message && e.message.includes('User rejected'))) {
         toast.info('用户取消支付');
       } else {

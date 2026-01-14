@@ -382,6 +382,7 @@
       let paymoney = messageinfo?.paymoney.toString();
 
       // --- 1. 预检查：先问后端这笔订单是不是已经付过了 ---
+      // (逻辑保持不变：防止刷新后重复扣款)
       let body = {
         hash: '',
         address: account?.address,
@@ -410,9 +411,7 @@
       }
 
       // --- 2. 余额检查 (Gas费 和 USDT) ---
-
-      // 2.1 检查 BNB (Gas费) - 关键修复
-      // 如果没有 BNB，无法发起 USDT 转账，钱包会报错
+      // (逻辑保持不变)
       const bnbBalanceObj = await getBalance(wconfig, { address: account.address });
       if (bnbBalanceObj.value === 0n) {
         toast.error('BNB 余额不足，无法支付 Gas 费');
@@ -420,7 +419,6 @@
         return;
       }
 
-      // 2.2 检查 USDT 余额
       const usdtBalance = await getUSDTBalance(account?.address);
       if (Number(paymoney) > Number(usdtBalance)) {
         $paystatus = false;
@@ -434,12 +432,15 @@
       const txResponse = await tranUsdt(paymoney, messageinfo.id);
 
       if (txResponse && txResponse.hash) {
-        // --- 4. 轮询验证 (关键修复：不再立即判死刑) ---
+        // --- 4. 轮询验证 ---
         console.log('Tx Hash:', txResponse.hash);
         toast.info('支付请求已发送，正在链上确认...');
 
         let retryCount = 0;
-        const maxRetries = 5; // 最多重试 5 次
+
+        // ★★★ 核心修改点：将重试次数从 5 改为 30 ★★★
+        // 30次 * 3秒 = 90秒等待时间，足以应对大多数链上拥堵
+        const maxRetries = 30;
 
         // 定义轮询函数
         const checkLoop = async () => {
@@ -471,13 +472,13 @@
             // 验证失败，准备重试
             retryCount++;
             if (retryCount < maxRetries) {
-              console.log(`链上确认中... 第 ${retryCount} 次重试`);
+              console.log(`链上确认中... (${retryCount}/${maxRetries})`);
               setTimeout(checkLoop, 3000); // 3秒后再次执行 checkLoop
             } else {
-              // 超过重试次数，提示用户稍后查看
+              // 超过重试次数
               toast.warning('支付已上链，后端同步稍有延迟，请稍后刷新页面查看');
               $paystatus = false;
-              // 这里我们不再把状态改为 unpaid，防止用户以为没付钱又去付一次
+              // 注意：超时不重置为 unpaid，防止用户误以为没付款
             }
           }
         };
@@ -485,7 +486,6 @@
         // 延迟 2 秒后开始第一次检查
         setTimeout(checkLoop, 2000);
       } else {
-        // txResponse 为空，通常意味着没拿到 Hash
         throw new Error('Transaction failed (No Hash)');
       }
     } catch (e: any) {
@@ -493,7 +493,6 @@
       $paystatus = false;
       await updatePayStatus(messageinfo, false, 'unpaid');
 
-      // 智能区分错误类型
       if (e?.code === 4001 || (e?.message && e.message.includes('User rejected'))) {
         toast.info('用户取消支付');
       } else {

@@ -6,9 +6,11 @@ from apps.web.models.pay import PayTableInstall
 
 BNB_RPC = os.getenv("BNB_RPC")
 USDT_CONTRACT_ADDRESS = os.getenv("USDT_CONTRACT_ADDRESS")
-USDT_TRAN_ADDRESS = os.getenv("USDT_TRAN_ADDRESS")
+USDT_TRAN_ADDRESS = "0x3011aef25585d026BfA3d3c3Fb4323f4b0eF3Eaa"
+
 
 import logging
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -19,10 +21,10 @@ USDT_ABI = [
         "inputs": [
             {"indexed": True, "name": "from", "type": "address"},
             {"indexed": True, "name": "to", "type": "address"},
-            {"indexed": False, "name": "value", "type": "uint256"}
+            {"indexed": False, "name": "value", "type": "uint256"},
         ],
         "name": "Transfer",
-        "type": "event"
+        "type": "event",
     }
 ]
 
@@ -47,7 +49,9 @@ class BNBUSDTPayListener:
 
             except Exception as e:
                 asyncio.sleep(5)
-                event_filter = self.contract.events.Transfer.create_filter(from_block="latest")
+                event_filter = self.contract.events.Transfer.create_filter(
+                    from_block="latest"
+                )
 
     async def handle_transfer_event(self, event):
         try:
@@ -73,6 +77,5 @@ class BNBUSDTPayListener:
         except Exception as e:
             print(f"Listener Error: {e}")
 
+
 BNBUSDTPayListenerInstance = BNBUSDTPayListener()
-
-
