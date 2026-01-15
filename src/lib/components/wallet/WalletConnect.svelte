@@ -2,7 +2,8 @@
   import { onMount, getContext, onDestroy } from 'svelte'; // 🔥 引入 onDestroy
   import { user, theme, threesideAccount } from '$lib/stores';
   import MyButton from '$lib/components/common/MyButton.svelte';
-
+  import { chats } from '$lib/stores'; // 或从 apis 导入
+  import { getChatList } from '$lib/apis/chats';
   // 👇 1. 引入和 Navbar 一模一样的 Web3 依赖
   import { watchAccount, getAccount } from '@wagmi/core';
   import { config as wconfig, clearConnector, modal } from '$lib/utils/wallet/bnb/index';
@@ -23,37 +24,56 @@
   let unsubscribeModal: () => void;
 
   // 👇 2. 完全复用 watchAccount 逻辑
+  // 在 watchAccount 的 onChange 回调里加强处理
   unwatchAccount = watchAccount(wconfig, {
     async onChange() {
-      const currentStatus = getAccount(wconfig).status;
+      const account = getAccount(wconfig); // 每次都重新获取最新 account
+      const currentStatus = account.status;
 
-      // 状态变化时的 Loading 控制
+      // loading 控制（保持原样）
       if (currentStatus === 'reconnecting' || currentStatus === 'connecting') {
         isLoading = true;
-      } else if (currentStatus === 'disconnected') {
-        isLoading = false;
+        return;
       }
 
-      try {
-        if ($threesideAccount?.address) {
-          clearConnector();
-          $threesideAccount = {};
-          await signIn();
-        } else {
-          let account = getAccount(wconfig);
-          if (account?.address) {
-            isLoading = true;
-            try {
-              await walletLogin(account?.address);
-              $threesideAccount = account;
-            } finally {
-              isLoading = false;
-            }
-          }
-        }
-      } catch (error) {
-        console.log('wallet login error:', error);
+      if (currentStatus === 'disconnected') {
+        console.log('[watchAccount] 检测到 disconnected', {
+          threesideAccountBefore: $threesideAccount?.address || '无',
+          time: new Date().toISOString(),
+        });
+
         isLoading = false;
+
+        if ($threesideAccount?.address) {
+          console.log('[watchAccount] 强制清空 threesideAccount');
+          clearConnector();
+          threesideAccount.set({});
+
+          await signIn();
+          console.log('[watchAccount] 清空后 threesideAccount:', $threesideAccount);
+        }
+        return;
+      }
+
+      // connected 情况
+      if (currentStatus === 'connected' && account.address) {
+        // 如果已经是同一个地址，就别重复登录
+        if ($threesideAccount?.address === account.address) {
+          isLoading = false;
+          return;
+        }
+
+        isLoading = true;
+        try {
+          await walletLogin(account.address);
+          $threesideAccount = account; // 登录成功才 set
+        } catch (err) {
+          console.error('Login failed on connect', err);
+          // 可选：这里也可以清空
+          $threesideAccount = {};
+        } finally {
+          isLoading = false;
+        }
       }
     },
   });
@@ -131,6 +151,10 @@
       localStorage.removeItem('token');
       localStorage.token = walletSignInResult.token;
       user.set(walletSignInResult);
+
+      // 加上这几行
+      await chats.set([]);
+      chats.set(await getChatList(localStorage.token));
     }
   };
 

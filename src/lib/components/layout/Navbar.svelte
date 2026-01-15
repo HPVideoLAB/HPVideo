@@ -1,152 +1,47 @@
 <script lang="ts">
-  import { getContext, onMount } from 'svelte';
+  import { getContext, onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import MyButton from '$lib/components/common/MyButton.svelte';
-
+  import WalletConnect from '$lib/components/wallet/WalletConnect.svelte';
   import {
     mobile,
-    chats,
     chatsearch,
     chatId,
     showSidebar,
-    user,
     initPageFlag,
-    theme,
     threesideAccount,
     showPriceView,
+    user,
   } from '$lib/stores';
-
   import ShareChatModal from '../chat/ShareChatModal.svelte';
   import ModelSelector from '../chat/ModelSelector.svelte';
   import MenuLines from '../icons/MenuLines.svelte';
-  import { getChatById } from '$lib/apis/chats';
   import Setting from '$lib/components/layout/Navbar/Setting.svelte';
-
-  import { getLanguages } from '$lib/i18n';
   import Tooltip from '../common/Tooltip.svelte';
-
-  import { watchAccount, getAccount } from '@wagmi/core';
-  import { config as wconfig, clearConnector } from '$lib/utils/wallet/bnb/index';
-  import { modal } from '$lib/utils/wallet/bnb/index';
-  import { printSignIn, walletSignIn } from '$lib/apis/auths/index';
-  import { Base64 } from 'js-base64';
-  import { ethers } from 'ethers';
-
-  import { getChatList } from '$lib/apis/chats';
   import PriceModal from '../price/PriceModal.svelte';
 
-  const i18n: any = getContext('i18n');
+  // 🔥 添加钱包监听依赖
+  import { watchAccount, getAccount } from '@wagmi/core';
+  import { config as wconfig, clearConnector } from '$lib/utils/wallet/bnb/index';
+  import { printSignIn } from '$lib/apis/auths/index';
 
   export let initNewChat: Function;
-  export let shareEnabled: boolean = false;
-
-  export let chat;
   export let selectedModels: any;
-
   export let showModelSelector = true;
 
+  const i18n: any = getContext('i18n');
   let showShareChatModal = false;
-  let showDownloadChatModal = false;
-
-  let isMobile = false;
-  let languages = [];
-
   let search = '';
   $: if (search) {
     chatsearch.set(search);
   } else {
     chatsearch.set('');
   }
-  // Helper function to fetch and add chat content to each chat
-  const enrichChatsWithContent = async (chatList: any) => {
-    const enrichedChats: any = await Promise.all(
-      chatList.map(async (chat: any) => {
-        const chatDetails = await getChatById(localStorage.token, chat.id).catch((error) => null); // Handle error or non-existent chat gracefully
-        if (chatDetails) {
-          chat.chat = chatDetails.chat; // Assuming chatDetails.chat contains the chat content
-        }
-        return chat;
-      })
-    );
-    chats.set(enrichedChats);
-  };
 
-  onMount(async () => {
-    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-    // 检查是否为移动端设备
-    isMobile = /android|iPad|iPhone|iPod|IEMobile|Opera Mini/i.test(userAgent);
-    languages = await getLanguages();
-  });
+  // 🔥 监听钱包断开连接（当 WalletConnect 组件被销毁时，这里仍然在监听）
+  let unwatchAccount: () => void;
 
-  watchAccount(wconfig, {
-    async onChange() {
-      try {
-        if ($threesideAccount?.address) {
-          clearConnector();
-          $threesideAccount = {};
-          await signIn();
-        } else {
-          let account = getAccount(wconfig);
-          await walletLogin(account?.address);
-          $threesideAccount = account;
-        }
-      } catch (error) {
-        console.log('wallet login error:', error);
-      }
-    },
-  });
-  const connect = () => {
-    checkModalTheme();
-    modal.open();
-  };
-  const checkModalTheme = () => {
-    if ($theme === 'system' || $theme === 'light') {
-      modal.setThemeMode('light');
-    } else {
-      modal.setThemeMode('dark');
-    }
-  };
-
-  // Generate a random message
-  function generateRandomMessage(length: number) {
-    const randomBytes = new Uint8Array(length);
-    crypto.getRandomValues(randomBytes);
-    return ethers.hexlify(randomBytes);
-  }
-  const walletLogin = async (address: string) => {
-    // 👇👇👇【核心修复】加上这行保命判断 👇👇👇
-    if (!address || typeof address !== 'string') {
-      console.log('Wallet address is not ready yet');
-      return;
-    }
-    // 👆👆👆 修复结束 👆👆👆
-
-    const randomMessage = generateRandomMessage(32);
-    let combinedText = '';
-    for (let i = 0; i < randomMessage.length; i++) {
-      let charCode = randomMessage.charCodeAt(i);
-      let vectorCharCode = address.charCodeAt(i % address.length);
-      combinedText += String.fromCharCode((charCode + vectorCharCode) % 256);
-    }
-    const signature = Base64.encode(combinedText);
-    const walletSignInResult = await walletSignIn({
-      address,
-      nonce: randomMessage,
-      address_type: 'threeSide',
-      device_id: localStorage.visitor_id || '',
-      signature,
-      id: localStorage.visitor_id || '',
-    });
-    if (walletSignInResult?.token) {
-      localStorage.removeItem('token');
-      localStorage.token = walletSignInResult.token;
-      user.set(walletSignInResult);
-      await chats.set([]);
-      await chats.set(await getChatList(localStorage.token));
-    }
-  };
-
-  // visit login
+  // 游客登录
   async function signIn() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -155,16 +50,32 @@
     const res = await printSignIn('');
     localStorage.token = res.token;
     user.set(res);
-    getChatList(localStorage.token).then((chatList) => {
-      chats.set(chatList);
-    });
   }
+
+  onMount(() => {
+    unwatchAccount = watchAccount(wconfig, {
+      async onChange() {
+        const account = getAccount(wconfig);
+        // 只处理断开连接的情况
+        if (account.status === 'disconnected' && $threesideAccount?.address) {
+          console.log('[Navbar watchAccount] 检测到钱包断开，清空 threesideAccount');
+          clearConnector();
+          threesideAccount.set({});
+          await signIn();
+        }
+      },
+    });
+  });
+
+  onDestroy(() => {
+    if (unwatchAccount) unwatchAccount();
+  });
 </script>
 
 <ShareChatModal bind:show={showShareChatModal} chatId={$chatId} />
 <PriceModal bind:show={$showPriceView} />
 <nav id="nav" class=" sticky md:pt-[10px] pt-2.5 pb-2.5 top-0 flex flex-row justify-center z-30">
-  <div class="flex {$mobile ? 'flex-col' : 'flex-row'} max-w-full w-full mx-auto px-5 pt-0.5 md:px-[1rem]">
+  <div class="flex flex-col md:flex-row max-w-full w-full mx-auto px-5 pt-0.5 md:px-[1rem]">
     {#if $mobile}
       <div class="flex pt-1 pb-3">
         <a
@@ -208,25 +119,13 @@
                   class="w-full min-w-0 rounded-r-xl py-1 pl-2 pr-4 text-sm bg-transparent dark:text-gray-300 outline-none"
                   placeholder={$i18n.t('Search')}
                   bind:value={search}
-                  on:focus={() => {
-                    enrichChatsWithContent($chats);
-                  }}
                 />
               </div>
             </div>
 
             <Setting />
           {:else}
-            <button
-              id="connect-wallet-btn"
-              class="relative primaryButton flex rounded-lg transition text-white text-sm whitespace-nowrap pl-3 pr-2 py-1 ml-2"
-              aria-label="User Menu"
-              on:click={(e) => {
-                connect();
-              }}
-            >
-              {$i18n.t('Connect Wallet')}
-            </button>
+            <WalletConnect />
           {/if}
 
           <div class=" self-center size-2">
@@ -362,39 +261,16 @@
                     </div>
 
                     <input
-                      class="w-full min-w-0 min-w-[60px] rounded-r-xl py-1.5 pl-2 pr-4 text-sm bg-transparent dark:text-gray-300 outline-none"
+                      class="w-full min-w-[60px] rounded-r-xl py-1.5 pl-2 pr-4 text-sm bg-transparent dark:text-gray-300 outline-none"
                       placeholder={$i18n.t('Search')}
                       bind:value={search}
-                      on:focus={() => {
-                        enrichChatsWithContent($chats);
-                      }}
                     />
                   </div>
                 </div>
                 <Setting />
               {:else}
-                <button
-                  id="connect-wallet-btn"
-                  class="relative primaryButton flex rounded-lg transition text-white text-sm whitespace-nowrap pl-3 pr-2 py-1 ml-2"
-                  aria-label="User Menu"
-                  on:click={(e) => {
-                    connect();
-                  }}
-                >
-                  {$i18n.t('Connect Wallet')}
-                </button>
+                <WalletConnect />
               {/if}
-
-              <div class=" self-center size-2">
-                <!-- <div class="size-9 object-cover rounded-full bg-primary">
-                  <img
-                    src={$user.profile_image_url == ""
-                      ? generateInitialsImage($user.name)
-                      : $user.profile_image_url}
-                    alt="profile"
-                    class=" rounded-full size-9 object-cover"/>
-                </div> -->
-              </div>
             </div>
           {/if}
         {/if}
