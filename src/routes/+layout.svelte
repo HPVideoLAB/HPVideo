@@ -1,7 +1,7 @@
 <script>
   import '../polyfills'; // 必须在其他代码之前引入
   import { onMount, setContext } from 'svelte';
-  import { config, theme, WEBUI_NAME, mobile, threesideAccount, urlprompt } from '$lib/stores';
+  import { config, theme, WEBUI_NAME, mobile, threesideAccount, urlprompt, initPageFlag } from '$lib/stores';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { Toaster } from 'svelte-sonner';
@@ -63,9 +63,30 @@
     }
 
     // -----------------
-    theme.set('dark');
-    // 2. 强制写入本地存储，防止下次加载时读取到旧的 'light'
-    localStorage.setItem('theme', 'dark');
+    // 🔥 修复：跟随系统主题
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    if (savedTheme === 'light') {
+      // 用户明确选择浅色
+      theme.set('light');
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
+    } else if (savedTheme === 'dark' || savedTheme?.includes('oled')) {
+      // 用户明确选择深色
+      theme.set(savedTheme);
+      document.documentElement.classList.remove('light');
+      document.documentElement.classList.add('dark');
+    } else {
+      // 跟随系统主题（包括 savedTheme === 'system' 或 savedTheme 不存在）
+      const systemTheme = prefersDark ? 'dark' : 'light';
+      theme.set(systemTheme);
+      document.documentElement.classList.remove(prefersDark ? 'light' : 'dark');
+      document.documentElement.classList.add(systemTheme);
+      if (!savedTheme) {
+        localStorage.setItem('theme', 'system');
+      }
+    }
 
     mobile.set(window.innerWidth < BREAKPOINT);
     const onResize = () => {
@@ -78,9 +99,10 @@
 
     window.addEventListener('resize', onResize);
 
-    document.getElementById('splash-screen')?.remove();
+    // 🔥 移除：不在这里删除 splash-screen，改到 loaded = true 之后
+    // document.getElementById('splash-screen')?.remove();
 
-    // 创建并插入Google Analytics的script标签
+    // 创建并插入Google Analytics的script标签（异步，不阻塞）
     const script = document.createElement('script');
     script.src = 'https://www.googletagmanager.com/gtag/js?id=G-ELT9ER83T2';
     script.async = true;
@@ -110,15 +132,39 @@
     }
   }
 
+  // 🔥 移除 splash-screen 的函数
+  function removeSplashScreen() {
+    const splash = document.getElementById('splash-screen');
+    if (splash) {
+      // 添加淡出动画
+      splash.style.transition = 'opacity 0.3s ease-out';
+      splash.style.opacity = '0';
+      setTimeout(() => splash.remove(), 300);
+    }
+  }
+
+  // 🔥 监听 initPageFlag，当 app 布局初始化完成后才移除 splash-screen
+  $: if ($initPageFlag) {
+    removeSplashScreen();
+  }
+
   onMount(async () => {
     // await registServiceWorker();
     try {
-      await initData();
-      await initUrlParam();
-      await checkWallectConnect();
+      // 🔥 并行执行不依赖的初始化任务
+      const [_, __] = await Promise.all([initData(), initUrlParam()]);
+
+      // 🔥 钱包检查添加超时保护（最多等待 3 秒）
+      await Promise.race([checkWallectConnect(), new Promise((resolve) => setTimeout(resolve, 3000))]);
+
       loaded = true;
+      // 🔥 注意：不在这里设置 initPageFlag，由 (app)/+layout.svelte 在 printSignIn 完成后设置
     } catch (error) {
-      console.log('==============', error);
+      console.error('[Layout Init Error]', error);
+      // 🔥 即使出错也要显示页面，避免永久黑屏
+      loaded = true;
+      // 🔥 出错时设置 initPageFlag 并移除 splash-screen，避免永久黑屏
+      initPageFlag.set(true);
     }
   });
 

@@ -357,7 +357,12 @@
                       e.preventDefault();
                     }
                     if (prompt !== '' && e.keyCode == 13 && !e.shiftKey) {
-                      submitPrompt(prompt, getVideoInfo(), user);
+                      // 🔥 修复：回车发送前检查钱包连接状态
+                      if ($threesideAccount?.address) {
+                        submitPrompt(prompt, getVideoInfo(), user);
+                      } else {
+                        document.getElementById('connect-wallet-btn')?.click();
+                      }
                     }
                   }
                 }}
@@ -546,7 +551,7 @@
       {#if messages.length == 0}
         <div class="m-auto w-full px-5 md:px-20 pb-[30px]">
           <div class="flex justify-start">
-            <div class="flex space-x-4 mb-1" in:fade={{ duration: 200 }}></div>
+            <div class="flex space-x-4 mb-1" in:fade={{ duration: 200 }} />
           </div>
           <div class="w-full bg-1e1e1e padding-10" in:fade={{ duration: 200, delay: 300 }}>
             <Suggestions

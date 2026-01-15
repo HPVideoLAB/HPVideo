@@ -185,7 +185,7 @@
   {:else if isLoading}
     <MyButton type="primary" round size="small" loading disabled>Connecting...</MyButton>
   {:else}
-    <MyButton size="small" round type="primary" on:click={() => connect()}>
+    <MyButton id="connect-wallet-btn" size="small" round type="primary" on:click={() => connect()}>
       <iconify-icon slot="icon" icon="lucide:wallet" class="text-lg" />
       {$i18n.t('Connect Wallet')}
     </MyButton>

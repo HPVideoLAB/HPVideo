@@ -47,34 +47,40 @@
   }
 
   async function checkLogin() {
-    // 加载 FingerprintJS 库
-    const fp = await FingerprintJS.load();
-    // 获取设备指纹
-    const result = await fp.get();
-    // `result.visitorId` 是设备指纹 ID
-    const visitorId = result.visitorId;
-    console.log('visitorId', visitorId); // 27841987f3d61173059f66f530b63f15
-    localStorage.setItem('visitor_id', visitorId);
+    // 🔥 优化：检查是否已有 visitor_id，避免重复获取指纹
+    let visitorId = localStorage.getItem('visitor_id');
+
+    // 🔥 优化：只有在没有 visitor_id 时才加载 FingerprintJS
+    if (!visitorId) {
+      const fp = await FingerprintJS.load();
+      const result = await fp.get();
+      visitorId = result.visitorId;
+      console.log('visitorId', visitorId);
+      localStorage.setItem('visitor_id', visitorId);
+    }
 
     // 初始化访客
-    await user.set({
+    user.set({
       id: visitorId,
       name: visitorId,
       profile_image_url: '',
       role: 'visitor',
     });
 
-    await signIn();
-    if (localStorage?.token) {
-      // 更新用户模型
-      await initUserModels();
-      // 更新系统语言
-      await initLanguage();
-      // 更新用户聊天记录
-      await updateChats();
-      // 初始化完成
-      $initPageFlag = true;
-    }
+    // 🔥🔥🔥 核心优化：先让页面显示，signIn 在后台执行，不阻塞渲染
+    $initPageFlag = true;
+
+    // 🔥 用户模型先初始化（使用默认配置）
+    initUserModels();
+
+    // 🔥 signIn 和其他初始化在后台并行执行，不阻塞页面
+    Promise.all([
+      signIn().then(() => {
+        // signIn 完成后更新聊天记录
+        updateChats();
+      }),
+      initLanguage(),
+    ]).catch((err) => console.error('[Background Init Error]', err));
   }
 
   // 更新用户模型

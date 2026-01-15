@@ -11,7 +11,7 @@ import {
   getHistoryList,
   type SubmitReq,
 } from '$lib/apis/model/pika';
-import { pollTaskResult } from '$lib/components/chat/MessageInput-modules/modules/task';
+import { pollTaskResult } from '../../routes/pro/modules/task';
 
 // 补全参数类型
 interface ExtendedSubmitReq extends SubmitReq {

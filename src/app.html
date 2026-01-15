@@ -11,28 +11,35 @@
     <script>
       // On page load or when changing themes, best to add inline in `head` to avoid FOUC
       (() => {
-        if (localStorage?.theme && localStorage?.theme.includes('oled')) {
+        // 🔥 修复：获取系统主题偏好
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const savedTheme = localStorage.getItem('theme');
+
+        if (savedTheme && savedTheme.includes('oled')) {
+          // OLED 主题
           document.documentElement.style.setProperty('--color-gray-900', '#000000');
           document.documentElement.style.setProperty('--color-gray-950', '#000000');
           document.documentElement.classList.add('dark');
-        } else if (
-          localStorage.theme === 'light' ||
-          (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: light)').matches)
-        ) {
+        } else if (savedTheme === 'light') {
+          // 用户明确选择浅色
           document.documentElement.classList.add('light');
-        } else if (localStorage.theme && localStorage.theme !== 'system') {
-          localStorage.theme.split(' ').forEach((e) => {
-            document.documentElement.classList.add(e);
-          });
-        } else if (localStorage.theme && localStorage.theme === 'system') {
-          systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          document.documentElement.classList.add(systemTheme ? 'dark' : 'light');
-        } else {
+        } else if (savedTheme === 'dark') {
+          // 用户明确选择深色
           document.documentElement.classList.add('dark');
+        } else {
+          // 🔥 修复：默认跟随系统（包括 savedTheme === 'system' 或 savedTheme 不存在）
+          document.documentElement.classList.add(prefersDark ? 'dark' : 'light');
+          // 如果没有保存主题，设置为 system
+          if (!savedTheme) {
+            localStorage.setItem('theme', 'system');
+          }
         }
 
-        window.matchMedia('(prefers-color-scheme: dark)').addListener((e) => {
-          if (localStorage.theme === 'system') {
+        // 监听系统主题变化
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+          const currentTheme = localStorage.getItem('theme');
+          // 只有在跟随系统模式下才响应变化
+          if (!currentTheme || currentTheme === 'system') {
             if (e.matches) {
               document.documentElement.classList.add('dark');
               document.documentElement.classList.remove('light');
@@ -53,22 +60,48 @@
 
     <div
       id="splash-screen"
-      style="position: fixed; z-index: 100; background: #fff; top: 0; left: 0; width: 100%; height: 100%"
+      style="
+        position: fixed;
+        z-index: 100;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      "
     >
       <style type="text/css" nonce="">
         html {
           overflow-y: scroll !important;
         }
+        /* 🔥 splash-screen 主题适配 */
+        #splash-screen {
+          background: #ffffff;
+          transition: opacity 0.3s ease-out;
+        }
+        html.dark #splash-screen {
+          background: #0f0f0f;
+        }
+        /* 🔥 添加 logo 呼吸动画 */
+        @keyframes pulse {
+          0%,
+          100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.7;
+            transform: scale(0.95);
+          }
+        }
+        #splash-logo {
+          animation: pulse 1.5s ease-in-out infinite;
+        }
       </style>
 
-      <img
-        style="position: absolute; width: 5rem; height: 5rem; top: 46%; left: 50%; margin: -40px 0 0 -40px"
-        src="/creator/favicon.png"
-      />
-
-      <!-- <span style="position: absolute; bottom: 32px; left: 50%; margin: -36px 0 0 -36px">
-				Footer content
-			</span> -->
+      <img id="splash-logo" style="width: 5rem; height: 5rem" src="/creator/favicon.png" alt="Loading..." />
     </div>
   </body>
 </html>
