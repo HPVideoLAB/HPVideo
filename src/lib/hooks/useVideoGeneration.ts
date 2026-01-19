@@ -103,6 +103,9 @@ export function useVideoGeneration() {
       });
       isGenerating.set(false);
       alert(`生成出错: ${error.message}`);
+    } finally {
+      // 🔥🔥🔥 3. 无论成功失败，这里必须强制关闭 loading 状态
+      isGenerating.set(false);
     }
   };
 
