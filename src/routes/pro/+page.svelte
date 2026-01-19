@@ -4,9 +4,10 @@
   import { walletAddress } from '$lib/stores/wallet';
   import { ensureWalletConnected } from '$lib/utils/wallet/check';
   import { calculateCost } from '$lib/utils/pro/pricing';
-  import { getContext } from 'svelte';
+  import { getContext, onMount } from 'svelte';
   // 🔥 新引入的恢复工具
   import { restoreProParams } from '$lib/utils/pro/history-restore';
+  import { initPageFlag } from '$lib/stores';
 
   // 子组件
   import ImgToVideoUploader from './modules/pika/ImgToVideoUploader.svelte';
@@ -42,8 +43,7 @@
     label: m.name,
     icon: m.modelicon,
     hasAudio: m.audio,
-    desc: $i18n.t(`model_desc_${m.model}`)
-
+    desc: $i18n.t(`model_desc_${m.model}`),
   }));
   let currentModelValue = proModel[2]?.model || '';
 
@@ -248,6 +248,11 @@
 
   // 自动加载
   $: loadHistory($walletAddress);
+
+  // 🔥 修复：确保加载屏被移除（pro 页面不在 (app) 路由组内）
+  onMount(() => {
+    initPageFlag.set(true);
+  });
 </script>
 
 <div class="flex flex-col min-h-screen bg-bg-light dark:bg-bg-dark text-text-light dark:text-text-dark">
