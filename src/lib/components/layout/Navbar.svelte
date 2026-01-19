@@ -74,8 +74,8 @@
 
 <ShareChatModal bind:show={showShareChatModal} chatId={$chatId} />
 <PriceModal bind:show={$showPriceView} />
-<nav id="nav" class=" sticky md:pt-[10px] pt-2.5 pb-2.5 top-0 flex flex-row justify-center z-30">
-  <div class="flex flex-col md:flex-row max-w-full w-full mx-auto px-5 pt-0.5 md:px-[1rem]">
+<nav id="nav" class=" md:pl-1 md:pr-6 sticky md:pt-[10px] pt-2.5 pb-2.5 top-0 flex flex-row justify-center z-30">
+  <div class="flex flex-col md:flex-row max-w-full w-full mx-auto pr-5 pt-0.5 md:pr-[1rem]">
     {#if $mobile}
       <div class="flex pt-1 pb-3">
         <a
@@ -244,7 +244,7 @@
           {#if $initPageFlag}
             <div
               class="flex items-center {$threesideAccount?.address
-                ? 'bg-gray-100 dark:bg-gray-850 rounded-full p-1 md:mr-[30px]'
+                ? 'bg-gray-100 dark:bg-gray-850 rounded-full p-1 '
                 : ''}"
             >
               {#if $threesideAccount?.address}

@@ -320,7 +320,7 @@
               : ''}"
           >
             <div
-              class="flex flex-col justify-between px-6 md:px-20 mb-3 {$settings?.fullScreenMode ?? null
+              class="flex flex-col justify-between px-6 md:px-14 mb-3 {$settings?.fullScreenMode ?? null
                 ? 'max-w-full'
                 : 'max-w-full'} mx-auto rounded-lg group"
             >

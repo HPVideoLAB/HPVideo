@@ -239,8 +239,8 @@
     </div>
 
     <div class="bg-white dark:bg-gray-900">
-      <div class="px-5 md:px-20 mx-auto inset-x-0">
-        <div class="pb-[30px]">
+      <div class="px-5 md:px-10 mx-auto inset-x-0">
+        <div class="pb-[20px]">
           <input
             bind:this={filesInputElement}
             bind:files={inputFiles}
@@ -549,7 +549,7 @@
       </div>
 
       {#if messages.length == 0}
-        <div class="m-auto w-full px-5 md:px-20 pb-[30px]">
+        <div class="m-auto w-full px-5 md:px-10 pb-[20px]">
           <div class="flex justify-start">
             <div class="flex space-x-4 mb-1" in:fade={{ duration: 200 }} />
           </div>
