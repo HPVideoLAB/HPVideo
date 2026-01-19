@@ -131,7 +131,7 @@
         <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
           {$i18n.t('Drag images here, or click to select')}
         </p>
-        <p class="text-xs text-gray-600 dark:text-gray-400">{$i18n.t('PNG/JPG up to 5 images · as keyframes')}</p>
+        <p class="text-xs text-gray-600 dark:text-gray-400">{$i18n.t('PNG/JPG up to 2 - 5 images · as keyframes')}</p>
       </div>
 
       <div class="flex flex-wrap items-center justify-center gap-2">
