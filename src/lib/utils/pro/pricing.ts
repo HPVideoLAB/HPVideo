@@ -31,7 +31,7 @@ export const calculateCost = (model: string, params: any): number => {
 
   // === Wan 2.1 ===
   if (model.includes('wan')) {
-    // 逻辑保持不变：只支持 5s 和 10s.
+    // 逻辑保持不变：只支持 5s 和 10s
     const { duration = 5 } = params;
 
     // 官方 10s 成本 $0.45 -> 设置为 $0.90 (x2)
