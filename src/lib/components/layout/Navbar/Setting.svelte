@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { getContext } from "svelte";
-  import { DropdownMenu } from "bits-ui";
-  import { flyAndScale } from "$lib/utils/transitions";
-  import { mobile, threesideAccount } from "$lib/stores";
+  import { getContext } from 'svelte';
+  import { DropdownMenu } from 'bits-ui';
+  import { flyAndScale } from '$lib/utils/transitions';
+  import { mobile, threesideAccount } from '$lib/stores';
 
-  import UserEdit from "$lib/components/chat/Settings/UserEdit.svelte";
+  import UserEdit from '$lib/components/chat/Settings/UserEdit.svelte';
   import { toast } from 'svelte-sonner';
 
-  const i18n = getContext("i18n");
+  const i18n = getContext('i18n');
 
   let show = false;
 
@@ -27,25 +27,22 @@
     const suffix = address.slice(-finalSuffixLen);
     return `${prefix}...${suffix}`;
   }
-
 </script>
 
 <DropdownMenu.Root bind:open={show}>
   <DropdownMenu.Trigger>
     <button
-      class="relative primaryButton flex rounded-lg transition pl-3 pr-2 py-1 text-sm text-white ml-2 whitespace-nowrap"
+      class="relative primaryButton flex rounded-xl transition pl-3 pr-2 py-1 text-sm text-white ml-2 whitespace-nowrap"
       aria-label="User Menu"
       on:click={(e) => {
-        e.preventDefault(); 
+        e.preventDefault();
       }}
     >
-      {formatWalletAddress($threesideAccount?.address, {prefixLen: 3, suffixLen: 3})}
+      {formatWalletAddress($threesideAccount?.address, { prefixLen: 3, suffixLen: 3 })}
     </button>
   </DropdownMenu.Trigger>
   <DropdownMenu.Content
-    class="z-[90] {$mobile
-      ? `w-full max-w-[90%]`
-      : `min-w-[365px] max-w-[80%]`}  justify-start rounded-2xl  bg-white dark:bg-gray-850 dark:text-white shadow-lg 
+    class="z-[999999999999]  justify-start rounded-2xl   dark:text-white shadow-lg 
       border border-gray-300/30 dark:border-gray-700/50  outline-none"
     transition={flyAndScale}
     side="bottom"
@@ -55,11 +52,11 @@
   >
     <slot>
       <div class="text-gray-700 dark:text-gray-100">
-        <div class="flex flex-col md:flex-col w-full px-4 py-2 md:space-x-4">
-          <div class="flex-1 md:mt-3 md:min-h-[10rem]">
+        <div class="flex flex-col md:flex-col md:space-x-4">
+          <div class="flex-1 md:min-h-[10rem]">
             <UserEdit
               saveHandler={() => {
-                toast.success($i18n.t("Settings saved successfully!"));
+                toast.success($i18n.t('Settings saved successfully!'));
                 show = false;
               }}
             />

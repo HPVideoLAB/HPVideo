@@ -44,11 +44,11 @@
   });
 </script>
 
-<div class="relative z-[999999999] inline-block text-left w-full" bind:this={containerRef}>
+<div class="relative z-[9999] inline-block text-left w-full" bind:this={containerRef}>
   <button
     type="button"
     on:click={toggle}
-    class="flex items-center justify-between w-full px-4 py-2.5
+    class="flex items-center justify-between w-full px-4 py-1.5
          bg-bg-light dark:bg-bg-dark
          hover:bg-gray-100 dark:hover:bg-gray-800
          active:bg-gray-200 dark:active:bg-gray-850
@@ -97,7 +97,7 @@
              rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-black/60
              max-h-[400px] overflow-y-auto overflow-x-hidden p-1.5 scroll-fade"
     >
-      <div class="space-y-1">
+      <div class="space-y-2">
         {#each options as option}
           <button
             on:click={() => select(option)}

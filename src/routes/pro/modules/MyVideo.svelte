@@ -44,8 +44,8 @@
 
 <div class="w-full flex flex-col md:flex-row gap-3 h-full">
   <div
-    class="flex-1 min-w-0 h-full flex flex-col border border-border-light rounded-2xl
-dark:border-border-dark border-white/5 md:overflow-hidden relative"
+    class="flex-1 min-w-0 h-full flex flex-col
+ md:overflow-hidden relative"
   >
     {#if activeItem}
       {#key activeItem.id}
@@ -77,7 +77,7 @@ dark:border-border-dark"
     {/if}
   </div>
 
-  <aside class="w-full lg:w-[140px] shrink-0 md:h-full overflow-hidden">
+  <aside class="w-full md:w-[140px] shrink-0 md:h-full overflow-hidden">
     <History {items} selectedId={activeItem?.id} on:select={handleHistorySelect} />
   </aside>
 </div>

@@ -75,7 +75,7 @@
 <ShareChatModal bind:show={showShareChatModal} chatId={$chatId} />
 <PriceModal bind:show={$showPriceView} />
 <nav id="nav" class=" md:pl-1 md:pr-6 sticky md:pt-[10px] pt-2.5 pb-2.5 top-0 flex flex-row justify-center z-30">
-  <div class="flex flex-col md:flex-row max-w-full w-full mx-auto pr-5 pt-0.5 md:pr-[1rem]">
+  <div class="flex flex-col md:flex-row max-w-full w-full mx-auto px-3 md:pl-0 md:pr-[1rem]">
     {#if $mobile}
       <div class="flex pt-1 pb-3">
         <a
@@ -249,16 +249,8 @@
             >
               {#if $threesideAccount?.address}
                 <div class="px-2 flex justify-center space-x-2 rounded-full bg-gray-50 dark:bg-gray-800">
-                  <div class="flex rounded-xl" id="chat-search">
-                    <div class="self-center pl-1 py-2.5 rounded-l-xl bg-transparent">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                        <path
-                          fill-rule="evenodd"
-                          d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z"
-                          clip-rule="evenodd"
-                        />
-                      </svg>
-                    </div>
+                  <div class="flex rounded-xl items-center" id="chat-search">
+                    <iconify-icon icon="ph:magnifying-glass-bold" />
 
                     <input
                       class="w-full min-w-[60px] rounded-r-xl py-1.5 pl-2 pr-4 text-sm bg-transparent dark:text-gray-300 outline-none"

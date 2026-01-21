@@ -257,11 +257,11 @@
 
 <div class="flex flex-col min-h-screen bg-bg-light dark:bg-bg-dark text-text-light dark:text-text-dark">
   <nav
-    class="fixed top-0 w-full z-[999999] px-6 py-2.5 md:py-4 flex justify-between items-center backdrop-blur-md border-b border-border-light dark:border-border-dark"
+    class="fixed top-0 w-full z-[999999] px-3 py-2.5 md:px-4 md:py-4 flex justify-between items-center backdrop-blur-md border-b border-border-light dark:border-border-dark"
   >
-    <a href="/" class="flex items-center cursor-pointer select-none">
+    <a href="/creator" class="flex items-center cursor-pointer select-none">
       <span
-        class="text-sm md:text-2xl font-bold tracking-tight bg-gradient-to-r from-primary-400 via-primary-500 to-violet-400 bg-clip-text text-transparent drop-shadow-[0_1px_10px_rgba(194,19,242,0.22)]"
+        class="text-base md:text-2xl font-bold tracking-tight bg-gradient-to-r from-primary-400 via-primary-500 to-violet-400 bg-clip-text text-transparent drop-shadow-[0_1px_10px_rgba(194,19,242,0.22)]"
       >
         HPVideo Pro
       </span>
@@ -270,10 +270,10 @@
   </nav>
 
   <main
-    class="w-full flex flex-col gap-5 md:flex-row pt-[80px] pb-3 px-4 h-screen overflow-auto md:overflow-hidden md:px-6"
+    class="w-full flex flex-col gap-5 md:flex-row pt-[80px] pb-3 px-3 h-screen overflow-auto md:overflow-hidden md:px-4"
   >
     <div
-      class="border-border-light flex flex-col gap-4 pr-4 relative dark:border-border-dark border-r flex-[2.5] xl:flex-[1.7] md:overflow-y-auto scroll-fade"
+      class="border-border-light flex flex-col gap-2 pr-3 relative dark:border-border-dark border-r flex-[2.5] xl:flex-[1.7] md:overflow-y-auto scroll-fade"
     >
       <div class="max-w-[270px]">
         <MySelect options={modelOptions} bind:value={currentModelValue} />
