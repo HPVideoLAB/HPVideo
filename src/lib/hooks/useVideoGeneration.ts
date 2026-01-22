@@ -1,7 +1,7 @@
 import { writable, get } from 'svelte/store';
 // 👇 引入 Wagmi Core 用于双重保险获取地址 (防止参数意外丢失)
 import { getAccount } from '@wagmi/core';
-import { config as wconfig } from '$lib/utils/wallet/bnb/index'; // 请确认路径
+import { config as wconfig } from '$lib/utils/wallet/bnb/index';
 
 // 👇 引入 API
 import {
@@ -13,7 +13,7 @@ import {
 } from '$lib/apis/model/pika';
 import { pollTaskResult } from '../../routes/pro/modules/task';
 
-// 补全参数类型
+// 1. 🔥 修改接口：允许 payload 携带 txHash
 interface ExtendedSubmitReq extends SubmitReq {
   video?: string;
   negative_prompt?: string;
@@ -24,6 +24,7 @@ interface ExtendedSubmitReq extends SubmitReq {
   guidance_scale?: number;
   flow_shift?: number;
   apply_mask?: boolean;
+  txHash?: string; // 👈 新增：支付凭证
 }
 
 export type HistoryItem = {
@@ -35,6 +36,7 @@ export type HistoryItem = {
   outputUrl?: string;
   thumbUrl?: string;
   params?: any;
+  txHash?: string; // 2. 🔥 新增：前端列表需要这个字段来发起重试
 };
 
 export function useVideoGeneration() {
@@ -46,7 +48,6 @@ export function useVideoGeneration() {
     return localStorage.getItem('token') || localStorage.getItem('access_token') || '';
   };
 
-  // 🔥 辅助函数：获取当前钱包地址 (防止参数传空)
   const getCurrentAddress = (fallbackAddress?: string) => {
     const account = getAccount(wconfig);
     if (account && account.address) return account.address;
@@ -54,49 +55,43 @@ export function useVideoGeneration() {
     return '';
   };
 
-  /**
-   * 🏗️ 核心流程：提交 -> 轮询当前任务 -> 更新 UI -> 🔥 完成后回调
-   * 增加了 address 参数传给 API
-   */
+  // 核心流程 (无需改动，只要 payload 里有 txHash，它就会传给 submitLargeLanguageModel)
   const _runTaskCore = async (
     payload: ExtendedSubmitReq,
     tempId: string,
-    addressArg: string, // <--- 接收地址
-    onSuccess?: () => void
+    addressArg: string,
+    onSuccess?: () => void,
+    // 👇 新增配置项
+    pollConfig: { intervalMs: number; timeoutMs: number } = { intervalMs: 20000, timeoutMs: 1800000 }
   ) => {
     try {
-      // 🔥 1. 把地址传给 API (请确保 submitLargeLanguageModel 已修改为接收 address)
-      // 如果 API 还没改，请去 src/lib/apis/model/pika.ts 把 header 加上 x-wallet-address
+      // API 调用时，payload 里已经包含了 txHash
       const { requestId } = await submitLargeLanguageModel(payload, addressArg);
 
-      // 2. 将临时 ID 更新为真实后端 ID
       history.update((list) => list.map((item) => (item.id === tempId ? { ...item, id: requestId } : item)));
 
-      // 3. 开始轮询
       const abortController = new AbortController();
 
       await pollTaskResult({
         requestId,
         fetcher: getLargeLanguageModelResult,
         signal: abortController.signal,
+        // 🔥 将配置传递给 pollTaskResult
+        intervalMs: pollConfig.intervalMs,
+        timeoutMs: pollConfig.timeoutMs,
         onCompleted: (url: string) => {
           console.log('✅ 生成完成，更新 UI');
-          // 4. 成功：直接更新本地 Store
           history.update((list) =>
             list.map((item) => (item.id === requestId ? { ...item, status: 'completed', outputUrl: url } : item))
           );
           isGenerating.set(false);
-
-          // 🔥 5. 执行回调 (去刷新后端列表)
           if (onSuccess) {
-            console.log('🔔 执行 onSuccess 回调...');
             onSuccess();
           }
         },
       });
     } catch (error: any) {
       console.error('Task Failed:', error);
-      // 失败处理
       history.update((list) => {
         const targetId = list.find((i) => i.id === tempId) ? tempId : list.find((i) => i.status === 'processing')?.id;
         return list.map((item) => (item.id === targetId ? { ...item, status: 'failed' } : item));
@@ -104,18 +99,16 @@ export function useVideoGeneration() {
       isGenerating.set(false);
       alert(`生成出错: ${error.message}`);
     } finally {
-      // 🔥🔥🔥 3. 无论成功失败，这里必须强制关闭 loading 状态
       isGenerating.set(false);
     }
   };
 
   // ==========================================
-  // 🔥 加载历史记录
+  // 🔥 加载历史记录 (关键修改)
   // ==========================================
   const loadHistory = async (addressArg: string) => {
     const address = getCurrentAddress(addressArg);
     if (!address) {
-      // console.log('❌ 未连接钱包，跳过加载历史');
       history.set([]);
       return;
     }
@@ -131,6 +124,7 @@ export function useVideoGeneration() {
         outputUrl: item.outputUrl,
         thumbUrl: item.thumbUrl,
         params: item.params,
+        txHash: item.txHash, // 👈 3. 🔥 必须映射回来，不然重试按钮拿不到 Hash
       }));
       history.set(formattedList);
     } catch (e) {
@@ -139,11 +133,12 @@ export function useVideoGeneration() {
   };
 
   // =========================================================
-  // 🟢 Pika
+  // 🟢 Pika (修改参数)
   // =========================================================
   const submitPika = async (
-    args: { files: File[]; prompt: string; transitions: any[]; resolution: any; seed: number },
-    addressArg: string, // 🔥 接收地址
+    // 4. 🔥 参数里增加 txHash (可选)
+    args: { files: File[]; prompt: string; transitions: any[]; resolution: any; seed: number; txHash?: string },
+    addressArg: string,
     onSuccess?: () => void
   ) => {
     if (get(isGenerating)) return;
@@ -153,7 +148,6 @@ export function useVideoGeneration() {
     isGenerating.set(true);
     const tempId = `temp-${Date.now()}`;
 
-    // ✅ 乐观 UI
     history.update((l) => [
       {
         id: tempId,
@@ -163,6 +157,8 @@ export function useVideoGeneration() {
         prompt: args.prompt,
         thumbUrl: URL.createObjectURL(args.files[0]),
         params: { model: 'pika', ...args },
+        // 🔥🔥🔥 新增这一行：把 hash 放到最外层 🔥🔥🔥
+        txHash: args.txHash,
       },
       ...l,
     ]);
@@ -177,10 +173,13 @@ export function useVideoGeneration() {
           resolution: args.resolution,
           transitions: args.transitions,
           seed: args.seed,
+          txHash: args.txHash, // 👈 5. 🔥 传给 Core -> API -> 后端
         },
         tempId,
-        address, // 🔥 透传地址
-        onSuccess
+        address,
+        onSuccess,
+        // 🔥 Pika 策略：10秒查一次，最长等 30 分钟
+        { intervalMs: 10000, timeoutMs: 1800000 }
       );
     } catch (e: any) {
       isGenerating.set(false);
@@ -190,7 +189,7 @@ export function useVideoGeneration() {
   };
 
   // =========================================================
-  // 🔵 Wan
+  // 🔵 Wan (修改参数)
   // =========================================================
   const submitWan = async (args: any, addressArg: string, onSuccess?: () => void) => {
     if (get(isGenerating)) return;
@@ -200,7 +199,6 @@ export function useVideoGeneration() {
     isGenerating.set(true);
     const tempId = `temp-${Date.now()}`;
 
-    // ✅ 恢复乐观 UI (之前这里漏了)
     history.update((l) => [
       {
         id: tempId,
@@ -210,6 +208,8 @@ export function useVideoGeneration() {
         prompt: args.prompt,
         thumbUrl: URL.createObjectURL(args.videoFile),
         params: { model: 'wan-2.1', ...args },
+        // 🔥🔥🔥 新增这一行：把 hash 放到最外层 🔥🔥🔥
+        txHash: args.txHash,
       },
       ...l,
     ]);
@@ -230,10 +230,13 @@ export function useVideoGeneration() {
           num_inference_steps: args.num_inference_steps,
           guidance_scale: args.guidance_scale,
           flow_shift: args.flow_shift,
+          txHash: args.txHash, // 👈 6. 🔥 传给 Core
         },
         tempId,
-        address, // 🔥 透传地址
-        onSuccess
+        address,
+        onSuccess,
+        // 🔥 Pika 策略：10秒查一次，最长等 30 分钟
+        { intervalMs: 2000, timeoutMs: 1800000 }
       );
     } catch (e: any) {
       isGenerating.set(false);
@@ -243,7 +246,7 @@ export function useVideoGeneration() {
   };
 
   // =========================================================
-  // 🟣 Sam
+  // 🟣 Sam (修改参数)
   // =========================================================
   const submitSam = async (args: any, addressArg: string, onSuccess?: () => void) => {
     if (get(isGenerating)) return;
@@ -253,7 +256,6 @@ export function useVideoGeneration() {
     isGenerating.set(true);
     const tempId = `temp-${Date.now()}`;
 
-    // ✅ 恢复乐观 UI (之前被注释了)
     history.update((l) => [
       {
         id: tempId,
@@ -263,6 +265,8 @@ export function useVideoGeneration() {
         prompt: args.prompt,
         thumbUrl: URL.createObjectURL(args.videoFile),
         params: { model: 'sam3', ...args },
+        // 🔥🔥🔥 新增这一行：把 hash 放到最外层 🔥🔥🔥
+        txHash: args.txHash,
       },
       ...l,
     ]);
@@ -276,10 +280,13 @@ export function useVideoGeneration() {
           images: [],
           video: urls[0],
           apply_mask: args.apply_mask,
+          txHash: args.txHash, // 👈 7. 🔥 传给 Core
         },
         tempId,
-        address, // 🔥 透传地址
-        onSuccess
+        address,
+        onSuccess,
+        // 🔥 Pika 策略：10秒查一次，最长等 30 分钟
+        { intervalMs: 2000, timeoutMs: 1800000 }
       );
     } catch (e: any) {
       isGenerating.set(false);

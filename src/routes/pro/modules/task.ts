@@ -28,10 +28,15 @@ export async function pollTaskResult<TResp>(args: {
   signal: AbortSignal;
   onCompleted?: (url: string, raw: TResp) => void;
   onTick?: (raw: TResp) => void;
+  // 🔥 新增可选参数
+  intervalMs?: number;
+  timeoutMs?: number;
 }) {
-  const { requestId, fetcher, signal, onCompleted, onTick } = args;
+  const { requestId, fetcher, signal, onCompleted, onTick, intervalMs = 20000, timeoutMs = 1800000 } = args;
 
   const last = await poll(() => fetcher(requestId), {
+    intervalMs, // 🔥 透传
+    timeoutMs, // 🔥 透传
     signal,
 
     onTick: (resp) => {

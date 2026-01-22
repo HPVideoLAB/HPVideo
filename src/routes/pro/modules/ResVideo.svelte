@@ -1,13 +1,12 @@
 <script lang="ts">
-  import { getContext } from 'svelte';
   import dayjs from 'dayjs';
   import { toast } from 'svelte-sonner';
   import MyButton from '$lib/components/common/MyButton.svelte';
   import Tooltip from '$lib/components/common/Tooltip.svelte';
   import { modelDuration } from '../../../constants/pro-model';
+  import { createEventDispatcher, getContext } from 'svelte';
 
   type Status = 'processing' | 'completed' | 'failed';
-
   type ResVideoItem = {
     id: string;
     createdAt: number;
@@ -21,7 +20,7 @@
   export let item: ResVideoItem | undefined;
 
   const i18n: any = getContext('i18n');
-
+  const dispatch = createEventDispatcher(); // 👈 初始化
   function statusText(s: Status) {
     if (s === 'completed') return $i18n.t('Completed');
     if (s === 'processing') return $i18n.t('Video Generating...');
@@ -162,12 +161,28 @@
         </div>
       {:else if item.status === 'failed'}
         <div class="w-full mx-auto">
-          <div class={`${stageClass(item.status)}`} style={boxStyle()}>
+          <div class={`${stageClass(item.status)} `} style={boxStyle()}>
             <img class="size-10" src="/creator/static/video/video_generating.png" alt="" />
             <span class="text-sm text-gray-50 mt-2">{$i18n.t('Video Generation Failed')}</span>
             <span class="text-xs text-gray-100/80 mt-1 px-6 text-center">
               {$i18n.t('Please check your assets or prompt and try again')}
             </span>
+
+            <MyButton
+              class="mt-2"
+              round
+              type="primary"
+              on:click={(e) => {
+                // 1. 获取 MyButton 传递出来的原始 DOM 事件并停止冒泡
+                e.detail.stopPropagation();
+
+                // 2. 执行你的逻辑
+                dispatch('retry', item);
+              }}
+            >
+              <iconify-icon class="text-xl" icon="mdi:refresh" />
+              <span class="!text-[13px]"> {$i18n.t('Free Retry')}</span>
+            </MyButton>
           </div>
         </div>
       {:else}

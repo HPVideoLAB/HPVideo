@@ -99,6 +99,13 @@ export class CreateLargeLanguageModelDto {
   @Min(-1)
   seed?: number;
 
+  // 🔥🔥🔥【这里是新增的部分】🔥🔥🔥
+  // 必须加上这个字段，后端才允许接收前端传来的 txHash
+  @IsOptional()
+  @IsString()
+  txHash?: string;
+  // 🔥🔥🔥【新增结束】🔥🔥🔥
+
   // ==========================================
   // 🟢 Pika 专属 (严禁其他模型使用)
   // ==========================================

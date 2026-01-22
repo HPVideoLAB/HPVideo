@@ -1095,5 +1095,6 @@
   "Wan parameters restored": "Wan 매개변수 복구됨",
   "Sam video restored successfully": "Sam 비디오 복구 성공",
   "Sam parameters restored": "Sam 매개변수 복구됨",
-  "Parameter restoration system error": "매개변수 복구 시스템 오류"
+  "Parameter restoration system error": "매개변수 복구 시스템 오류",
+  "Free Retry": "무료 재시도"
 }

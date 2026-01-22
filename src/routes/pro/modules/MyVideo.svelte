@@ -49,7 +49,7 @@
   >
     {#if activeItem}
       {#key activeItem.id}
-        <ResVideo item={activeItem} />
+        <ResVideo on:retry item={activeItem} />
       {/key}
     {:else}
       <div

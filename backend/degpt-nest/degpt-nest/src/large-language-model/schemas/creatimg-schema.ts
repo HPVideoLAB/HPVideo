@@ -30,6 +30,10 @@ export class LargeMode extends Document {
   @Prop({ default: 'processing', index: true })
   status: 'processing' | 'completed' | 'failed';
 
+  // 🟢 替换为这一行：(去掉 required，给个默认值)
+  @Prop({ index: true, default: '' })
+  txHash: string;
+
   // 7. 结果 URL
   @Prop()
   outputUrl: string;

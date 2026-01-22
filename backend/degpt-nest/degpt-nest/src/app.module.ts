@@ -5,6 +5,7 @@ import { LargeLanguageModelModule } from './large-language-model/large-language-
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { OssModule } from './oss/oss.module';
+import { SmartEnhancerModule } from './smart-enhancer/smart-enhancer.module';
 
 @Module({
   imports: [
@@ -21,7 +22,8 @@ import { OssModule } from './oss/oss.module';
     MongooseModule.forRoot(
       process.env.MONGODB_URI || 'mongodb://localhost:27017/degpt',
     ),
-    OssModule, // 连接字符串
+    OssModule,
+    SmartEnhancerModule, // 连接字符串
   ],
   controllers: [AppController],
   providers: [AppService],

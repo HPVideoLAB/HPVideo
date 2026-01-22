@@ -4,10 +4,11 @@
   import { walletAddress } from '$lib/stores/wallet';
   import { ensureWalletConnected } from '$lib/utils/wallet/check';
   import { calculateCost } from '$lib/utils/pro/pricing';
-  import { getContext, onMount } from 'svelte';
+  import { getContext, onMount, tick } from 'svelte';
   // 🔥 新引入的恢复工具
   import { restoreProParams } from '$lib/utils/pro/history-restore';
   import { initPageFlag } from '$lib/stores';
+  import { urlToFileApi } from '$lib/apis/model/pika';
 
   // 子组件
   import ImgToVideoUploader from './modules/pika/ImgToVideoUploader.svelte';
@@ -31,7 +32,6 @@
     validateWanForm,
     validateSamForm,
   } from './modules/form';
-  import { tick } from 'svelte';
 
   const { isGenerating, history, submitPika, submitWan, submitSam, loadHistory } = useVideoGeneration();
   const { pay } = usePayment();
@@ -100,7 +100,7 @@
   $: samCost = calculateCost('sam', { duration: samForm.duration });
 
   // ==========================================
-  // ⚡️ 逻辑：历史记录回填 (极简版)
+  // ⚡️ 逻辑：历史记录回填 (点击卡片)
   // ==========================================
   async function handleHistorySelect(e: CustomEvent) {
     const item = e.detail;
@@ -111,12 +111,11 @@
     if (targetModel) currentModelValue = targetModel.model;
     await tick();
 
-    // 🔥 调用抽离的工具函数
+    // 回填参数
     await restoreProParams(item.params, {
       setPika: (data) => {
-        // 支持部分更新 (合并)
         pikaForm = { ...pikaForm, ...data };
-        if (data.transitions) pikaForm.transitions = data.transitions; // 强制覆盖转场
+        if (data.transitions) pikaForm.transitions = data.transitions;
       },
       setWan: (data) => {
         wanForm = { ...wanForm, ...data };
@@ -128,9 +127,93 @@
   }
 
   // ==========================================
-  // ⚡️ 提交处理 (代码结构保持，但使用聚合对象)
+  // 🔥🔥🔥 逻辑：失败任务重试 (智能判断 + 自动提交)
   // ==========================================
-  const handlePikaGenerate = async () => {
+  const handleRetryVideo = async (e: CustomEvent) => {
+    const item = e.detail;
+    if (!item || !item.params) return;
+
+    // 1. 拿凭证
+    const oldTxHash = item.txHash || item.params?.txHash;
+    if (!oldTxHash) {
+      return toast.error($i18n.t('Unable to retrieve payment proof for retry'));
+    }
+
+    // 2. 切 Tab
+    const targetModel = proModel.find((m) => m.model.includes(item.params.model));
+    if (targetModel) currentModelValue = targetModel.model;
+    await tick();
+
+    // 3. 🔥🔥🔥 智能判断：如果表单里已经有文件了，直接提交，别再去折腾下载了！
+    let isReady = false;
+
+    if (item.model.includes('pika')) {
+      // Pika: 如果文件数组不为空，说明就绪
+      if (pikaForm.files.length > 0) isReady = true;
+    } else if (item.model.includes('wan')) {
+      // Wan: 必须是 File 对象 (不能是 null 或 URL字符串)
+      if (wanForm.video instanceof File) isReady = true;
+    } else if (item.model.includes('sam')) {
+      // Sam: 必须是 File 对象
+      if (samForm.video instanceof File) isReady = true;
+    }
+
+    // 4. 分支逻辑
+    if (isReady) {
+      console.log('✨ 资源已就绪，直接发起重试...');
+      // A. 资源已在表单中 -> 直接生成
+      await executeGenerate(item.model, oldTxHash);
+    } else {
+      console.log('📥 资源未就绪，开始回填...');
+      // B. 资源不在 -> 走老路：回填 + 等待 + 生成
+
+      // 复用回填逻辑
+      await handleHistorySelect(e);
+
+      // 等待文件就绪 (加个保险，防止 handleHistorySelect 里的下载没跑完)
+      const readyAfterWait = await waitForFile(item.model);
+      if (!readyAfterWait) return;
+
+      // 生成
+      await executeGenerate(item.model, oldTxHash);
+    }
+  };
+
+  // 🛠️ 抽取生成逻辑 (避免重复代码)
+  const executeGenerate = async (model: string, txHash: string) => {
+    // 传入 true 表示保留参数，不要清空表单！
+    if (model.includes('pika')) {
+      await handlePikaGenerate(txHash, true);
+    } else if (model.includes('wan')) {
+      await handleWanGenerate(txHash, true);
+    } else if (model.includes('sam')) {
+      await handleSamGenerate(txHash, true);
+    }
+  };
+
+  // 🛠️ 辅助函数：简单的等待器 (放在 script 底部即可)
+  const waitForFile = async (model: string) => {
+    let attempts = 0;
+    while (attempts < 150) {
+      // 最多等30秒
+      if (model.includes('pika') && pikaForm.files.length > 0) return true;
+      // 必须判断是 File 对象，防止拿到旧的 URL 字符串
+      if (model.includes('wan') && wanForm.video instanceof File) return true;
+      if (model.includes('sam') && samForm.video instanceof File) return true;
+
+      await new Promise((r) => setTimeout(r, 200)); // 每0.2秒看一眼
+      attempts++;
+    }
+    toast.error($i18n.t('Timeout waiting for asset restoration'));
+    return false;
+  };
+
+  // ==========================================
+  // ⚡️ 提交处理 (修改：支持 reuseTxHash)
+  // ==========================================
+
+  // 🟢 Pika
+  const handlePikaGenerate = async (reuseTxHash?: string, keepParams?: boolean) => {
     const address = await ensureWalletConnected();
     if (!address) return;
     if (pikaForm.files.length < 2) return toast.warning($i18n.t('Please upload images'));
@@ -147,13 +230,21 @@
     }
     pikaForm.errors = {};
 
-    const payment = await pay({
-      amount: pikaCost,
-      model: 'pika',
-      resolution: pikaForm.resolution,
-      duration: pikaDuration,
-    });
-    if (!payment.success) return;
+    let finalTxHash = reuseTxHash;
+
+    // 🔥 如果没有传入复用的 Hash，才走支付流程
+    if (!finalTxHash) {
+      const payment = await pay({
+        amount: pikaCost,
+        model: 'pika',
+        resolution: pikaForm.resolution,
+        duration: pikaDuration,
+      });
+      if (!payment.success) return;
+      finalTxHash = payment.txHash;
+    } else {
+      // toast.info($i18n.t('Retrying with previous payment...'));
+    }
 
     await submitPika(
       {
@@ -162,13 +253,22 @@
         resolution: pikaForm.resolution,
         transitions: pikaForm.transitions,
         seed: pikaForm.seed,
+        txHash: finalTxHash, // 🔥 传给后端验证
       },
       $walletAddress,
-      () => loadHistory($walletAddress)
+      () => {
+        loadHistory($walletAddress);
+        // 🔥🔥🔥 关键修改：只有不保留参数时，才清空表单 🔥🔥🔥
+        if (!keepParams) {
+          pikaForm.files = [];
+          pikaForm.prompt = ''; // 视情况是否清空提示词
+        }
+      }
     );
   };
 
-  const handleWanGenerate = async () => {
+  // 🔵 Wan
+  const handleWanGenerate = async (reuseTxHash?: string, keepParams?: boolean) => {
     const address = await ensureWalletConnected();
     if (!address) return;
     if (!wanForm.video) return toast.warning($i18n.t('Please upload video'));
@@ -189,13 +289,21 @@
     }
     wanForm.errors = {};
 
-    const payment = await pay({
-      amount: wanCost,
-      model: 'wan-2.1',
-      resolution: '720p',
-      duration: wanForm.duration,
-    });
-    if (!payment.success) return;
+    let finalTxHash = reuseTxHash;
+
+    // 🔥 支付判断
+    if (!finalTxHash) {
+      const payment = await pay({
+        amount: wanCost,
+        model: 'wan-2.1',
+        resolution: '720p',
+        duration: wanForm.duration,
+      });
+      if (!payment.success) return;
+      finalTxHash = payment.txHash;
+    } else {
+      // toast.info($i18n.t('Retrying with previous payment...'));
+    }
 
     await submitWan(
       {
@@ -209,13 +317,21 @@
         num_inference_steps: wanForm.steps,
         guidance_scale: wanForm.cfg,
         flow_shift: wanForm.flow,
+        txHash: finalTxHash, // 🔥
       },
       $walletAddress,
-      () => loadHistory($walletAddress)
+      () => {
+        loadHistory($walletAddress);
+        // 🔥🔥🔥 关键修改 🔥🔥🔥
+        if (!keepParams) {
+          wanForm.video = null; // 只有非重试模式才清空
+        }
+      }
     );
   };
 
-  const handleSamGenerate = async () => {
+  // 🟣 Sam
+  const handleSamGenerate = async (reuseTxHash?: string, keepParams?: boolean) => {
     const address = await ensureWalletConnected();
     if (!address) return;
     if (!samForm.video) return toast.warning($i18n.t('Please upload video'));
@@ -227,29 +343,43 @@
     }
     samForm.errors = {};
 
-    const payment = await pay({
-      amount: samCost,
-      model: 'sam3',
-      resolution: 'original',
-      duration: samForm.duration,
-    });
-    if (!payment.success) return;
+    let finalTxHash = reuseTxHash;
+
+    // 🔥 支付判断
+    if (!finalTxHash) {
+      const payment = await pay({
+        amount: samCost,
+        model: 'sam3',
+        resolution: 'original',
+        duration: samForm.duration,
+      });
+      if (!payment.success) return;
+      finalTxHash = payment.txHash;
+    } else {
+      // toast.info($i18n.t('Retrying with previous payment...'));
+    }
 
     await submitSam(
       {
         videoFile: samForm.video!,
         prompt: samForm.prompt,
         apply_mask: samForm.mask,
+        txHash: finalTxHash, // 🔥
       },
       $walletAddress,
-      () => loadHistory($walletAddress)
+      () => {
+        loadHistory($walletAddress);
+        // 🔥🔥🔥 关键修改 🔥🔥🔥
+        if (!keepParams) {
+          samForm.video = null;
+        }
+      }
     );
   };
 
   // 自动加载
   $: loadHistory($walletAddress);
 
-  // 🔥 修复：确保加载屏被移除（pro 页面不在 (app) 路由组内）
   onMount(() => {
     initPageFlag.set(true);
   });
@@ -311,7 +441,7 @@
             costUsd={pikaCost}
             errors={pikaForm.errors}
             taskStatus={$isGenerating ? 'submitting' : 'idle'}
-            on:generate={handlePikaGenerate}
+            on:generate={() => handlePikaGenerate()}
           />
         {:else if currentModelValue === 'sam3-video'}
           <SamParams
@@ -320,7 +450,7 @@
             costUsd={samCost}
             errors={samForm.errors}
             taskStatus={$isGenerating ? 'submitting' : 'idle'}
-            on:generate={handleSamGenerate}
+            on:generate={() => handleSamGenerate()}
           />
         {:else}
           <WanParams
@@ -336,14 +466,14 @@
             costUsd={wanCost}
             errors={wanForm.errors}
             taskStatus={$isGenerating ? 'submitting' : 'idle'}
-            on:generate={handleWanGenerate}
+            on:generate={() => handleWanGenerate()}
           />
         {/if}
       </div>
     </div>
 
     <div class="flex-[3]">
-      <MyVideo items={$history} on:select={handleHistorySelect} />
+      <MyVideo items={$history} on:select={handleHistorySelect} on:retry={handleRetryVideo} />
     </div>
   </main>
 </div>
