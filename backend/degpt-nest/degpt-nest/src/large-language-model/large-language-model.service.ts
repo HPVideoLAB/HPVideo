@@ -6,6 +6,7 @@ import { LargeMode, LargeModeDocument } from './schemas/creatimg-schema';
 import { usePika } from '@/hook/usepika';
 import { useWan } from '@/hook/useWan';
 import { useSam3 } from '@/hook/useSam3';
+import { useLtx2 } from '@/hook/useLtx2';
 
 @Injectable()
 export class LargeLanguageModelService {
@@ -86,6 +87,18 @@ export class LargeLanguageModelService {
           });
           thumbUrl = createCatDto.video || '';
           break;
+        // 🔥🔥🔥【新增】LTX-2 19b 逻辑 🔥🔥🔥
+        case 'ltx-2-19b': {
+          const { submitLtx2Task } = useLtx2();
+          requestId = await submitLtx2Task({
+            image: createCatDto.image!, // 只取 DTO 里的 image
+            prompt: createCatDto.prompt, // 和 prompt
+            seed: createCatDto.seed, // 种子可选
+            // resolution: 1080p 已在 Hook 内部写死，无需在此传递
+          });
+          thumbUrl = createCatDto.image || ''; // 缩略图就是原图
+          break;
+        }
 
         default:
           throw new BadRequestException('不支持的模型类型');
