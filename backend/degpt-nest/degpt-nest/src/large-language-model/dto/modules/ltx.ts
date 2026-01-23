@@ -1,5 +1,5 @@
+// dto/modules/ltx.ts
 import {
-  IsString,
   IsNotEmpty,
   IsOptional,
   IsUrl,
@@ -11,18 +11,19 @@ import {
 import { IsOnlyForModel } from '../model-validator';
 
 export class LtxDto {
-  // LTX 专属：单张图片 string
-  @ValidateIf((o) => o.model === 'ltx-2-19b')
-  @IsOnlyForModel(['ltx-2-19b'])
+  @ValidateIf(
+    (o) => o.model === 'ltx-2-19b' || o.model === 'commercial-pipeline',
+  )
+  @IsOnlyForModel(['ltx-2-19b', 'commercial-pipeline'])
   @IsUrl()
   @IsNotEmpty()
   image?: string;
 
-  // LTX 专属：Duration (5-20)
-  // 注意：虽然变量名和 Wan 一样，但因为文件隔离 + ValidateIf，不会冲突
   @IsOptional()
-  @ValidateIf((o) => o.model === 'ltx-2-19b')
-  @IsOnlyForModel(['ltx-2-19b'])
+  @ValidateIf(
+    (o) => o.model === 'ltx-2-19b' || o.model === 'commercial-pipeline',
+  )
+  @IsOnlyForModel(['ltx-2-19b', 'commercial-pipeline'])
   @IsInt()
   @Min(5)
   @Max(20)

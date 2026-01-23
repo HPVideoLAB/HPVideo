@@ -3,10 +3,22 @@ import { CreateLargeLanguageModelDto } from './dto/create-large-language-model.d
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { LargeMode, LargeModeDocument } from './schemas/creatimg-schema';
+
 import { usePika } from '@/hook/usepika';
-import { useWan } from '@/hook/useWan';
-import { useSam3 } from '@/hook/useSam3';
-import { useLtx2 } from '@/hook/useLtx2';
+/**
+组合式 pipeline 的“推进引擎。
+ */
+import { useCommercialPipeline } from '@/hook/useCommercialPipeline';
+/**
+ * useModelDispatcher.ts：单模型的“路由分发器”
+作用：把 dto.model 分发到对应模型的 submit hook（pika/wan/sam3/ltx/upscaler/kling），并统一返回 {requestId, thumbUrl}。
+ */
+import { useModelDispatcher } from '@/hook/useModelDispatcher';
+/**
+组合式 pipeline 的“推进引擎。
+ */
+import { useCommercialPipelineRunner } from '@/hook/useCommercialPipelineRunner';
+import { SmartEnhancerService } from '@/smart-enhancer/smart-enhancer.service';
 
 @Injectable()
 export class LargeLanguageModelService {
@@ -14,134 +26,88 @@ export class LargeLanguageModelService {
 
   constructor(
     @InjectModel(LargeMode.name) private catModel: Model<LargeModeDocument>,
+    private readonly smartEnhancerService: SmartEnhancerService,
   ) {}
 
-  // =======================================================
-  // 1. 创建逻辑：安全校验 -> 调用 Hook -> 存库(含失败状态)
-  // =======================================================
   async create(createCatDto: CreateLargeLanguageModelDto, userId: string) {
-    // 强制类型断言，获取 DTO 中的 txHash (假设你已经在 DTO 里加了这个字段)
-    const { txHash, model } = createCatDto as any;
+    const dto: any = createCatDto;
+    const { txHash, model } = dto;
 
-    // 🛡️ [第一道防线] 幂等性检查：查库看这个 Hash 用过没
-    let record = await this.catModel.findOne({ txHash });
+    if (!txHash) throw new BadRequestException('支付凭证丢失');
 
+    // 幂等查库
+    const record = await this.catModel.findOne({ txHash });
     if (record) {
-      // A. 如果之前的任务正在跑或者成功了，直接拦截（防止重放攻击）
       if (record.status === 'processing' || record.status === 'completed') {
         throw new BadRequestException('该支付凭证已使用，请勿重复提交');
       }
-      // B. 如果之前的状态是 failed，允许“原地复活” (Retry)
-      // 逻辑自动往下走，跳过下面的 else 链上检查
       this.logger.log(`Retrying failed task for hash: ${txHash}`);
-    } else {
-      // 🛡️ [第二道防线] 链上验证 (如果是新 Hash)
-      // TODO: 在这里调用 verifyTransaction(txHash) 验证金额和接收方
-      if (!txHash) throw new BadRequestException('支付凭证丢失');
     }
 
-    let requestId: string;
+    // ✅ pipeline：抽离
+    if (model === 'commercial-pipeline') {
+      const { run } = useCommercialPipelineRunner();
+      return run({
+        dto,
+        record,
+        userId,
+        txHash,
+        smartEnhancerService: this.smartEnhancerService,
+        catModel: this.catModel,
+      });
+    }
+
+    // ✅ 旧模型 prompt 强制
+    const needPromptModels = ['pika', 'wan-2.1', 'sam3', 'ltx-2-19b'];
+    if (needPromptModels.includes(model)) {
+      if (!dto.prompt || !dto.prompt.trim()) {
+        throw new BadRequestException('该模型必须提供 prompt');
+      }
+    }
+
+    // ✅ 单模型 submit：抽离
+    let requestId = '';
     let thumbUrl = '';
     let finalStatus: 'processing' | 'failed' = 'processing';
     let errorMsg = '';
 
-    // --- A. 尝试调用第三方 API (包裹在 Try/Catch 中) ---
     try {
-      // throw new Error('模拟第三方报错: Insufficient credits. Please top up.');
-      switch (model) {
-        case 'pika':
-          const { submitTask: submitPika } = usePika();
-          requestId = await submitPika({
-            prompt: createCatDto.prompt,
-            images: createCatDto.images!,
-            resolution: createCatDto.resolution,
-            seed: createCatDto.seed,
-            transitions: createCatDto.transitions,
-          });
-          thumbUrl = createCatDto.images?.[0] || '';
-          break;
-
-        case 'wan-2.1':
-          const { submitWanTask } = useWan();
-          requestId = await submitWanTask({
-            video: createCatDto.video!,
-            prompt: createCatDto.prompt,
-            negative_prompt: createCatDto.negative_prompt,
-            loras: createCatDto.loras,
-            strength: createCatDto.strength,
-            num_inference_steps: createCatDto.num_inference_steps,
-            duration: createCatDto.duration,
-            guidance_scale: createCatDto.guidance_scale,
-            flow_shift: createCatDto.flow_shift,
-            seed: createCatDto.seed,
-          });
-          thumbUrl = createCatDto.video || '';
-          break;
-
-        case 'sam3':
-          const { submitSam3Task } = useSam3();
-          requestId = await submitSam3Task({
-            video: createCatDto.video!,
-            prompt: createCatDto.prompt,
-            apply_mask: createCatDto.apply_mask,
-          });
-          thumbUrl = createCatDto.video || '';
-          break;
-        // 🔥🔥🔥【新增】LTX-2 19b 逻辑 🔥🔥🔥
-        case 'ltx-2-19b': {
-          const { submitLtx2Task } = useLtx2();
-          requestId = await submitLtx2Task({
-            image: createCatDto.image!, // 只取 DTO 里的 image
-            prompt: createCatDto.prompt, // 和 prompt
-            seed: createCatDto.seed, // 种子可选
-            // resolution: 1080p 已在 Hook 内部写死，无需在此传递
-          });
-          thumbUrl = createCatDto.image || ''; // 缩略图就是原图
-          break;
-        }
-
-        default:
-          throw new BadRequestException('不支持的模型类型');
-      }
-    } catch (error) {
-      // 🛑 [关键逻辑] 捕获失败：即使 API 挂了，也要记录入库，但标记为 failed
-      this.logger.error(`Submit Error: ${error.message}`);
+      const { submit } = useModelDispatcher();
+      const r = await submit(dto);
+      requestId = r.requestId;
+      thumbUrl = r.thumbUrl;
+    } catch (e: any) {
+      this.logger.error(`Submit Error: ${e.message}`);
       finalStatus = 'failed';
-      errorMsg = error.message || 'Unknown error';
-      // 生成一个临时 ID 以满足 Schema 的 unique 约束，防止存库失败
+      errorMsg = e.message || 'Unknown error';
       requestId = `err-${txHash.slice(-6)}-${Date.now()}`;
     }
 
-    // --- B. 存入 MongoDB (支持新建或更新) ---
+    // 存库：新建 or failed 复活
     if (record) {
-      // 这种情况是“重试”：更新旧的 failed 记录
-      record.requestId = requestId; // 更新为新的 ID (或错误占位符)
+      record.requestId = requestId;
       record.status = finalStatus;
       record.modelName = model;
-      record.params = createCatDto;
+      record.userId = userId;
+      record.params = dto;
       if (thumbUrl) record.thumbUrl = thumbUrl;
-      // 记得清空之前的 outputUrl
       record.outputUrl = '';
       await record.save();
     } else {
-      // 这种情况是“新单”：创建新记录
       const newRecord = new this.catModel({
         requestId,
         userId,
-        txHash, // 🔥 存入 Hash 作为凭证
+        txHash,
         modelName: model,
-        prompt: createCatDto.prompt,
-        params: createCatDto,
-        status: finalStatus, // 可能是 processing，也可能是 failed
+        prompt: dto.prompt,
+        params: dto,
+        status: finalStatus,
         thumbUrl,
         outputUrl: '',
       });
       await newRecord.save();
     }
 
-    this.logger.log(`Task processed: ${requestId}, Status: ${finalStatus}`);
-
-    // 🔥 如果最终状态是失败，抛出异常告知前端 (前端接到 400 会保留 Hash)
     if (finalStatus === 'failed') {
       throw new BadRequestException(
         `服务提交失败 (${errorMsg})，凭证已记录，请稍后点击“重试”按钮（无需重新支付）。`,
@@ -152,16 +118,73 @@ export class LargeLanguageModelService {
   }
 
   // =======================================================
-  // 2. 轮询逻辑 (保持不变)
+  // 2) 轮询：pipeline 自动推进 + 其它模型保持不变
   // =======================================================
   async findOne(id: string) {
     const record = await this.catModel.findOne({ requestId: id });
 
-    // 优化：已终结状态直接返回
-    if (
-      record &&
-      (record.status === 'completed' || record.status === 'failed')
-    ) {
+    if (!record) {
+      throw new BadRequestException('任务不存在');
+    }
+
+    // ✅ pipeline：推进流水线
+    if (record.modelName === 'commercial-pipeline') {
+      const pipeline = (record.params as any)?.pipeline;
+      if (!pipeline) throw new BadRequestException('pipeline state missing');
+
+      // 已终结直接返回
+      if (record.status === 'completed' || record.status === 'failed') {
+        return {
+          id: record.requestId,
+          status: record.status,
+          resultUrl: record.outputUrl,
+          audioUrl: pipeline.audioUrl,
+          stage: pipeline.stage,
+          raw: { pipeline },
+        };
+      }
+
+      const { advanceOnce } = useCommercialPipeline();
+      const { state, apiResult } = await advanceOnce(pipeline);
+
+      // 写回 pipeline 状态
+      (record.params as any).pipeline = state;
+
+      // ✅ 关键：params 多半是 Mixed/any，深层变更必须 markModified 否则可能不落库
+      record.markModified('params'); // 或者：record.markModified('params.pipeline');
+
+      // 同步顶层状态 & outputUrl
+      if (state.stage === 'completed') {
+        record.status = 'completed';
+        record.outputUrl = state.finalVideoUrl || state.dubbedVideoUrl || '';
+      } else if (state.stage === 'failed') {
+        record.status = 'failed';
+        // 失败也建议清一下 outputUrl，避免前端误用旧链接（可选）
+        // record.outputUrl = '';
+      } else {
+        record.status = 'processing';
+      }
+
+      // （可选）调试：看看 stage 是否在推进
+      this.logger.log(
+        `[pipeline] id=${record.requestId} stage=${pipeline.stage} -> ${state.stage}`,
+      );
+
+      await record.save();
+
+      return {
+        id: record.requestId,
+        status: record.status,
+        stage: state.stage,
+        resultUrl:
+          record.outputUrl || state.finalVideoUrl || state.dubbedVideoUrl,
+        audioUrl: state.audioUrl,
+        raw: apiResult?.raw ?? { pipeline: state },
+      };
+    }
+
+    // ✅ 非 pipeline：已终结直接返回
+    if (record.status === 'completed' || record.status === 'failed') {
       return {
         id: record.requestId,
         status: record.status,
@@ -170,32 +193,24 @@ export class LargeLanguageModelService {
       };
     }
 
-    // 调用 API 查询 (假设 pika 接口通用)
+    // ✅ 统一轮询 predictions（你原来的逻辑）
     const { getResult } = usePika();
-    let apiResult;
-    try {
-      apiResult = await getResult(id);
-    } catch (e) {
-      throw e;
-    }
+    const apiResult = await getResult(id);
 
-    // 同步状态
-    if (record) {
-      if (apiResult.status === 'completed') {
-        record.status = 'completed';
-        record.outputUrl = apiResult.resultUrl;
-        await record.save();
-      } else if (apiResult.status === 'failed') {
-        record.status = 'failed';
-        await record.save();
-      }
+    if (apiResult.status === 'completed') {
+      record.status = 'completed';
+      record.outputUrl = apiResult.resultUrl as any;
+      await record.save();
+    } else if (apiResult.status === 'failed') {
+      record.status = 'failed';
+      await record.save();
     }
 
     return apiResult;
   }
 
   // =======================================================
-  // 3. 获取历史 (保持不变)
+  // 3) 获取历史
   // =======================================================
   async findAllByUser(userId: string) {
     if (!userId || userId === 'anonymous') return [];

@@ -5,6 +5,8 @@ export type FetchDebug = {
   tag?: string; // 这次请求属于哪个阶段：submit/poll
   requestId?: string; // 轮询时的任务 id
   logBodyOnError?: boolean; // 出错时是否打印响应 body
+  // ✅ 新增：模型名（可选）
+  model?: string;
 };
 
 export async function fetchWithTimeout(
@@ -29,6 +31,7 @@ export async function fetchWithTimeout(
     // 只做轻量调试：不默认打印 body，避免大输出
     logger.debug(
       `[${tag}] ${resp.status} ${resp.statusText} ${costMs}ms` +
+        (debug?.model ? ` model=${debug.model}` : '') +
         (debug?.requestId ? ` requestId=${debug.requestId}` : '') +
         ` url=${url}`,
     );
@@ -38,9 +41,11 @@ export async function fetchWithTimeout(
     const costMs = Date.now() - startedAt;
     logger.error(
       `[${tag}] request failed ${costMs}ms` +
+        (debug?.model ? ` model=${debug.model}` : '') +
         (debug?.requestId ? ` requestId=${debug.requestId}` : '') +
         ` url=${url} err=${err?.name ?? ''}:${err?.message ?? err}`,
     );
+
     throw err;
   } finally {
     clearTimeout(t);
