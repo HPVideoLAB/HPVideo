@@ -75,7 +75,10 @@ export class PikaDto {
   @IsUrl({}, { each: true })
   images?: string[];
 
+  // 🔥 【修改点】加上 @ValidateIf，把这个字段锁死在 Pika 内部
+  // 这样当 model 是 commercial-pipeline 时，这行代码会自动失效，不会报错
   @IsOptional()
+  @ValidateIf((o) => o.model === 'pika')
   @IsOnlyForModel(['pika'])
   @IsIn(['720p', '1080p'])
   resolution?: '720p' | '1080p';

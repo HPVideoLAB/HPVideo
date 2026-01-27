@@ -1,36 +1,37 @@
 import { Logger } from '@nestjs/common';
 
-export const useLtx2 = () => {
-  const logger = new Logger('UseLtx2');
-
+export const useWan26 = () => {
+  const logger = new Logger('UseWan26');
   const apiKey = process.env.WAVESPEED_KEY;
   const baseUrl = process.env.WAVESPEED_URL;
 
-  // 1. 提交任务
-  const submitLtx2Task = async (params: {
+  const submitWan26Task = async (params: {
     image: string;
     prompt: string;
-    duration?: number; // 🔥 接收 duration
+    duration: number; // 必填
+    resolution?: '720p' | '1080p';
+    negative_prompt?: string;
+    shot_type?: 'single' | 'multi';
     seed?: number;
   }) => {
-    if (!apiKey) {
-      throw new Error('API Key not configured');
-    }
+    if (!apiKey) throw new Error('API Key not configured');
 
-    const url = `${baseUrl}/wavespeed-ai/ltx-2-19b/image-to-video`;
+    const url = `${baseUrl}/alibaba/wan-2.6/image-to-video`;
 
-    // 🔥 核心修改：duration 动态化
     const payload = {
       image: params.image,
       prompt: params.prompt,
-      resolution: '1080p', // 分辨率依然写死 1080p
-      duration: params.duration || 5, // 🔥 默认 5s，如果传了就用传的
+      // ✅ 接收 DTO 传来的参数
+      duration: params.duration,
+      resolution: params.resolution || '1080p', // 默认 1080p
+      negative_prompt: params.negative_prompt,
+      shot_type: params.shot_type || 'multi', // 默认多镜头叙事
+
+      enable_prompt_expansion: true,
       seed: params.seed ?? -1,
     };
 
-    logger.log(
-      `Submitting LTX-2 (1080p, ${payload.duration}s) Task: ${JSON.stringify(payload)}`,
-    );
+    logger.log(`Submitting Wan 2.6 Task: ${JSON.stringify(payload)}`);
 
     try {
       const response = await fetch(url, {
@@ -44,15 +45,14 @@ export const useLtx2 = () => {
 
       if (!response.ok) {
         const errText = await response.text();
-        throw new Error(`LTX-2 API Error (${response.status}): ${errText}`);
+        throw new Error(`Wan 2.6 API Error (${response.status}): ${errText}`);
       }
 
       const result = await response.json();
       const requestId = result?.data?.id;
 
-      if (!requestId) {
-        throw new Error('No Request ID returned from LTX-2 API');
-      }
+      if (!requestId)
+        throw new Error('No Request ID returned from Wan 2.6 API');
 
       return requestId;
     } catch (error) {
@@ -61,28 +61,21 @@ export const useLtx2 = () => {
     }
   };
 
-  // 2. 查询结果 (保持不变)
+  // getResult 保持不变
   const getResult = async (requestId: string) => {
     const url = `${baseUrl}/predictions/${requestId}/result`;
-
     try {
       const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-        },
+        headers: { Authorization: `Bearer ${apiKey}` },
       });
-
-      if (!response.ok) {
-        throw new Error(`Query Error: ${response.statusText}`);
-      }
-
+      if (!response.ok) throw new Error(`Query Error: ${response.statusText}`);
       const json = await response.json();
       const data = json.data;
-
       return {
         status: data.status,
         resultUrl: data.status === 'completed' ? data.outputs[0] : '',
         error: data.error,
+        raw: data,
       };
     } catch (error) {
       logger.error(error);
@@ -90,5 +83,5 @@ export const useLtx2 = () => {
     }
   };
 
-  return { submitLtx2Task, getResult };
+  return { submitWan26Task, getResult };
 };

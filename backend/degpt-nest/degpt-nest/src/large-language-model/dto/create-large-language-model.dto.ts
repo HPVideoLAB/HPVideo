@@ -8,14 +8,13 @@ import {
   Min,
 } from 'class-validator';
 
+// 模块
 import { PikaDto } from './modules/pika';
-import { WanDto } from './modules/wan';
+import { WanDto } from './modules/wan'; // 这是旧的 wan2.1
 import { Sam3Dto } from './modules/sam3';
-import { LtxDto } from './modules/ltx';
-
-// ✅ 新增
 import { UpscalerDto } from './modules/upscaler';
-import { KlingAudioDto } from './modules/kling-audio';
+// ✅ 新增/修改
+import { Wan26Dto } from './modules/wan26';
 import { CommercialPipelineDto } from './modules/commercial-pipeline';
 
 class BaseDto {
@@ -25,21 +24,18 @@ class BaseDto {
     'pika',
     'wan-2.1',
     'sam3',
-    'ltx-2-19b',
     'video-upscaler-pro',
-    'kling-video-to-audio',
-    'commercial-pipeline', // ✅ 新增
+    'wan-2.6-i2v', // ✅ 新增
+    'commercial-pipeline',
   ])
   model:
     | 'pika'
     | 'wan-2.1'
     | 'sam3'
-    | 'ltx-2-19b'
     | 'video-upscaler-pro'
-    | 'kling-video-to-audio'
+    | 'wan-2.6-i2v'
     | 'commercial-pipeline';
 
-  // ✅ 改成可选：旧模型是否必填由 service 控制
   @IsOptional()
   @IsString()
   prompt?: string;
@@ -63,11 +59,8 @@ export class CreateLargeLanguageModelDto extends IntersectionType(
       IntersectionType(
         Sam3Dto,
         IntersectionType(
-          LtxDto,
-          IntersectionType(
-            UpscalerDto,
-            IntersectionType(KlingAudioDto, CommercialPipelineDto), // ✅ 加在最后
-          ),
+          UpscalerDto,
+          IntersectionType(Wan26Dto, CommercialPipelineDto),
         ),
       ),
     ),

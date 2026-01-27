@@ -1,5 +1,12 @@
 export const proModel = [
   {
+    name: 'Commercial Video',
+    model: 'commercial-pipeline', // 对应后端 model 字段
+    modelicon: '/creator/icon/wan.png', // 请确保有这个图标，或者复用其他的
+    audio: true, // 这个模型是带声音的
+    desc: 'AI 导演生成的商业级短视频，支持智能运镜与口型同步。',
+  },
+  {
     name: 'Pika V2.2 Pikaframes',
     model: 'pika-v2.2-pikaframes',
     modelicon: '/creator/icon/pika.png',
@@ -30,4 +37,5 @@ export const modelDuration = {
   pika: '5-10',
   'wan-2.1': '1-5',
   sam3: '1-5',
+  commercial: '5-10',
 };

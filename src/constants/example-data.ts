@@ -282,4 +282,65 @@ export const exampleData: Record<string, ExampleItem[]> = {
       },
     },
   ],
+  // ====================================================
+  // 🔥🔥🔥 [新增] Commercial Pipeline 示例 🔥🔥🔥
+  // ====================================================
+  'commercial-pipeline': [
+    {
+      id: 'comm-1',
+      title: 'Luxury Coffee Commercial',
+      model: 'commercial-pipeline',
+      // 这里我放了占位图片/视频链接，你可以换成你自己生成的真实案例链接
+      coverUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/eef9be6fc3834c0788d7c74fd3e0cb6b/1.png',
+      videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/6f49bdf2c50e4ad6a6dfe818f67b09c3/1.mp4',
+      params: {
+        model: 'commercial-pipeline',
+        image: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/eef9be6fc3834c0788d7c74fd3e0cb6b/1.png',
+        prompt: '这个杯子的宣传视频',
+        voiceId: 'fresh_youth',
+        duration: 15,
+        resolution: '1080p',
+        enableSmartEnhance: true,
+        enableUpscale: false,
+      },
+    },
+    {
+      id: 'comm-2',
+      title: 'High-End Perfume Ad',
+      model: 'commercial-pipeline',
+      coverUrl:
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/768d75c6-213d-4c3e-8dfe-b4f4329eda9b.jpg',
+      videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/df8f4618f5b345ceb16e9fd2b8ebc334/1.mp4',
+      params: {
+        model: 'commercial-pipeline',
+        image:
+          'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/768d75c6-213d-4c3e-8dfe-b4f4329eda9b.jpg',
+        prompt: 'Elegant perfume bottle rotation, soft luxury lighting, macro details.',
+        voiceId: 'elegant_queen',
+        duration: 15,
+        resolution: '1080p',
+        enableSmartEnhance: true,
+        enableUpscale: true,
+      },
+    },
+    {
+      id: 'comm-3',
+      title: 'Tech Gadget Review',
+      model: 'commercial-pipeline',
+      coverUrl:
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/bc48ba88-057c-432f-b276-cbb7e1746e27.jpg',
+      videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/4da9d3eed38a4f6bb19173ea5df393ee/1.mp4',
+      params: {
+        model: 'commercial-pipeline',
+        image:
+          'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/bc48ba88-057c-432f-b276-cbb7e1746e27.jpg',
+        prompt: 'Futuristic cyberpunk city, neon lights, tech gadget showcase, high energy.',
+        voiceId: 'cyber_ai',
+        duration: 10,
+        resolution: '1080p',
+        enableSmartEnhance: true,
+        enableUpscale: false,
+      },
+    },
+  ],
 };

@@ -1,4 +1,4 @@
-<!-- ImgToVideoParams.svelte -->
+<!-- src\routes\pro\modules\pika\ImgToVideoParams.svelte-->
 <script lang="ts">
   import { createEventDispatcher, getContext } from 'svelte';
 

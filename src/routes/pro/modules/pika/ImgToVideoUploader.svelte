@@ -1,3 +1,4 @@
+<!-- src\routes\pro\modules\pika\ImgToVideoUploader.svelte -->
 <script lang="ts">
   import { createEventDispatcher, onDestroy, getContext } from 'svelte';
   import MyButton from '$lib/components/common/MyButton.svelte';

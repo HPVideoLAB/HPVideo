@@ -6,6 +6,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { OssModule } from './oss/oss.module';
 import { SmartEnhancerModule } from './smart-enhancer/smart-enhancer.module';
+// ✅ 1. 引入 ScheduleModule
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -17,6 +19,8 @@ import { SmartEnhancerModule } from './smart-enhancer/smart-enhancer.module';
       // 2. 如果是生产环境(Docker)，它会忽略文件（因为没文件），直接读取系统注入的变量
       ignoreEnvFile: process.env.NODE_ENV === 'production',
     }),
+    // ✅ 2. 注册定时任务主模块 (开启功能)
+    ScheduleModule.forRoot(),
     LargeLanguageModelModule,
     // 改这里：优先读环境变量，兼容 docker 场景
     MongooseModule.forRoot(

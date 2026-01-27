@@ -2,9 +2,12 @@ import { BadRequestException } from '@nestjs/common';
 import { usePika } from '@/hook/usepika';
 import { useWan } from '@/hook/useWan';
 import { useSam3 } from '@/hook/useSam3';
-import { useLtx2 } from '@/hook/useLtx2';
 import { useVideoUpscalerPro } from '@/hook/useVideoUpscalerPro';
-import { useKlingVideoToAudio } from '@/hook/useKlingVideoToAudio';
+import { useWan26 } from '@/hook/useWan26';
+
+// ❌ 移除 LTX 和 Kling 的 import
+// import { useLtx2 } from '@/hook/useLtx2';
+// import { useKlingVideoToAudio } from '@/hook/useKlingVideoToAudio';
 
 export type SubmitResult = {
   requestId: string;
@@ -55,18 +58,6 @@ export const useModelDispatcher = () => {
         return { requestId, thumbUrl: dto.video || '' };
       }
 
-      case 'ltx-2-19b': {
-        const { submitLtx2Task } = useLtx2();
-        const requestId = await submitLtx2Task({
-          image: dto.image!,
-          prompt: dto.prompt,
-          duration: dto.duration, // ✅ 加上
-          seed: dto.seed,
-        });
-
-        return { requestId, thumbUrl: dto.image || '' };
-      }
-
       case 'video-upscaler-pro': {
         const { submitUpscalerTask } = useVideoUpscalerPro();
         const requestId = await submitUpscalerTask({
@@ -76,15 +67,28 @@ export const useModelDispatcher = () => {
         return { requestId, thumbUrl: dto.video || '' };
       }
 
-      case 'kling-video-to-audio': {
-        const { submitKlingAudioTask } = useKlingVideoToAudio();
-        const requestId = await submitKlingAudioTask({
-          video: dto.video!,
-          sound_effect_prompt: dto.sound_effect_prompt,
-          bgm_prompt: dto.bgm_prompt,
-          asmr_mode: dto.asmr_mode ?? false,
+      // ✅ [修正] Wan 2.6 单模型调用：透传所有参数
+      case 'wan-2.6-i2v': {
+        const { submitWan26Task } = useWan26();
+
+        // 🚨 校验 duration，因为它是必填项
+        if (!dto.duration) {
+          throw new BadRequestException(
+            'wan-2.6-i2v 需要 duration 参数 (5, 10, 15)',
+          );
+        }
+
+        const requestId = await submitWan26Task({
+          image: dto.image,
+          prompt: dto.prompt,
+          seed: dto.seed,
+          // 🔥 补全参数
+          duration: dto.duration,
+          resolution: dto.resolution,
+          negative_prompt: dto.negative_prompt,
+          shot_type: dto.shot_type,
         });
-        return { requestId, thumbUrl: dto.video || '' };
+        return { requestId, thumbUrl: dto.image || '' };
       }
 
       default:

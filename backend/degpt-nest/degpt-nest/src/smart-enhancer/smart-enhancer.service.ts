@@ -1,119 +1,184 @@
 import { Injectable, Logger } from '@nestjs/common';
+// ✅ 引入刚刚更新的音色库
+import {
+  ASIAN_MARKET_VOICES,
+  VOICE_MENU_PROMPT,
+} from '@/constants/voice-presets';
 
-// 导出返回结果接口
 export interface OptimizedResult {
-  videoPrompt: string;
-  imageEditPrompt: string;
+  videoVisualPrompt: string; // 画面 (包含 @音色 台词指令)
+  videoAudioPrompt: string; // 声音 (主要是 BGM/SFX)
+  imageEditPrompt: string; // 修图
 }
 
 @Injectable()
 export class SmartEnhancerService {
   private readonly logger = new Logger(SmartEnhancerService.name);
 
-  // ==========================================
-  // 配置区域
-  // ==========================================
-
-  // 1. LLM 配置
+  // 配置
   private readonly DEGPT_URL = 'https://degpt.ai/api/v1/chat/completion/proxy';
-
-  // 你的鉴权 Token
   private readonly DEGPT_TOKEN =
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjB4ZGU4Nzg0MDExZTFDODY0RTM3Njk3ZmFFMjhhNkUxOWFlNEU2REQ5ZCIsImV4cCI6MTc2OTY3ODk0Mn0.yFJYgjMRU5V0t7pZeV4GM6PLZfHMcpv3if1d-k1bdEc';
-
-  // 模型
   private readonly LLM_MODEL = 'gpt-5.2';
-
-  // 2. Wavespeed 配置
   private readonly WAVESPEED_URL = 'https://api.wavespeed.ai/api/v3';
-  private readonly WAVESPEED_KEY =
-    process.env.WAVESPEED_KEY || 'YOUR_WAVESPEED_KEY';
+  private readonly WAVESPEED_KEY = process.env.WAVESPEED_KEY || '';
 
   /**
    * 主入口
    */
-  async runTest(originalPrompt: string, imageUrl?: string) {
+  async runTest(
+    originalPrompt: string,
+    imageUrl?: string,
+    enableOptimization: boolean = true,
+    voiceId?: string,
+  ) {
     this.logger.log(
-      `>>> 启动顶级摄影师流程 (GPT-5.2 Brain) Input: "${originalPrompt}"`,
+      `>>> 启动流程 | Input: "${originalPrompt}" | VoiceID: ${voiceId} | Optimization: ${enableOptimization}`,
     );
 
-    // Step 1: 摄影师 思考画面布局
-    const prompts = await this.optimizePrompts(originalPrompt);
+    // --- 0. 查找音色描述 ---
+    let selectedVoiceDesc = '';
+    if (voiceId) {
+      const preset = ASIAN_MARKET_VOICES.find((v) => v.id === voiceId);
+      if (preset) {
+        selectedVoiceDesc = preset.description;
+        this.logger.log(`[Voice] 用户指定音色: ${preset.name}`);
+      }
+    }
 
-    // Step 2: 修图师 执行画面
+    // --- Step 1: 提示词处理 ---
+    let prompts: OptimizedResult;
+
+    if (enableOptimization) {
+      // 开启优化：GPT 介入
+      prompts = await this.optimizePrompts(originalPrompt, selectedVoiceDesc);
+    } else {
+      prompts = {
+        imageEditPrompt: originalPrompt,
+        videoVisualPrompt: originalPrompt,
+        videoAudioPrompt: `Voice Style: ${selectedVoiceDesc || 'Default'}`,
+      };
+      this.logger.log('提示词优化已关闭，使用原始输入。');
+    }
+
+    // --- Step 2: 修图师 (Nano Banana) ---
     let optimizedImageUrl = imageUrl;
-    if (imageUrl) {
+    if (imageUrl && enableOptimization) {
       optimizedImageUrl = await this.optimizeImage(
         imageUrl,
         prompts.imageEditPrompt,
       );
     }
 
-    this.logger.log('<<< 流程结束');
+    // 构造最终 Prompt
+    const finalVideoPrompt = enableOptimization
+      ? `${prompts.videoVisualPrompt} -- Audio/BGM: ${prompts.videoAudioPrompt}`
+      : `${originalPrompt} -- Audio: ${prompts.videoAudioPrompt}`;
 
     return {
       originalInput: { prompt: originalPrompt, image: imageUrl },
       aiAnalysis: prompts,
       finalOutput: {
-        videoPrompt: prompts.videoPrompt,
+        videoPrompt: finalVideoPrompt,
         startFrame: optimizedImageUrl,
       },
     };
   }
 
-  // ==========================================
-  // 🔥 核心 A: 顶级摄影师指令
-  // ==========================================
-  async optimizePrompts(originalPrompt: string): Promise<OptimizedResult> {
-    this.logger.log(`[1/2] GPT-5.2 正在构思构图与人物...`);
+  // =================================================================================================
+  // 🔥 核心 A: GPT-5.2 智能导演逻辑 (产品适配优先 + 亚洲时尚审美倾向)
+  // =================================================================================================
+  async optimizePrompts(
+    originalPrompt: string,
+    fixedVoiceDesc?: string,
+  ): Promise<OptimizedResult> {
+    // 1. 语言检测
+    const isChinese = /[\u4e00-\u9fa5]/.test(originalPrompt);
+    const isKorean = /[\uac00-\ud7af]/.test(originalPrompt);
 
+    let targetLang = 'English';
+    if (isChinese) targetLang = 'Simplified Chinese (简体中文)';
+    else if (isKorean) targetLang = 'Korean (한국어)';
+
+    this.logger.log(`[Brain] GPT-5.2 导演构思中 (Target: ${targetLang})...`);
+
+    // 2. 音色准备
+    let voiceInstruction = fixedVoiceDesc
+      ? `User selected voice: "${fixedVoiceDesc}"`
+      : `Select the BEST matching voice from: ${VOICE_MENU_PROMPT}`;
+
+    // 3. 系统指令：灵活的商业导演
     const template = `
-    Role: You are the world's TOP Commercial Photographer and Video Director.
-    Task: Based on the user's input image description, create visual instructions for an AI Image Editor and a Video Generator.
+    Role: Expert Commercial Video Director (Specializing in Asian Markets).
+    Task: Create a 15s product promotion script for Alibaba Wan 2.6 based on User Input.
 
     User Input: "${originalPrompt}"
+    Target Language for Dialogue: **${targetLang}**
+    ${voiceInstruction}
 
     ---
+    ### 🎬 DIRECTING GUIDELINES (Flexible & Creative):
+
+    1.  **CASTING & STYLING (Context is King):**
+        * **Rule:** Analyze the product first. The outfit MUST match the usage scenario.
+            * *Gym/Sport:* Sportswear/Leggings.
+            * *Home/Sleep:* Comfy loungewear.
+            * *Office/City:* Suits/Fashionable wear.
+        * **Aesthetic Preference (If applicable):** * Prefer **Young Asian Models (20-26)**.
+            * **If the setting allows (e.g., Office, Street, Party), favor a "High-End Trendy" look.** * *Style Inspiration:* Urban chic, sharp suits, or fashionable silhouettes (e.g., pencil skirts, stylish stockings, elegant dresses) to show sophistication ("气质"). **But only if it fits the product vibe.**
+
+    2.  **NARRATIVE FLOW (15s Story):**
+        * Create a coherent mini-story: **Hook (Show Product) -> Action (Interaction) -> Payoff (Satisfaction).**
+        * **Camera:** Use dynamic cinematic moves (Slow Dolly, Orbit, Rack Focus). Avoid static shots.
+
+    3.  **LONG DIALOGUE & COHERENT PLOT (15s Full Utilization):**
+        * **Dialogue Length:** Generate a SUBSTANTIAL line (approx. 50-80 chars in CN/KR, 40-60 words in EN). It should cover 8-12 seconds of the 15s duration.
+        * **Content:** Don't just say "It's good." Describe the feeling, the quality, or the lifestyle. 
+        * **TECHNICAL SYNTAX (CRITICAL):**
+            "... **The character @[Voice_Description] says 'Your_Long_Coherent_Dialogue_Here'** ..."
     
-    ### 1. RULES FOR "imageEditPrompt" (The Perfect Hero Shot):
-    * **Rule #1 (Fidelity)**: START with "Keep the [product] design, logo, and shape 100% UNCHANGED."
-    * **Rule #2 (Smart Model & Style Inference)**: 
-        * **Demographics**: MUST use **"Stunning Asian/Korean model"** (K-pop star vibe, flawless skin).
-        * **Gender Logic**:
-            * IF product is masculine (e.g., Gaming, Men's Watch, Suit): Use "Handsome Asian Male Model".
-            * IF product is feminine (e.g., Cosmetics, Jewelry): Use "Beautiful Asian Female Model".
-            * IF neutral (e.g., Car, Coffee, Tech): Choose the most attractive option (e.g., Luxury Car -> Sexy/Elegant Female; Tech -> Cool Youth).
-        * **Outfit & Vibe**:
-            * Luxury Car/Nightlife -> **Sexy, High-fashion, Glamorous**.
-            * Tea/Home/Cozy -> **Elegant, Soft-knits, Zen**.
-            * Sports/Outdoors -> **Athletic, Energetic, Sweaty skin texture**.
-    * **Rule #3 (Lighting & Vibe)**: Use professional terms: "Rembrandt Lighting", "Volumetric Fog", "Golden Hour", "Cyberpunk Neon" (if tech).
-    * **Rule #4 (Realism)**: REAL LIFE textures. Pore-level skin detail, fabric stitching, material imperfections.
+    4.  **VISUAL FLOW & CAMERA:**
+        * **0-5s (The Hook):** Focus on product texture (Hero Shot). Camera: Rack Focus or Slow Dolly.
+        * **5-15s (The Interaction):** Character interacts with the product while delivering the long dialogue. 
+        * **Details:** Include micro-dynamics (Blinking, subtle breathing, liquid ripples, fabric moving).
 
-    ### 2. RULES FOR "videoPrompt" (The 20s Cinematic Ad):
-    * Create a 20-second dynamic visual flow using **Advanced Camera Movements**.
-    * **[0-5s] The Hook (Macro & Texture)**: 
-        * Movement: **"Slow Macro Pan"** or **"Rack Focus"** (blur to sharp).
-        * Focus on product texture, logo, or droplets.
-    * **[5-15s] The Interaction (Emotion & Story)**: 
-        * Movement: **"Orbit/Arc Shot"** (circling the subject) or **"Handheld Shake"** (for realism).
-        * Action: The Asian model interacts with the product (sipping, driving, typing, applying). Capture micro-expressions (wink, slight smile, exhale).
-    * **[15-20s] The Grand Reveal (Environment)**: 
-        * Movement: **"Dolly Out"** (pull back fast) or **"Crane Shot"** (move up high).
-        * Show the luxury context (Seoul skyline, high-end studio, nature).
-    * **Keywords**: "8k", "Slow Motion 60fps", "Color Graded", "Unreal Engine 5 Render Style".
+    5.  **AUDIO:**
+        * Select BGM/SFX that matches the scene mood (e.g., Upbeat, Relaxing, Luxury).
 
     ---
-    **CRITICAL**: Output MUST be in **ENGLISH**.
-    **Output strict JSON only:**
+    **JSON OUTPUT ONLY**:
     {
-      "imageEditPrompt": "...",
-      "videoPrompt": "..."
+      "imageEditPrompt": "Detailed static shot description (8k, cinematic lighting)...", 
+      "videoVisualPrompt": "15s visual flow with Camera Moves + 'Subject @Voice says Dialogue' syntax...",
+      "videoAudioPrompt": "BGM: ... / SFX: ..." 
     }
     `;
 
+    // 4. Fetch 定义 (带重试 & 类型安全)
+    const fetchWithRetry = async (
+      url: string,
+      options: any,
+      retries = 2,
+    ): Promise<Response> => {
+      let lastError: any;
+      for (let i = 0; i < retries; i++) {
+        try {
+          const res = await fetch(url, options);
+          if (res.status === 504 || res.status === 502)
+            throw new Error(`Gateway Timeout ${res.status}`);
+          if (!res.ok) return res;
+          return res;
+        } catch (err) {
+          lastError = err;
+          if (i === retries - 1) throw lastError;
+          this.logger.warn(`GPT Retrying (${i + 1}/${retries})...`);
+        }
+      }
+      throw lastError || new Error('Fetch failed unknown error');
+    };
+
     try {
-      const response = await fetch(this.DEGPT_URL, {
+      const response = await fetchWithRetry(this.DEGPT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -124,61 +189,68 @@ export class SmartEnhancerService {
           messages: [{ role: 'user', content: template }],
           stream: false,
           project: 'DecentralGPT',
-          max_tokens: 2000,
           enable_thinking: false,
+          max_tokens: 2048,
+          temperature: 0.75, // 保持一定的创意度
         }),
       });
 
       const textResponse = await response.text();
-      // this.logger.debug(`Raw LLM Response: ${textResponse}`);
 
-      let jsonStr = '';
+      let content = '';
       try {
         const data = JSON.parse(textResponse);
+        content =
+          data?.choices?.[0]?.message?.content ||
+          data?.output?.[0]?.content?.[0]?.text ||
+          '';
+      } catch (e) {
+        throw new Error(`Invalid JSON Response`);
+      }
 
-        // 🔥 [核心修复点] 兼容多种返回格式
-        let content = '';
+      // 清洗 JSON
+      let cleanContent = content
+        .replace(/```json/g, '')
+        .replace(/```/g, '')
+        .trim();
+      const match = cleanContent.match(/\{[\s\S]*\}/);
+      if (match) cleanContent = match[0];
 
-        // 1. 尝试 OpenAI 标准格式 (choices[0].message.content)
-        if (data?.choices?.[0]?.message?.content) {
-          content = data.choices[0].message.content;
-        }
-        // 2. 尝试 DeGPT 新格式 (output[0].content[0].text)
-        else if (data?.output?.[0]?.content?.[0]?.text) {
-          content = data.output[0].content[0].text;
-        }
+      const result = JSON.parse(cleanContent);
+      if (!result.videoVisualPrompt)
+        throw new Error('Missing videoVisualPrompt');
 
-        // 正则提取 JSON
-        const match = content.match(/\{[\s\S]*\}/);
-        if (match) jsonStr = match[0];
-      } catch (e) {}
-
-      if (!jsonStr) throw new Error('Valid JSON not found in LLM response');
-      return JSON.parse(jsonStr);
+      return result;
     } catch (e) {
-      this.logger.error('提示词生成失败', e);
-      // 降级策略
+      this.logger.error(`GPT 导演罢工: ${e.message}`);
+
+      // --- ⚡ 兜底策略 (Fallback) ---
+      // 如果 GPT 挂了，我们依然给一个比较稳的“亚洲时尚”默认值
+      // 这里的描述是“泛用型”的，既不违和也有美感
+      const basePrompt = `Cinematic 8k shot, Young Asian Model (Trendy/Fashionable style), holding/using the product: ${originalPrompt}, cinematic lighting, high detail`;
+
+      const fallbackVisual = fixedVoiceDesc
+        ? `${basePrompt}. The character @${fixedVoiceDesc} says "This is amazing." (Lip-sync active).`
+        : `${basePrompt}. Slow dolly in, premium commercial look.`;
+
       return {
-        imageEditPrompt: `Keep the product unchanged. A model's hand holding the product, cinematic lighting, photorealistic 4k. ${originalPrompt}`,
-        videoPrompt: `Cinematic commercial. Macro shot of texture, slow motion interaction, dynamic lighting, 8k. ${originalPrompt}`,
+        imageEditPrompt: basePrompt,
+        videoVisualPrompt: fallbackVisual,
+        videoAudioPrompt: 'Cinematic commercial background music',
       };
     }
   }
 
   // ==========================================
-  // 核心 B: 图片优化 (Nano Banana Pro)
+  // 图片优化 (Nano Banana Pro)
   // ==========================================
   async optimizeImage(imageUrl: string, prompt: string): Promise<string> {
-    this.logger.log(`[Image] 提交给 Nano Banana Pro (4K)...`);
-
-    // 🔥 [修复点 2] 之前你这里直接 return 了，导致图片没有生成
-    // return prompt;
-
+    this.logger.log(`[Image] 提交给 Nano Banana Pro (4K)...`, prompt);
     try {
       const payload = {
         prompt: prompt,
         images: [imageUrl],
-        resolution: '4k',
+        resolution: '1k',
         output_format: 'png',
         enable_sync_mode: false,
         num_outputs: 1,
@@ -205,7 +277,6 @@ export class SmartEnhancerService {
         return imageUrl;
       }
 
-      this.logger.log(`任务 ID: ${requestId}，开始等待出图...`);
       return await this.pollImageResult(requestId, imageUrl);
     } catch (e) {
       this.logger.error('图片优化异常', e);
@@ -213,48 +284,27 @@ export class SmartEnhancerService {
     }
   }
 
-  // ==========================================
-  // 轮询器
-  // ==========================================
   private async pollImageResult(
     requestId: string,
     originalUrl: string,
   ): Promise<string> {
-    const maxRetries = 120;
+    const maxRetries = 60;
     const interval = 2000;
-
     for (let i = 0; i < maxRetries; i++) {
       await new Promise((r) => setTimeout(r, interval));
-
       try {
         const res = await fetch(
           `${this.WAVESPEED_URL}/predictions/${requestId}/result`,
-          { headers: { Authorization: `Bearer ${this.WAVESPEED_KEY}` } },
+          {
+            headers: { Authorization: `Bearer ${this.WAVESPEED_KEY}` },
+          },
         );
-
         if (!res.ok) continue;
-
         const json = await res.json();
-        const status = json?.data?.status;
-
-        if (status === 'completed') {
-          const outputs = json.data.outputs;
-          if (outputs && outputs.length > 0) {
-            const finalUrl = outputs[0];
-            this.logger.log(`✅ 惊艳图片生成成功: ${finalUrl}`);
-            return finalUrl;
-          }
-          return originalUrl;
-        }
-
-        if (status === 'failed') {
-          this.logger.warn(`❌ 任务失败: ${json.data.error}`);
-          return originalUrl;
-        }
+        if (json?.data?.status === 'completed') return json.data.outputs[0];
+        if (json?.data?.status === 'failed') return originalUrl;
       } catch (e) {}
     }
-
-    this.logger.warn('❌ 图片优化超时');
     return originalUrl;
   }
 }

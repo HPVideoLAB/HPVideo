@@ -1,260 +1,161 @@
-// src/hook/useCommercialPipeline.ts
 import { Logger } from '@nestjs/common';
-import { useLtx2 } from '@/hook/useLtx2';
-import { useKlingVideoToAudio } from '@/hook/useKlingVideoToAudio';
-import { useVideoUpscalerPro } from '@/hook/useVideoUpscalerPro';
-import { usePika } from '@/hook/usepika';
+import { fetchWithTimeout } from '@/utils/fetchWithTimeout';
 
-export type PipelineState = {
-  stage:
-    | 'ltx_submitted'
-    | 'kling_submitted'
-    | 'upscale_submitted'
-    | 'completed'
-    | 'failed';
-
-  // smart-enhancer 输出（可选）
-  videoPrompt?: string;
-  startFrame?: string;
-
-  // 子任务 id
-  ltxRequestId?: string;
-  klingRequestId?: string;
+export interface PipelineState {
+  stage: 'wan_submitted' | 'upscaling' | 'completed' | 'completed_with_error';
+  videoPrompt: string;
+  startFrame: any;
+  wanRequestId: string;
+  enableUpscale: 'default' | '2k' | '4k';
+  wanOutputUrl?: string;
   upscaleRequestId?: string;
-
-  // 产物
-  videoUrl?: string; // ltx 输出
-  dubbedVideoUrl?: string; // kling outputs[0]
-  audioUrl?: string; // kling outputs[1]
-  finalVideoUrl?: string; // upscaler outputs[0] 或 kling outputs[0]
-
-  // 用户音频参数
-  sound_effect_prompt: string;
-  bgm_prompt: string;
-  asmr_mode?: boolean;
-
-  // 是否升4K
-  enableUpscale?: boolean;
-  target_resolution?: '720p' | '1080p' | '2k' | '4k';
-
-  // 错误
   error?: string;
-};
+}
 
 export const useCommercialPipeline = () => {
   const logger = new Logger('useCommercialPipeline');
 
-  // ✅ 统一轮询（所有模型都是 predictions/{id}/result）
-  const pollPrediction = async (id: string) => {
-    const { getResult } = usePika();
-    return getResult(id);
-  };
+  // ✅ 1. 改用 WaveSpeed 的环境变量
+  const apiKey = process.env.WAVESPEED_KEY;
+  const baseUrl = process.env.WAVESPEED_URL;
 
-  const submitLtx = async (args: {
+  // ============================================================
+  // 🔥 1. 提交任务 (适配 WaveSpeed 格式)
+  // ============================================================
+  const submitWan = async (args: {
     image: string;
     prompt: string;
-    duration?: number;
     seed?: number;
-  }) => {
-    const { submitLtx2Task } = useLtx2();
-    return submitLtx2Task(args);
-  };
+    duration: number;
+    resolution?: '720p' | '1080p';
+    negative_prompt?: string;
+    shot_type?: 'single' | 'multi';
+  }): Promise<string> => {
+    if (!apiKey) throw new Error('请检查 WAVESPEED_KEY');
+    if (!baseUrl) throw new Error('请检查 WAVESPEED_URL');
 
-  const submitKling = async (args: {
-    video: string;
-    sound_effect_prompt: string;
-    bgm_prompt: string;
-    asmr_mode?: boolean;
-  }) => {
-    const { submitKlingAudioTask } = useKlingVideoToAudio();
-    return submitKlingAudioTask(args);
-  };
-
-  const submitUpscale = async (args: {
-    video: string;
-    target_resolution?: '720p' | '1080p' | '2k' | '4k';
-  }) => {
-    const { submitUpscalerTask } = useVideoUpscalerPro();
-    return submitUpscalerTask(args);
-  };
-
-  /**
-   * ✅ 轮询推进一次（由 findOne 调用）
-   * 返回：更新后的 state + (可选) 对外展示的 apiResult
-   */
-  const advanceOnce = async (state: PipelineState) => {
-    // -------------------------------------------------------
-    // 0) 幂等纠偏：防止重复 submit
-    // -------------------------------------------------------
-    // 如果 stage 还停在 ltx_submitted，但已经有 klingRequestId，
-    // 说明之前已经 submit 过 kling（可能是并发请求/写库延迟/旧数据）。
-    // 直接推进到 kling_submitted 去轮询，不再重复 submit。
-    if (state.stage === 'ltx_submitted' && state.klingRequestId) {
-      logger.warn(
-        `[idempotent] stage=ltx_submitted but klingRequestId exists, treat as kling_submitted`,
-      );
-      state = { ...state, stage: 'kling_submitted' };
-    }
-
-    // 如果 stage 还停在 kling_submitted，但已经有 upscaleRequestId，
-    // 说明之前已经 submit 过 upscaler，直接去轮询 upscaler。
-    if (state.stage === 'kling_submitted' && state.upscaleRequestId) {
-      logger.warn(
-        `[idempotent] stage=kling_submitted but upscaleRequestId exists, treat as upscale_submitted`,
-      );
-      state = { ...state, stage: 'upscale_submitted' };
-    }
-
-    // -------------------------------------------------------
-    // 1) LTX 阶段：ltx_submitted
-    // -------------------------------------------------------
-    if (state.stage === 'ltx_submitted' && state.ltxRequestId) {
-      const r = await pollPrediction(state.ltxRequestId);
-
-      if (r.status === 'completed') {
-        const videoUrl = r.resultUrl!;
-        const klingId = await submitKling({
-          video: videoUrl,
-          sound_effect_prompt: state.sound_effect_prompt,
-          bgm_prompt: state.bgm_prompt,
-          asmr_mode: state.asmr_mode ?? false,
-        });
-
-        return {
-          state: {
-            ...state,
-            stage: 'kling_submitted',
-            videoUrl,
-            klingRequestId: klingId,
-          },
-          apiResult: { ...r, stage: 'ltx_completed' },
-        };
-      }
-
-      if (r.status === 'failed') {
-        return {
-          state: { ...state, stage: 'failed', error: r.error ?? 'ltx failed' },
-          apiResult: r,
-        };
-      }
-
-      return { state, apiResult: { ...r, stage: 'ltx_processing' } };
-    }
-
-    // -------------------------------------------------------
-    // 2) Kling 阶段：kling_submitted
-    // -------------------------------------------------------
-    if (state.stage === 'kling_submitted' && state.klingRequestId) {
-      const r = await pollPrediction(state.klingRequestId);
-
-      if (r.status === 'completed') {
-        // ✅ 你验证过：outputs[0]=带音频视频，outputs[1]=音频
-        const dubbedVideoUrl = r.resultUrl!;
-        const audioUrl = r.raw?.outputs?.[1];
-
-        if (state.enableUpscale) {
-          // ✅ 再加一层幂等：如果已经有 upscaleRequestId，就别重复提交
-          if (state.upscaleRequestId) {
-            return {
-              state: {
-                ...state,
-                stage: 'upscale_submitted',
-                dubbedVideoUrl,
-                audioUrl,
-              },
-              apiResult: { ...r, stage: 'kling_completed', audioUrl },
-            };
-          }
-
-          const upId = await submitUpscale({
-            video: dubbedVideoUrl,
-            target_resolution: state.target_resolution ?? '4k',
-          });
-
-          return {
-            state: {
-              ...state,
-              stage: 'upscale_submitted',
-              dubbedVideoUrl,
-              audioUrl,
-              upscaleRequestId: upId,
-            },
-            apiResult: { ...r, stage: 'kling_completed', audioUrl },
-          };
-        }
-
-        return {
-          state: {
-            ...state,
-            stage: 'completed',
-            dubbedVideoUrl,
-            audioUrl,
-            finalVideoUrl: dubbedVideoUrl,
-          },
-          apiResult: {
-            ...r,
-            stage: 'completed',
-            audioUrl,
-            finalVideoUrl: dubbedVideoUrl,
-          },
-        };
-      }
-
-      if (r.status === 'failed') {
-        return {
-          state: {
-            ...state,
-            stage: 'failed',
-            error: r.error ?? 'kling failed',
-          },
-          apiResult: r,
-        };
-      }
-
-      return { state, apiResult: { ...r, stage: 'kling_processing' } };
-    }
-
-    // -------------------------------------------------------
-    // 3) Upscale 阶段：upscale_submitted
-    // -------------------------------------------------------
-    if (state.stage === 'upscale_submitted' && state.upscaleRequestId) {
-      const r = await pollPrediction(state.upscaleRequestId);
-
-      if (r.status === 'completed') {
-        const finalVideoUrl = r.resultUrl!;
-        return {
-          state: { ...state, stage: 'completed', finalVideoUrl },
-          apiResult: {
-            ...r,
-            stage: 'completed',
-            finalVideoUrl,
-            audioUrl: state.audioUrl,
-          },
-        };
-      }
-
-      if (r.status === 'failed') {
-        return {
-          state: {
-            ...state,
-            stage: 'failed',
-            error: r.error ?? 'upscale failed',
-          },
-          apiResult: r,
-        };
-      }
-
-      return { state, apiResult: { ...r, stage: 'upscale_processing' } };
-    }
-
-    // -------------------------------------------------------
-    // 兜底：未知/缺字段
-    // -------------------------------------------------------
-    return {
-      state,
-      apiResult: { status: 'processing', raw: { stage: state.stage } },
+    // 构造请求体
+    // 注意：这里需要确认 WaveSpeed 上 Wan 2.6/2.1 的具体参数名
+    // 通常 Wan 模型需要: prompt, image (或 image_url), duration
+    const payload = {
+      prompt: args.prompt,
+      image: args.image, // WaveSpeed 通常直接传字符串 URL
+      duration: args.duration || 5,
+      ratio: '16:9', // 或者根据 image 自动推断，Wan 通常需要这个
+      resolution: args.resolution || '1080p',
+      seed: args.seed && args.seed !== -1 ? args.seed : -1,
+      negative_prompt: args.negative_prompt,
     };
+
+    logger.log(
+      `[Wan Submit] 正在提交到 WaveSpeed... Prompt: ${args.prompt.slice(0, 30)}...`,
+    );
+
+    // 🔥 注意：请确认 WaveSpeed 上 Wan 模型的具体 Path
+    // 这里假设是 /aliyun/wan-2.1-i2v-plus，如果不同请修改此处字符串
+    const modelEndpoint = '/alibaba/wan-2.6/image-to-video';
+
+    const resp = await fetchWithTimeout(
+      `${baseUrl}${modelEndpoint}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(payload),
+      },
+      30000, // 30s timeout
+      { tag: 'submit', model: 'wan-commercial' },
+    );
+
+    const text = await resp.text();
+    if (!resp.ok) {
+      logger.error(`[Wan Submit] 失败: ${resp.status} - ${text}`);
+      throw new Error(`WaveSpeed Submit Failed: ${text}`);
+    }
+
+    const json = JSON.parse(text);
+    // WaveSpeed 通常返回: { data: { id: "..." } }
+    const requestId = json?.data?.id;
+
+    if (!requestId) {
+      throw new Error(`提交成功但未拿到 requestId: ${text}`);
+    }
+
+    logger.log(`[Wan Submit] 成功! Task ID: ${requestId}`);
+    return requestId;
   };
 
-  return { submitLtx, advanceOnce };
+  // ============================================================
+  // 🔥 2. 查询结果 (使用 WaveSpeed 通用接口)
+  // ============================================================
+  const getWanResult = async (
+    taskId: string,
+  ): Promise<{
+    status: 'SUCCEEDED' | 'FAILED' | 'PENDING' | 'RUNNING' | 'UNKNOWN';
+    outputUrl?: string;
+    errorMessage?: string;
+  }> => {
+    if (!taskId) return { status: 'UNKNOWN', errorMessage: 'No Task ID' };
+
+    // 拦截之前的 Mock ID
+    if (taskId.startsWith('mock_')) {
+      return { status: 'FAILED', errorMessage: 'Legacy Mock ID' };
+    }
+
+    if (!apiKey) return { status: 'UNKNOWN', errorMessage: 'No API Key' };
+
+    try {
+      // ✅ 使用 WaveSpeed 的通用查询接口 /predictions/{id}/result
+      const resp = await fetchWithTimeout(
+        `${baseUrl}/predictions/${taskId}/result`,
+        {
+          headers: { Authorization: `Bearer ${apiKey}` },
+        },
+        15000,
+        { tag: 'poll', requestId: taskId },
+      );
+
+      const text = await resp.text();
+      if (!resp.ok) {
+        // 处理 404 或其他错误
+        return {
+          status: 'UNKNOWN',
+          errorMessage: `HTTP ${resp.status}: ${text}`,
+        };
+      }
+
+      const json = JSON.parse(text);
+      const data = json?.data;
+      const wsStatus = data?.status; // 'created' | 'processing' | 'completed' | 'failed'
+
+      // 映射 WaveSpeed 状态 -> 你的 Pipeline 状态
+      if (wsStatus === 'completed') {
+        const videoUrl = data?.outputs?.[0];
+        if (!videoUrl)
+          return {
+            status: 'FAILED',
+            errorMessage: 'Success but no output URL',
+          };
+        return { status: 'SUCCEEDED', outputUrl: videoUrl };
+      }
+
+      if (wsStatus === 'failed') {
+        return {
+          status: 'FAILED',
+          errorMessage: data?.error || 'WaveSpeed reported failure',
+        };
+      }
+
+      // created 或 processing 都算 RUNNING
+      return { status: 'RUNNING' };
+    } catch (e) {
+      return { status: 'UNKNOWN', errorMessage: e.message };
+    }
+  };
+
+  const advanceOnce = async (state: PipelineState) => state;
+
+  return { submitWan, getWanResult, advanceOnce };
 };
