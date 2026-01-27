@@ -15,6 +15,7 @@
   import Sidebar from '$lib/components/layout/Sidebar.svelte';
   import ShortcutsModal from '$lib/components/chat/ShortcutsModal.svelte';
   import Tooltip from '$lib/components/common/Tooltip.svelte';
+  import NewModelAlert from '$lib/components/common/NewModelAlert.svelte';
   import FingerprintJS from '@fingerprintjs/fingerprintjs';
   import { printSignIn } from '$lib/apis/auths';
   import { getLanguages } from '$lib/i18n/index';
@@ -248,6 +249,9 @@
 <ShortcutsModal bind:show={showShortcuts} />
 <SettingsModal bind:show={$showSettings} />
 <!-- <ChangelogModal bind:show={$showChangelog} /> -->
+
+<!-- 新模型通知 Alert -->
+<NewModelAlert />
 
 <div class="app relative">
   <div class=" text-gray-700 dark:text-gray-100 bg-white dark:bg-gray-900 min-h-screen overflow-auto flex flex-row">

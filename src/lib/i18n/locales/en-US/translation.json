@@ -1114,6 +1114,10 @@
   "When enabled, AI automatically optimizes prompts, adds camera movements, lighting details, and micro-expressions.": "When enabled, AI automatically optimizes prompts, adds camera movements, lighting details, and micro-expressions.",
   "Voice": "Voice",
   "2K HD": "2K HD",
-  "model_desc_commercial-pipeline": "AI Director generated commercial videos, supporting smart camera moves, dialogue, and 4K upscaling.",
-  "Describe the product/scene...": "Use quotes \"\" for dialogue and follow the character immediately with @Voice. E.g.: Host @Narrator says \"Look at the stars\". Best results in CN/EN/KR."
+  "Describe the product/scene...": "Use quotes \"\" for dialogue and follow the character immediately with @Voice. E.g.: Host @Narrator says \"Look at the stars\". Best results in CN/EN/KR.",
+  "Revolutionary: The All-in-One AI Commercial Studio": "Revolutionary: The All-in-One AI Commercial Studio",
+  "AI Script & Dialogue": "AI Script & Dialogue",
+  "Immersive SFX & BGM": "Immersive SFX & BGM",
+  "Cinema-Grade 4K Upscale": "Cinema-Grade 4K Upscale",
+  "Start Directing": "Start Directing"
 }

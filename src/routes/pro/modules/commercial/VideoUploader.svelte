@@ -115,7 +115,7 @@
             `}
           >
             <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100 dark:bg-[#2a2a2a] shadow-sm">
-              <span class="text-xl">🖼️</span>
+              <iconify-icon icon="mdi:image" class="text-xl text-gray-500 dark:text-gray-400" />
             </div>
 
             <div class="text-center">

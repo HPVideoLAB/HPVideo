@@ -1115,5 +1115,9 @@
   "When enabled, AI automatically optimizes prompts, adds camera movements, lighting details, and micro-expressions.": "开启后，AI 将自动优化您的提示词，增加运镜、光影细节并生成匹配的微表情。",
   "Voice": "配音",
   "2K HD": "2K 高清",
-  "model_desc_commercial-pipeline": "AI 导演生成的商业级短视频，支持智能运镜、人物台词及 4K 画质提升。"
+  "Revolutionary: The All-in-One AI Commercial Studio": "重新定义视频创作：全流程商用广告生成流",
+  "AI Script & Dialogue": "AI 编剧 & 角色台词",
+  "Immersive SFX & BGM": "沉浸式音效 BGM",
+  "Cinema-Grade 4K Upscale": "影院级 4K 画质",
+  "Start Directing": "立即创作大片"
 }

@@ -1115,6 +1115,9 @@
   "When enabled, AI automatically optimizes prompts, adds camera movements, lighting details, and micro-expressions.": "활성화되면 AI가 프롬프트를 자동으로 최적화하고 카메라 움직임, 조명 및 미세 표정을 추가합니다.",
   "Voice": "음성",
   "2K HD": "2K HD",
-  "model_desc_commercial-pipeline": "AI 감독이 생성한 상업용 비디오, 스마트 카메라 무빙, 대사 및 4K 업스케일링 지원.",
-  "Describe the product/scene...": "따옴표 \"\"로 대사를 표시하고, 캐릭터 뒤에 @목소리 를 붙이세요. 예: 진행자 @내레이션 말하기 \"저 멀리 별들을 보세요\". 한/중/영 지원 최적화."
+  "Revolutionary: The All-in-One AI Commercial Studio": "혁명적인 올인원 AI 커머셜 스튜디오",
+  "AI Script & Dialogue": "AI 각본 & 대사",
+  "Immersive SFX & BGM": "몰입형 사운드 & BGM",
+  "Cinema-Grade 4K Upscale": "시네마급 4K 화질",
+  "Start Directing": "지금 제작하기"
 }
