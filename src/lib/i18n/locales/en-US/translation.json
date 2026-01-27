@@ -1084,6 +1084,7 @@
   "model_desc_pika-v2.2-pikaframes": "Multi-keyframe Image-to-Video: Supports custom transitions for smooth animation.",
   "model_desc_sam3-video": "Smart Video Editing: Accurately segment, remove, or replace specific objects.",
   "model_desc_wan-2.1-v2v": "Video Style Transfer: Maintain original motion rhythm while redrawing style and lighting.",
+  "model_desc_commercial-pipeline": "End-to-End Commercial Pipeline: Integrating AI directing, smart voiceover, and 4K resolution to generate cinematic, audio-visual synced ad videos in one click.",
   "Pika material restored successfully": "Pika material restored successfully",
   "Restoring Pika materials...": "Restoring Pika materials...",
   "Material download failed": "Material download failed",
@@ -1114,10 +1115,14 @@
   "When enabled, AI automatically optimizes prompts, adds camera movements, lighting details, and micro-expressions.": "When enabled, AI automatically optimizes prompts, adds camera movements, lighting details, and micro-expressions.",
   "Voice": "Voice",
   "2K HD": "2K HD",
-  "Describe the product/scene...": "Use quotes \"\" for dialogue and follow the character immediately with @Voice. E.g.: Host @Narrator says \"Look at the stars\". Best results in CN/EN/KR.",
+  "Use quotes for dialogue and follow the character immediately with @Voice. E.g.: Host @Narrator says Look at the stars.": "Use quotes \"\" for dialogue and follow the character immediately with @Voice. E.g.: Host @Narrator says \"Look at the stars\". Best results in CN/EN/KR.",
   "Revolutionary: The All-in-One AI Commercial Studio": "Revolutionary: The All-in-One AI Commercial Studio",
   "AI Script & Dialogue": "AI Script & Dialogue",
   "Immersive SFX & BGM": "Immersive SFX & BGM",
   "Cinema-Grade 4K Upscale": "Cinema-Grade 4K Upscale",
-  "Start Directing": "Start Directing"
+  "Start Directing": "Start Directing",
+  "Please enter a video prompt": "Please enter a video prompt",
+  "Select voice": "Select voice",
+  "Video duration": "Video duration",
+  "Video quality": "Video quality"
 }

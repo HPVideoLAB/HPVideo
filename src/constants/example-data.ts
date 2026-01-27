@@ -288,7 +288,7 @@ export const exampleData: Record<string, ExampleItem[]> = {
   'commercial-pipeline': [
     {
       id: 'comm-1',
-      title: 'Luxury Coffee Commercial',
+      title: 'Artisan Brew: Cinematic Coffee Showcase',
       model: 'commercial-pipeline',
       // 这里我放了占位图片/视频链接，你可以换成你自己生成的真实案例链接
       coverUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/eef9be6fc3834c0788d7c74fd3e0cb6b/1.png',
@@ -306,15 +306,15 @@ export const exampleData: Record<string, ExampleItem[]> = {
     },
     {
       id: 'comm-2',
-      title: 'High-End Perfume Ad',
+      title: 'Midnight Aura: High-End Fragrance Aesthetics',
       model: 'commercial-pipeline',
       coverUrl:
-        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/768d75c6-213d-4c3e-8dfe-b4f4329eda9b.jpg',
-      videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/df8f4618f5b345ceb16e9fd2b8ebc334/1.mp4',
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/27/23b03fb7-3855-4de7-a50f-bdd7a4edbbb9.jpg',
+      videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/217c8540aa864652a146677d4332f4e9/1.mp4',
       params: {
         model: 'commercial-pipeline',
         image:
-          'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/768d75c6-213d-4c3e-8dfe-b4f4329eda9b.jpg',
+          'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/27/23b03fb7-3855-4de7-a50f-bdd7a4edbbb9.jpg',
         prompt: 'Elegant perfume bottle rotation, soft luxury lighting, macro details.',
         voiceId: 'elegant_queen',
         duration: 15,
@@ -325,18 +325,46 @@ export const exampleData: Record<string, ExampleItem[]> = {
     },
     {
       id: 'comm-3',
-      title: 'Tech Gadget Review',
+      title: 'Vanguard Gear: Next-Gen Smartwatch Interaction',
       model: 'commercial-pipeline',
       coverUrl:
-        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/bc48ba88-057c-432f-b276-cbb7e1746e27.jpg',
-      videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/4da9d3eed38a4f6bb19173ea5df393ee/1.mp4',
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/27/92dc7a3c-95ce-4a23-9c76-597bc20fd2ff.jpg',
+      videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/9c7ae95b61524caabdc5db3abbdb169b/1.mp4',
       params: {
         model: 'commercial-pipeline',
         image:
-          'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/bc48ba88-057c-432f-b276-cbb7e1746e27.jpg',
-        prompt: 'Futuristic cyberpunk city, neon lights, tech gadget showcase, high energy.',
+          'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/27/92dc7a3c-95ce-4a23-9c76-597bc20fd2ff.jpg',
+        prompt: '이 스마트워치 홍보 영상에는 인물이 출연하고 대사가 있어야 합니다.',
         voiceId: 'cyber_ai',
-        duration: 10,
+        duration: 15,
+        resolution: '1080p',
+        enableSmartEnhance: true,
+        enableUpscale: false,
+      },
+    },
+
+    {
+      id: 'comm-4',
+      title: 'Iconic Glow: Social-First Beauty Campaign',
+      model: 'commercial-pipeline',
+      coverUrl:
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/27/2027b383-1643-4fa1-9b1a-fa32fe274f37.jpg',
+      videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/7d2d628a8da54248a0c60d8a671d8a77/1.mp4',
+      params: {
+        model: 'commercial-pipeline',
+        image:
+          'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/27/2027b383-1643-4fa1-9b1a-fa32fe274f37.jpg',
+        prompt: `（把镜头凑到脸旁）
+“家人们谁懂啊！这支口红的质地也太绝了！”
+（突然对着镜头亲了一口纸巾）
+“看到没？不掉色！喝水不沾杯，吃火锅也不怕——”
+（突然变严肃，压低声音）
+“但接吻会掉啊！不过没关系，反正……”
+（秒变笑脸，举高产品）
+“咱们主打一个：只让男人破产，不让他得逞！”
+（眨眼）下单链接3号！`,
+        voiceId: 'cyber_ai',
+        duration: 15,
         resolution: '1080p',
         enableSmartEnhance: true,
         enableUpscale: false,

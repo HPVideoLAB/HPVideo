@@ -1,9 +1,9 @@
 <script lang="ts">
   import { createEventDispatcher, getContext } from 'svelte';
-  import Tooltip from '$lib/components/common/Tooltip.svelte';
   import MySelect from '$lib/components/common/MySelect.svelte';
   import { ASIAN_MARKET_VOICES } from '../../../../constants/commercial-voices';
   import MyButton from '$lib/components/common/MyButton.svelte';
+  import { mediaQuery } from 'svelte-legos';
 
   export let globalPrompt = '';
   export let voiceId = 'fresh_youth';
@@ -15,6 +15,8 @@
   export let errors: any = {};
   export let costUsd: number | null = null;
 
+  // 📱 定义你心中的 "Mobile" (比如小于 768px)
+  const isMobile = mediaQuery('(max-width: 768px)');
   const i18n: any = getContext('i18n');
   const dispatch = createEventDispatcher<{ generate: void }>();
   $: isLoading = taskStatus === 'submitting' || taskStatus === 'processing';
@@ -63,7 +65,7 @@
       <div class="md:col-span-6 flex flex-col gap-1">
         <div class="flex items-center justify-between px-1">
           <span class="text-[10px] font-bold tracking-wider uppercase text-gray-500 dark:text-gray-400">
-            选择音色
+            {$i18n.t('Select voice')}
           </span>
         </div>
 
@@ -79,10 +81,10 @@
 
       <div class="grid grid-cols-2 col-span-1 md:col-span-6 gap-2">
         <!-- 视频时长 -->
-        <div class="flex flex-col gap-1">
+        <div class="flex flex-col gap-1.5">
           <div class="flex items-center justify-between px-1">
             <span class="text-[10px] font-bold tracking-wider uppercase text-gray-500 dark:text-gray-400">
-              视频时长
+              {$i18n.t('Video duration')}
             </span>
           </div>
 
@@ -96,10 +98,10 @@
         </div>
 
         <!-- 视频画质 -->
-        <div class="flex flex-col gap-1">
+        <div class="flex flex-col gap-1.5">
           <div class="flex items-center justify-between px-1">
             <span class="text-[10px] font-bold tracking-wider uppercase text-gray-500 dark:text-gray-400">
-              视频画质
+              {$i18n.t('Video quality')}
             </span>
           </div>
 
@@ -116,7 +118,7 @@
       </div>
     </div>
 
-    <div class="flex flex-col gap-1">
+    <div class="flex flex-col gap-1.5">
       <div class="flex flex-col">
         <div
           class={`flex flex-col gap-2 pb-2 w-full rounded-2xl border transition-all duration-300
@@ -131,8 +133,10 @@
           <!-- 输入框 -->
           <textarea
             bind:value={globalPrompt}
-            rows={2}
-            placeholder={$i18n.t('Describe the product/scene...')}
+            rows={$isMobile ? 6 : 3}
+            placeholder={$i18n.t(
+              'Use quotes for dialogue and follow the character immediately with @Voice. E.g.: Host @Narrator says Look at the stars.'
+            )}
             class="w-full resize-none bg-transparent px-4 py-3 text-sm text-text-light dark:text-text-dark outline-none placeholder:text-gray-400 dark:placeholder:text-gray-600"
           />
           <!-- 按钮 -->
@@ -143,7 +147,7 @@
                 size="small"
                 type={enableSmartEnhance ? 'primary' : 'default'}
                 htmlType="button"
-                tooltip={$i18n.t('When enabled, AI automatically optimizes prompts...')}
+                tooltip={'When enabled, AI automatically optimizes prompts, adds camera movements, lighting details, and micro-expressions.'}
                 on:click={() => {
                   enableSmartEnhance = !enableSmartEnhance;
                 }}
@@ -156,7 +160,7 @@
 
               <MyButton
                 round
-                size="large"
+                size={$isMobile ? 'small' : 'large'}
                 disabled={isLoading}
                 type="primary"
                 htmlType="submit"

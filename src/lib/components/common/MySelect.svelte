@@ -91,7 +91,7 @@
           </div>
         {/if}
 
-        <div class="flex flex-col items-start truncate flex-1 min-w-0">
+        <div class="flex flex-col gap-1 items-start truncate flex-1 min-w-0">
           <div class="flex items-center gap-2 w-full">
             <span class="text-sm font-bold text-text-light dark:text-text-dark truncate">
               {currentOption?.label || placeholder}

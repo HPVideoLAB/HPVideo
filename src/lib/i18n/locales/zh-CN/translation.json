@@ -1084,6 +1084,7 @@
   "model_desc_pika-v2.2-pikaframes": "多关键帧图生视频：支持自定义转场，生成连贯流畅的动画。",
   "model_desc_sam3-video": "视频智能编辑：精准分割、移除或替换画面中的特定对象。",
   "model_desc_wan-2.1-v2v": "视频风格迁移：保持原动作节奏，重绘画面风格与光影",
+  "model_desc_commercial-pipeline": "全流程商用广告工作流：集成AI导演、智能配音与4K超清，一键生成视听同步的影院级宣传大片。",
   "Pika material restored successfully": "Pika 素材恢复成功",
   "Restoring Pika materials...": "正在恢复 Pika 素材...",
   "Material download failed": "素材下载失败",
@@ -1101,7 +1102,7 @@
   "Best for product shots or starting frames": "适用于产品展示或视频首帧",
   "Only JPG/PNG/WEBP images supported": "仅支持 JPG/PNG/WEBP 格式图片",
   "Creative Prompt": "创意描述",
-  "Describe the product/scene...": "用引号“”标注角色说话内容，并在说话主体后紧跟 @音色，例如：主持人 @解说 说“看那远方的星星”。当前对中英韩文支持效果最佳。",
+  "Use quotes for dialogue and follow the character immediately with @Voice. E.g.: Host @Narrator says Look at the stars.": "用引号“”标注角色说话内容，并在说话主体后紧跟 @音色，例如：主持人 @解说 说“看那远方的星星”。当前对中英韩文支持效果最佳。",
   "AI Director": "AI 导演",
   "Voice & Tone": "配音 & 语调",
   "Quality": "画质",
@@ -1119,5 +1120,9 @@
   "AI Script & Dialogue": "AI 编剧 & 角色台词",
   "Immersive SFX & BGM": "沉浸式音效 BGM",
   "Cinema-Grade 4K Upscale": "影院级 4K 画质",
-  "Start Directing": "立即创作大片"
+  "Start Directing": "立即创作大片",
+  "Please enter a video prompt": "请填写视频提示词",
+  "Select voice": "人物音色",
+  "Video duration": "视频时长",
+  "Video quality": "视频画质"
 }

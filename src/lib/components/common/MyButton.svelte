@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, getContext } from 'svelte';
   import Spinner from './Sn.svelte'; // 确保路径正确
   import { twMerge } from 'tailwind-merge';
   import { clsx } from 'clsx';
@@ -30,6 +30,7 @@
   export { className as class };
 
   const dispatch = createEventDispatcher();
+  const i18n: any = getContext('i18n');
 
   // --- 1. 基础样式 ---
   const baseClasses = `
@@ -150,7 +151,7 @@
 
 {#if href}
   <a
-    use:tooltipAction={{ content: tooltip, placement: tooltipPlacement }}
+    use:tooltipAction={{ content: $i18n.t(tooltip), placement: tooltipPlacement }}
     {href}
     class={classes}
     role="button"
@@ -166,7 +167,7 @@
   </a>
 {:else}
   <button
-    use:tooltipAction={{ content: tooltip, placement: tooltipPlacement }}
+    use:tooltipAction={{ content: $i18n.t(tooltip), placement: tooltipPlacement }}
     type={htmlType}
     class={classes}
     {disabled}

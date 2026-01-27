@@ -58,18 +58,6 @@
 </script>
 
 <section class="flex flex-col gap-2">
-  <div class="px-1 flex items-center justify-between gap-2">
-    <h2 class="text-sm font-semibold text-text-light dark:text-text-dark">
-      {$i18n.t('Start Frame / Product Image')}
-    </h2>
-
-    {#if imageFile}
-      <div class="text-[10px] text-text-lightSecondary dark:text-text-darkSecondary truncate max-w-[60%]">
-        {imageFile.name}
-      </div>
-    {/if}
-  </div>
-
   <input
     bind:this={fileInput}
     type="file"

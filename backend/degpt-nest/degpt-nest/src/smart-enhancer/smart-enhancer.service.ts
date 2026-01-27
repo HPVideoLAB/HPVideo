@@ -58,7 +58,7 @@ export class SmartEnhancerService {
         videoVisualPrompt: originalPrompt,
         videoAudioPrompt: `Voice Style: ${selectedVoiceDesc || 'Default'}`,
       };
-      this.logger.log('提示词优化已关闭，使用原始输入。');
+      this.logger.log('提示词优化已关闭，使用原始输入。', prompts);
     }
 
     // --- Step 2: 修图师 (Nano Banana) ---
@@ -74,6 +74,14 @@ export class SmartEnhancerService {
     const finalVideoPrompt = enableOptimization
       ? `${prompts.videoVisualPrompt} -- Audio/BGM: ${prompts.videoAudioPrompt}`
       : `${originalPrompt} -- Audio: ${prompts.videoAudioPrompt}`;
+    this.logger.log('提示词8888888', {
+      originalInput: { prompt: originalPrompt, image: imageUrl },
+      aiAnalysis: prompts,
+      finalOutput: {
+        videoPrompt: finalVideoPrompt,
+        startFrame: optimizedImageUrl,
+      },
+    });
 
     return {
       originalInput: { prompt: originalPrompt, image: imageUrl },

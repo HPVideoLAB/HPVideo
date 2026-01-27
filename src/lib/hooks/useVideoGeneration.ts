@@ -99,7 +99,7 @@ const MODEL_STRATEGIES: Record<
     }),
 
     // 轮询配置 (假设商业视频生成较慢，设为 3秒一次，超时 30分钟)
-    pollConfig: { intervalMs: 3000, timeoutMs: 1800000 },
+    pollConfig: { intervalMs: 30000, timeoutMs: 3600000 },
   },
 };
 

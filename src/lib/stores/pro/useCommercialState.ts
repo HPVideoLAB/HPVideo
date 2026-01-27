@@ -19,16 +19,22 @@ export function useCommercialState(i18n: any, deps: Deps) {
   const form = writable({
     image: null as File | null,
     prompt: '',
-    voiceId: 'fresh_youth', // 默认音色
-    duration: 15, // 默认时长
-    resolution: '720p' as '720p' | '1080p',
-    enableSmartEnhance: true, // 默认开启 AI 导演
+    voiceId: 'fresh_youth',
+    duration: 15, // 默认 15s
+    resolution: '1080p', // 这个字段虽然保留，但商业流后端强制 1080p，所以计费按 1080p 算
+    enableSmartEnhance: true,
     enableUpscale: 'default' as 'default' | '2k' | '4k',
     errors: {} as any,
   });
 
-  // 2. 计费逻辑 (固定 0.01)
-  const cost = derived(form, ($f) => calculateCost('commercial-pipeline', {}));
+  // 🔥 修正计费逻辑
+  // 监听 form 变化，将 duration 和 enableUpscale 传给 calculateCost
+  const cost = derived(form, ($f) =>
+    calculateCost('commercial-pipeline', {
+      duration: $f.duration,
+      enableUpscale: $f.enableUpscale,
+    })
+  );
 
   // 3. 校验逻辑
   const validate = () => {
@@ -46,7 +52,7 @@ export function useCommercialState(i18n: any, deps: Deps) {
     // 2. 校验提示词 (关键修复：现在这行代码一定会执行了)
     // 注意：这里必须用 globalPrompt 作为 key，因为你的组件里读的是 errors.globalPrompt
     if (!$f.prompt || $f.prompt.trim().length < 2) {
-      errors.globalPrompt = t('Please describe the product or scene');
+      errors.globalPrompt = t('Please enter a video prompt');
       isValid = false;
     }
 
