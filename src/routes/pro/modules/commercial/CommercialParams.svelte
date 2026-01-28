@@ -29,8 +29,8 @@
   // 1) voice options：直接映射
   $: voiceOptions = ASIAN_MARKET_VOICES.map((v) => ({
     value: v.id,
-    label: v.name,
-    desc: v.description,
+    label: $i18n.t(v.name),
+    desc: $i18n.t(v.description),
     gender: v.gender,
     hasAudio: false,
     icon: undefined,
