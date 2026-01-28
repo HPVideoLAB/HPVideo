@@ -20,18 +20,20 @@ export function useCommercialState(i18n: any, deps: Deps) {
     image: null as File | null,
     prompt: '',
     voiceId: 'fresh_youth',
-    duration: 15, // 默认 15s
-    resolution: '1080p', // 这个字段虽然保留，但商业流后端强制 1080p，所以计费按 1080p 算
+    duration: 5,
     enableSmartEnhance: true,
-    enableUpscale: 'default' as 'default' | '2k' | '4k',
+
+    // ✅ 明确设置为 '720p'
+    enableUpscale: '720p' as '720p' | '1080p' | '2k' | '4k',
+
     errors: {} as any,
   });
 
-  // 🔥 修正计费逻辑
   // 监听 form 变化，将 duration 和 enableUpscale 传给 calculateCost
   const cost = derived(form, ($f) =>
     calculateCost('commercial-pipeline', {
       duration: $f.duration,
+      // 🔥 修改点 3: 直接透传字符串，pricing.ts 已经适配了 '720p'/'1080p'/'2k'/'4k'
       enableUpscale: $f.enableUpscale,
     })
   );
@@ -95,7 +97,7 @@ export function useCommercialState(i18n: any, deps: Deps) {
       const payment = await pay({
         amount: get(cost),
         model: 'commercial-pipeline',
-        resolution: $form.enableUpscale ? '4k' : $form.resolution,
+        resolution: $form.enableUpscale,
         duration: $form.duration,
       });
       if (!payment.success) return;
@@ -110,7 +112,6 @@ export function useCommercialState(i18n: any, deps: Deps) {
         prompt: $form.prompt,
         voiceId: $form.voiceId,
         duration: $form.duration,
-        resolution: '1080p',
         enableSmartEnhance: $form.enableSmartEnhance,
         enableUpscale: $form.enableUpscale,
         txHash: finalTxHash,

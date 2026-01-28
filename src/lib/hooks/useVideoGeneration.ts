@@ -92,7 +92,6 @@ const MODEL_STRATEGIES: Record<
       image: urls[0], // OSS 上传后的 URL
       voice_id: args.voiceId,
       duration: args.duration,
-      resolution: args.resolution,
       enableSmartEnhance: args.enableSmartEnhance,
       enableUpscale: args.enableUpscale,
       txHash,
@@ -258,6 +257,7 @@ export function useVideoGeneration() {
 
       // 4. 组装 Payload (自动处理字段映射)
       const payload = strategy.buildPayload(rawArgs, ossUrls, rawArgs.txHash);
+      console.log(payload, 'payloadpayloadpayloadpayload');
 
       // 5. 运行核心任务
       await _runTaskCore(payload, tempId, address, onSuccess, strategy.pollConfig);

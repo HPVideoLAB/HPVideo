@@ -9,7 +9,8 @@
   export let voiceId = 'fresh_youth';
   export let duration = 15;
   export let enableSmartEnhance = true;
-  export let enableUpscale: 'default' | '2k' | '4k' = 'default'; // ✅ 三态直接当字段名用（最小侵入）
+  // 🔥🔥🔥 修改点 1：类型扩展，直接包含所有档位
+  export let enableUpscale: '720p' | '1080p' | '2k' | '4k' = '720p';
 
   export let taskStatus = 'idle';
   export let errors: any = {};
@@ -43,12 +44,11 @@
     desc: undefined,
   }));
 
-  // 3) quality options：'2k'/'4k' 桥接
-  // 三态：default / 2k / 4k
-  $: qualityValue = enableUpscale; // ✅ 直接绑定
-
+  // 🔥🔥🔥 修改点 2：Quality Options 直接对应你的四个档位
+  // value 直接就是发给后端的 enableUpscale
   const qualityOptions = [
-    { value: 'default', label: '默认', desc: undefined },
+    { value: '720p', label: '720p', desc: undefined }, // ✅ 明确传 '720p'
+    { value: '1080p', label: '1080p', desc: undefined }, // ✅ 明确传 '1080p'
     { value: '2k', label: '2K', desc: undefined },
     { value: '4k', label: '4K', desc: undefined },
   ];
@@ -106,7 +106,7 @@
           </div>
 
           <MySelect
-            value={qualityValue}
+            value={enableUpscale}
             showTriggerDesc={false}
             options={qualityOptions}
             placeholder={$i18n.t('Select quality')}

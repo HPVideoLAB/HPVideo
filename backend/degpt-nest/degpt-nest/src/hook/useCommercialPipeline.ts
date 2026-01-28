@@ -48,9 +48,8 @@ export const useCommercialPipeline = () => {
     };
 
     logger.log(
-      `[Wan Submit] 正在提交到 WaveSpeed... Prompt: ${args.prompt.slice(0, 30)}...`,
+      `[Wan Submit] 正在提交到 WaveSpeed... Prompt: ${JSON.stringify(payload)}`,
     );
-
     // 🔥 注意：请确认 WaveSpeed 上 Wan 模型的具体 Path
     // 这里假设是 /aliyun/wan-2.1-i2v-plus，如果不同请修改此处字符串
     const modelEndpoint = '/alibaba/wan-2.6/image-to-video';

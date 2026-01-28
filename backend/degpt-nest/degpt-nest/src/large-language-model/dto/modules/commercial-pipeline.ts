@@ -18,21 +18,21 @@ export class CommercialPipelineDto {
   @IsNotEmpty()
   image?: string;
 
-  // ✅ 1. 在这里自己定义 Duration
+  // Duration 保持不变
   @ValidateIf((o) => o.model === 'commercial-pipeline')
   @IsOnlyForModel(['commercial-pipeline'])
   @IsInt()
-  @IsIn([5, 10, 15]) // Pipeline/Wan 只支持这三个
+  @IsIn([5, 10, 15])
   duration: number;
 
-  // ✅ 2. 在这里自己定义 Resolution
+  // ⚠️ 修改点 1: Resolution 变得不那么重要了，可以留着做兼容，或者标为可选
   @IsOptional()
   @ValidateIf((o) => o.model === 'commercial-pipeline')
   @IsOnlyForModel(['commercial-pipeline'])
   @IsIn(['720p', '1080p'])
   resolution?: '720p' | '1080p';
 
-  // ✅ 3. 其他参数
+  // 其他参数保持不变...
   @IsOptional()
   @ValidateIf((o) => o.model === 'commercial-pipeline')
   @IsOnlyForModel(['commercial-pipeline'])
@@ -46,12 +46,11 @@ export class CommercialPipelineDto {
   @IsIn(['single', 'multi'])
   shot_type?: 'single' | 'multi';
 
-  // ✅ 新增：用户指定的音色 ID
   @IsOptional()
   @ValidateIf((o) => o.model === 'commercial-pipeline')
   @IsOnlyForModel(['commercial-pipeline'])
   @IsString()
-  @IsIn(ASIAN_MARKET_VOICES.map((v) => v.id)) // 🔒 必须是预设列表里的 ID
+  @IsIn(ASIAN_MARKET_VOICES.map((v) => v.id))
   voice_id?: string;
 
   @IsOptional()
@@ -60,10 +59,12 @@ export class CommercialPipelineDto {
   @IsBoolean()
   enableSmartEnhance?: boolean;
 
+  // 🔥🔥🔥 修改点 2: 扩展允许的值，使其包含所有画质档位
   @IsOptional()
   @ValidateIf((o) => o.model === 'commercial-pipeline')
   @IsOnlyForModel(['commercial-pipeline'])
   @IsString()
-  @IsIn(['default', '2k', '4k'])
-  enableUpscale?: 'default' | '2k' | '4k';
+  // 允许 '720p', '1080p' (基础档) 以及 '2k', '4k' (超分档)
+  @IsIn(['default', '720p', '1080p', '2k', '4k'])
+  enableUpscale?: 'default' | '720p' | '1080p' | '2k' | '4k';
 }

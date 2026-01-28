@@ -75,40 +75,58 @@ export async function restoreProParams(
       }
 
       // ================= Wan 2.1 =================
-    } else if (params.model === 'wan-2.1' || params.model.includes('wan')) {
-      const basicData = {
-        prompt: params.prompt || '',
-        negative_prompt: params.negative_prompt || '',
-        strength: params.strength ?? 0.9,
-        seed: params.seed ?? -1,
-        duration: params.duration || 5,
-        num_inference_steps: params.num_inference_steps || 30,
-        guidance_scale: params.guidance_scale || 5,
-        flow_shift: params.flow_shift || 3,
-        loras: params.loras ? JSON.parse(JSON.stringify(params.loras)) : [],
+    } else if (params.model === 'commercial-pipeline' || params.model.includes('commercial')) {
+      // ✅ 修正 1: 更新清洗逻辑，兼容旧数据 ('default') 并支持新数据 ('720p'/'1080p')
+      const normalizeUpscale = (v: any): '720p' | '1080p' | '2k' | '4k' => {
+        // 1. 如果已经是新版合法值，直接返回
+        if (v === '720p' || v === '1080p' || v === '2k' || v === '4k') return v;
+
+        // 2. 兼容旧版 string: 'default' -> 映射为标准 '1080p'
+        if (v === 'default') return '1080p';
+
+        // 3. 兼容更早的 boolean: true -> 4k, false -> 1080p
+        if (v === true) return '4k';
+        if (v === false) return '1080p';
+
+        // 4. 兜底
+        return '1080p';
       };
 
-      if (params.video && typeof params.video === 'string') {
+      const basicData = {
+        prompt: params.prompt || '',
+        voiceId: params.voice_id || params.voiceId || 'fresh_youth', // 兼容后端下划线
+        duration: params.duration || 15,
+
+        // ❌ 删除 resolution 字段 (Store 里已经删了)
+        // resolution: params.resolution || '720p',
+
+        enableSmartEnhance: params.enableSmartEnhance ?? true,
+
+        // ✅ 使用新的清洗函数
+        enableUpscale: normalizeUpscale(params.enableUpscale),
+      };
+
+      // 检查是否有参考图需要恢复
+      if (params.image && typeof params.image === 'string') {
         toast.promise(
           async () => {
-            const file = await urlToFileApi(params.video, `wan_${Date.now()}.mp4`);
-            callbacks.setWan({ ...basicData, video: file });
+            // 下载图片转 File
+            const file = await urlToFileApi(params.image, `commercial_${Date.now()}.jpg`);
+            callbacks.setCommercial({ ...basicData, image: file });
             await tick();
             await wait(200);
-            return t('Wan video restored successfully');
+            return t('Commercial material restored successfully');
           },
           {
-            loading: t('Downloading source video...'),
+            loading: t('Restoring reference image...'),
             success: (m) => m,
-            error: t('Video download failed'),
+            error: t('Image download failed'),
           }
         );
       } else {
-        callbacks.setWan({ ...basicData, video: null });
-        toast.success(t('Wan parameters restored'));
+        callbacks.setCommercial({ ...basicData, image: null });
+        toast.success(t('Commercial parameters restored'));
       }
-
-      // ================= Sam 3 =================
     } else if (params.model === 'sam3' || params.model.includes('sam')) {
       const basicData = {
         prompt: params.prompt || '',
