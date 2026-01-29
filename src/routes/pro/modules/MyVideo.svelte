@@ -42,10 +42,10 @@
   }
 </script>
 
-<div class="w-full flex flex-col md:flex-row gap-3 h-full">
+<div class="w-full flex flex-col xl:flex-row gap-6 h-full">
   <div
-    class="flex-1 min-w-0 h-full flex flex-col
- md:overflow-hidden relative"
+    class=" w-full h-full flex flex-col
+  relative"
   >
     {#if activeItem}
       {#key activeItem.id}
@@ -53,7 +53,7 @@
       {/key}
     {:else}
       <div
-        class="flex-1 flex flex-col items-center justify-center text-center p-10 md:p-3 border rounded-2xl border-border-light
+        class="flex-1 flex flex-col items-center justify-center text-center p-10 md:p-3 border rounded-3xl border-border-light
 dark:border-border-dark"
       >
         <div class="relative mb-2">
@@ -77,7 +77,7 @@ dark:border-border-dark"
     {/if}
   </div>
 
-  <aside class="w-full md:w-[140px] shrink-0 md:h-full overflow-hidden">
+  <aside class="w-full xl:w-[170px] shrink-0 md:h-full overflow-hidden">
     <History {items} selectedId={activeItem?.id} on:select={handleHistorySelect} />
   </aside>
 </div>

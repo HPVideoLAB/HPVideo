@@ -1,6 +1,9 @@
 <script lang="ts">
   import { VIDEO_STYLES } from '../../../../constants/videoStyles';
-  import { createEventDispatcher, onDestroy, getContext } from 'svelte';
+  import { createEventDispatcher, getContext } from 'svelte';
+  // 1. 引入通用组件
+  import MySelect from '$lib/components/common/MySelect.svelte';
+  import MyButton from '$lib/components/common/MyButton.svelte';
 
   // Props
   export let globalPrompt = '';
@@ -8,7 +11,7 @@
   export let strength = 0.9;
   export let seed = -1;
   export let loras: { path: string; scale: number }[] = [];
-  export let costUsd: number | null = null; // 例如 0.12；null 表示不显示
+  export let costUsd: number | null = null;
 
   // Advanced Props
   export let duration = 5;
@@ -26,6 +29,13 @@
 
   let showAdvanced = false;
   let selectedStyleId = 'none';
+
+  // 2. 转换 Style 数据以适配 MySelect
+  $: styleOptions = VIDEO_STYLES.map((s) => ({
+    value: s.id,
+    label: s.label,
+    desc: undefined, // 如果 VIDEO_STYLES 有描述字段也可以加上
+  }));
 
   function handleStyleChange() {
     const style = VIDEO_STYLES.find((s) => s.id === selectedStyleId) || VIDEO_STYLES[0];
@@ -47,309 +57,237 @@
 </script>
 
 <section
-  class="flex flex-col gap-1 rounded-2xl
-         border border-border-light dark:border-border-dark
-         bg-bg-light/60 dark:bg-bg-dark/40
-         p-3 shadow-sm"
+  class="flex flex-col h-full gap-3 rounded-2xl border border-border-light bg-bg-light p-3 shadow-sm dark:border-border-dark dark:bg-bg-dark"
 >
-  <form class="flex flex-col gap-1" on:submit|preventDefault={() => !isLoading && dispatch('generate')}>
-    <div class="flex flex-col md:flex-row items-center gap-2">
-      <div class="relative w-full flex flex-col gap-1 flex-[5]">
-        <textarea
-          bind:value={globalPrompt}
-          rows={1}
-          placeholder={$i18n.t('Describe video content...')}
-          class={`w-full resize-none rounded-2xl border px-4 py-3 text-sm
-                  bg-bg-light dark:bg-bg-dark
-                  text-text-light dark:text-text-dark
-                  placeholder:text-text-lightSecondary dark:placeholder:text-text-darkSecondary
-                  outline-none transition-all
-                  focus-visible:ring-2 focus-visible:ring-primary-500/25
-                  focus-visible:ring-offset-2 focus-visible:ring-offset-bg-light dark:focus-visible:ring-offset-bg-dark
-                  ${
-                    errors.globalPrompt
-                      ? 'border-error-500/60 focus:border-error-500 focus-visible:ring-error-500/25'
-                      : 'border-border-light dark:border-border-dark focus:border-primary-500'
-                  }`}
-        />
-        {#if errors.globalPrompt}
-          <div class="mt-1 text-[11px] text-error-600 dark:text-error-300">{errors.globalPrompt}</div>
-        {/if}
-      </div>
-    </div>
-
-    <div class="rounded-2xl border border-border-light dark:border-border-dark px-3 py-2">
-      <div>
-        <div class="flex justify-between items-end mb-2">
-          <label class="text-xs font-medium text-text-lightSecondary dark:text-text-darkSecondary">
-            {$i18n.t('Strength (Redraw)')}
-          </label>
-
-          <div
-            class="text-xs font-bold font-mono
-                   text-primary-600 dark:text-primary-300
-                   bg-primary-500/10 px-2 py-0.5 rounded-md"
-          >
-            {strength}
+  <form class="flex flex-col gap-3 h-full" on:submit|preventDefault={() => !isLoading && dispatch('generate')}>
+    <div class="flex flex-col gap-3">
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div class="flex flex-col gap-1.5">
+          <div class="flex items-center justify-between px-1">
+            <span class="text-[10px] font-bold tracking-wider uppercase text-gray-500 dark:text-gray-400">
+              {$i18n.t('Style Filter')}
+            </span>
           </div>
+          <MySelect
+            bind:value={selectedStyleId}
+            options={styleOptions}
+            showTriggerDesc={false}
+            showTriggerMedia={false}
+            placeholder={$i18n.t('Select Style')}
+            on:change={(e) => {
+              selectedStyleId = e.detail.value;
+              handleStyleChange();
+            }}
+          />
         </div>
 
-        <div class="relative flex items-center h-5">
-          <input
-            type="range"
-            min="0.1"
-            max="1.0"
-            step="0.05"
-            bind:value={strength}
-            class="w-full absolute z-20 opacity-0 cursor-pointer h-full"
-          />
-
-          <div class="w-full h-1.5 bg-gray-200 dark:bg-gray-800/70 rounded-full overflow-hidden absolute z-10">
-            <div
-              class="h-full bg-gradient-to-r from-primary-600 to-primary-400 rounded-full transition-all duration-100"
-              style="width: {strength * 100}%"
-            />
+        <div class="flex flex-col gap-1.5">
+          <div class="flex items-center justify-between px-1">
+            <span class="text-[10px] font-bold tracking-wider uppercase text-gray-500 dark:text-gray-400">
+              {$i18n.t('Strength')}
+            </span>
+            <span
+              class="text-[10px] font-mono font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 px-1.5 py-0.5 rounded"
+            >
+              {strength}
+            </span>
           </div>
 
           <div
-            class="h-4 w-4 bg-white dark:bg-gray-100 rounded-full shadow-md absolute z-10 pointer-events-none
-                   transition-all duration-100 border-2 border-primary-500"
-            style="left: calc({strength * 100}% - 8px)"
-          />
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 xl:grid-cols-2 gap-3">
-        <div class="col-span-3 space-y-1">
-          <div class="flex justify-between items-center px-1">
-            {#if currentStyle.triggerWord}
-              <button
-                type="button"
-                class="text-[10px] font-medium text-blue-600 dark:text-blue-400
-                       hover:text-blue-700 dark:hover:text-blue-300
-                       transition flex items-center gap-1 opacity-80 hover:opacity-100"
-                on:click={() => addTrigger(currentStyle.triggerWord)}
-              >
-                <span class="truncate max-w-[120px]">{$i18n.t('+ Recommended')}</span>
-              </button>
-            {/if}
-          </div>
-        </div>
-
-        <div class="col-span-3 xl:col-span-1 space-y-1">
-          <label class="text-xs font-medium text-text-lightSecondary dark:text-text-darkSecondary px-1"
-            >{$i18n.t('Style Filter')}</label
+            class="relative flex items-center h-[42px] px-3 rounded-2xl border border-border-light dark:border-border-dark bg-bg-light dark:bg-bg-dark"
           >
+            <div class="relative w-full h-4 flex items-center">
+              <input
+                type="range"
+                min="0.1"
+                max="1.0"
+                step="0.05"
+                bind:value={strength}
+                class="absolute inset-0 w-full h-full z-20 opacity-0 cursor-pointer m-0 p-0 appearance-none"
+              />
 
-          <div class="relative group">
-            <select
-              bind:value={selectedStyleId}
-              on:change={handleStyleChange}
-              class="w-full appearance-none rounded-xl border px-3 pr-8 py-2.5 text-xs
-                     bg-bg-light dark:bg-bg-dark
-                     text-text-light dark:text-text-dark
-                     border-border-light dark:border-border-dark
-                     outline-none transition-all
-                     hover:border-gray-300 dark:hover:border-gray-700
-                     focus:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-500/20
-                     focus-visible:ring-offset-2 focus-visible:ring-offset-bg-light dark:focus-visible:ring-offset-bg-dark"
-            >
-              {#each VIDEO_STYLES as style}
-                <option value={style.id}>{style.label}</option>
-              {/each}
-            </select>
-          </div>
-        </div>
+              <div class="w-full h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden relative z-0">
+                <div
+                  class="h-full bg-gradient-to-r from-primary-400 to-primary-600 rounded-full"
+                  style="width: {strength * 100}%"
+                />
+              </div>
 
-        <div class="col-span-3 xl:col-span-1 space-y-1">
-          <label class="text-xs font-medium text-text-lightSecondary dark:text-text-darkSecondary px-1"
-            >{$i18n.t('Random Seed')}</label
-          >
-
-          <div class="relative group">
-            <input
-              type="number"
-              bind:value={seed}
-              placeholder="-1"
-              class="w-full rounded-xl border pl-8 pr-2 py-2.5 text-xs font-mono
-                     bg-bg-light dark:bg-bg-dark
-                     text-text-light dark:text-text-dark
-                     placeholder:text-text-lightSecondary dark:placeholder:text-text-darkSecondary
-                     border-border-light dark:border-border-dark
-                     outline-none transition-all
-                     hover:border-gray-300 dark:hover:border-gray-700
-                     focus:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-500/20
-                     focus-visible:ring-offset-2 focus-visible:ring-offset-bg-light dark:focus-visible:ring-offset-bg-dark"
-            />
-
-            <div
-              class="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-lightSecondary dark:text-text-darkSecondary text-[10px] pointer-events-none
-                     group-focus-within:text-primary-600 dark:group-focus-within:text-primary-300 transition-colors"
-            >
-              🎲
+              <div
+                class="h-4 w-4 bg-white dark:bg-gray-200 rounded-full shadow-md absolute top-1/2 -translate-y-1/2 z-10 pointer-events-none border border-gray-200 dark:border-gray-600"
+                style="left: {strength * 100}%; transform: translate(-50%, -50%);"
+              />
             </div>
           </div>
         </div>
-
-        <div class="col-span-3 xl:col-span-1 space-y-1">
-          <label class="text-xs font-medium text-text-lightSecondary dark:text-text-darkSecondary px-1"
-            >{$i18n.t('Negative Prompt')}</label
-          >
-
-          <div class="relative group">
-            <input
-              type="text"
-              bind:value={negativePrompt}
-              placeholder={$i18n.t('Negative prompts...')}
-              class="w-full xl:w-[180px] rounded-xl border px-4 py-2.5 text-xs
-                     bg-bg-light dark:bg-bg-dark
-                     text-text-light dark:text-text-dark
-                     placeholder:text-text-lightSecondary dark:placeholder:text-text-darkSecondary
-                     border-border-light dark:border-border-dark
-                     outline-none transition-all
-                     hover:border-gray-300 dark:hover:border-gray-700
-                     focus:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-500/20
-                     focus-visible:ring-offset-2 focus-visible:ring-offset-bg-light dark:focus-visible:ring-offset-bg-dark"
-            />
-          </div>
-        </div>
       </div>
-    </div>
 
-    <div>
-      <button
-        type="button"
-        class="flex w-full py-2 items-center justify-between text-xs font-medium
-               text-text-lightSecondary dark:text-text-darkSecondary
-               hover:text-text-light dark:hover:text-text-dark
-               transition-colors"
-        on:click={() => (showAdvanced = !showAdvanced)}
-      >
-        <span>{$i18n.t('Advanced Parameters')}</span>
-        <span class={`transform transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''} opacity-60`}
-          >▼</span
+      <div>
+        <button
+          type="button"
+          class="flex w-full items-center justify-between px-1 py-1 text-xs font-medium
+                 text-text-lightSecondary dark:text-text-darkSecondary
+                 hover:text-primary-600 dark:hover:text-primary-400
+                 transition-colors group"
+          on:click={() => (showAdvanced = !showAdvanced)}
         >
-      </button>
+          <span class="flex items-center gap-1">
+            <iconify-icon icon="lucide:settings-2" class="text-sm" />
+            {$i18n.t('Advanced Parameters')}
+          </span>
+          <iconify-icon
+            icon="lucide:chevron-down"
+            class={`transform transition-transform duration-200 ${
+              showAdvanced ? 'rotate-180' : ''
+            } opacity-60 group-hover:opacity-100`}
+          />
+        </button>
 
-      {#if showAdvanced}
-        <div
-          class="grid grid-cols-2 gap-3 pb-1 animate-in slide-in-from-top-2 fade-in duration-300
-                 rounded-2xl border border-border-light dark:border-border-dark
-                  p-3"
-        >
-          <div class="space-y-1">
-            <label
-              class="text-[10px] text-text-lightSecondary dark:text-text-darkSecondary uppercase tracking-wider font-bold"
-            >
-              {$i18n.t('Duration')}
-            </label>
-            <div class="relative">
+        {#if showAdvanced}
+          <div
+            class="mt-2 grid grid-cols-2 gap-3 p-3 rounded-2xl border border-border-light dark:border-border-dark bg-gray-50/50 dark:bg-gray-950/30 animate-in slide-in-from-top-2 fade-in duration-200"
+          >
+            <div class="col-span-2 sm:col-span-1 space-y-1">
+              <label class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{$i18n.t('Seed')}</label>
+              <div class="relative">
+                <input
+                  type="number"
+                  bind:value={seed}
+                  placeholder="-1"
+                  class="w-full rounded-xl border border-border-light dark:border-border-dark bg-white dark:bg-black/20 px-3 py-2 pl-8 text-xs focus:border-primary-500 focus:outline-none transition-all"
+                />
+                <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] grayscale opacity-60">🎲</span>
+              </div>
+            </div>
+
+            <div class="col-span-2 sm:col-span-1 space-y-1">
+              <label class="text-[10px] text-gray-500 font-bold uppercase tracking-wider"
+                >{$i18n.t('Negative Prompt')}</label
+              >
+              <input
+                type="text"
+                bind:value={negativePrompt}
+                class="w-full rounded-xl border border-border-light dark:border-border-dark bg-white dark:bg-black/20 px-3 py-2 text-xs focus:border-primary-500 focus:outline-none transition-all"
+              />
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-[10px] text-gray-500 font-bold uppercase tracking-wider"
+                >{$i18n.t('Duration (s)')}</label
+              >
               <select
                 bind:value={duration}
-                class="w-full appearance-none rounded-lg border px-3 py-2 text-xs
-                       bg-bg-light dark:bg-bg-dark
-                       text-text-light dark:text-text-dark
-                       border-border-light dark:border-border-dark
-                       outline-none transition-all
-                       focus:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-500/15
-                       focus-visible:ring-offset-2 focus-visible:ring-offset-bg-light dark:focus-visible:ring-offset-bg-dark"
+                class="w-full rounded-xl border border-border-light dark:border-border-dark bg-white dark:bg-black/20 px-3 py-2 text-xs focus:border-primary-500 focus:outline-none appearance-none"
               >
                 {#each [5, 6, 7, 8, 9, 10] as d}<option value={d}>{d}s</option>{/each}
               </select>
             </div>
-          </div>
 
-          <div class="space-y-1">
-            <label
-              class="text-[10px] text-text-lightSecondary dark:text-text-darkSecondary uppercase tracking-wider font-bold"
-            >
-              {$i18n.t('Steps')}
-            </label>
-            <input
-              type="number"
-              bind:value={num_inference_steps}
-              class="w-full rounded-lg border px-3 py-2 text-xs
-                     bg-bg-light dark:bg-bg-dark
-                     text-text-light dark:text-text-dark
-                     border-border-light dark:border-border-dark
-                     outline-none transition-all
-                     focus:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-500/15
-                     focus-visible:ring-offset-2 focus-visible:ring-offset-bg-light dark:focus-visible:ring-offset-bg-dark"
-            />
-          </div>
+            <div class="space-y-1">
+              <label class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{$i18n.t('Steps')}</label>
+              <input
+                type="number"
+                bind:value={num_inference_steps}
+                class="w-full rounded-xl border border-border-light dark:border-border-dark bg-white dark:bg-black/20 px-3 py-2 text-xs focus:border-primary-500 focus:outline-none"
+              />
+            </div>
 
-          <div class="space-y-1">
-            <label
-              class="text-[10px] text-text-lightSecondary dark:text-text-darkSecondary uppercase tracking-wider font-bold"
-            >
-              {$i18n.t('CFG Scale')}
-            </label>
-            <input
-              type="number"
-              step="0.5"
-              bind:value={guidance_scale}
-              class="w-full rounded-lg border px-3 py-2 text-xs
-                     bg-bg-light dark:bg-bg-dark
-                     text-text-light dark:text-text-dark
-                     border-border-light dark:border-border-dark
-                     outline-none transition-all
-                     focus:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-500/15
-                     focus-visible:ring-offset-2 focus-visible:ring-offset-bg-light dark:focus-visible:ring-offset-bg-dark"
-            />
-          </div>
+            <div class="space-y-1">
+              <label class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{$i18n.t('CFG Scale')}</label>
+              <input
+                type="number"
+                step="0.5"
+                bind:value={guidance_scale}
+                class="w-full rounded-xl border border-border-light dark:border-border-dark bg-white dark:bg-black/20 px-3 py-2 text-xs focus:border-primary-500 focus:outline-none"
+              />
+            </div>
 
-          <div class="space-y-1">
-            <label
-              class="text-[10px] text-text-lightSecondary dark:text-text-darkSecondary uppercase tracking-wider font-bold"
-            >
-              {$i18n.t('Flow Shift')}
-            </label>
-            <input
-              type="number"
-              step="0.5"
-              bind:value={flow_shift}
-              class="w-full rounded-lg border px-3 py-2 text-xs
-                     bg-bg-light dark:bg-bg-dark
-                     text-text-light dark:text-text-dark
-                     border-border-light dark:border-border-dark
-                     outline-none transition-all
-                     focus:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-500/15
-                     focus-visible:ring-offset-2 focus-visible:ring-offset-bg-light dark:focus-visible:ring-offset-bg-dark"
-            />
+            <div class="space-y-1">
+              <label class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{$i18n.t('Flow Shift')}</label
+              >
+              <input
+                type="number"
+                step="0.5"
+                bind:value={flow_shift}
+                class="w-full rounded-xl border border-border-light dark:border-border-dark bg-white dark:bg-black/20 px-3 py-2 text-xs focus:border-primary-500 focus:outline-none"
+              />
+            </div>
           </div>
-        </div>
-      {/if}
+        {/if}
+      </div>
     </div>
 
-    <button
-      type="submit"
-      disabled={isLoading}
-      class="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-primary-600 to-violet-600 px-4 py-3
-             text-sm font-bold text-white shadow-lg shadow-primary-900/25 transition-all
-             hover:scale-[1.02] hover:shadow-primary-900/40 active:scale-[0.98]
-             disabled:cursor-not-allowed disabled:opacity-50
-             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40
-             focus-visible:ring-offset-2 focus-visible:ring-offset-bg-light dark:focus-visible:ring-offset-bg-dark"
-    >
-      <span class="relative z-10 flex w-full items-center justify-center">
-        <span class="flex items-center gap-2">
-          {#if isLoading}
-            <iconify-icon icon="eos-icons:loading" class="text-lg" />
-            {$i18n.t('Generating...')}
-          {:else}
-            <iconify-icon icon="mdi:sparkles" class="text-xl text-warning-400" />
-            {$i18n.t('Generate Video')}
-            {#if !isLoading && costUsd !== null}
-              <span class="font-semibold">(${costUsd.toFixed(3)}{$i18n.t('/time')})</span>
-            {/if}
-          {/if}
-        </span>
-      </span>
-
+    <div class="flex-1 min-h-0 flex flex-col justify-end">
       <div
-        class="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]
-               bg-gradient-to-r from-transparent via-white/20 to-transparent z-0"
-      />
-    </button>
+        class={`flex flex-col gap-2 pb-2 w-full rounded-2xl border transition-all duration-300
+        bg-bg-light dark:bg-bg-dark 
+        shadow-sm dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]
+        ${
+          errors.globalPrompt
+            ? 'border-error-500 focus-within:ring-2 focus-within:ring-error-500/20'
+            : 'border-border-light dark:border-border-dark focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/20 hover:border-gray-300 dark:hover:border-gray-600'
+        }`}
+      >
+        <textarea
+          bind:value={globalPrompt}
+          rows={3}
+          placeholder={$i18n.t('Describe video content...')}
+          class="w-full resize-none bg-transparent px-4 py-3 text-sm text-text-light dark:text-text-dark outline-none placeholder:text-gray-400 dark:placeholder:text-gray-600"
+        />
+
+        <div class="flex items-center justify-between px-2 pb-1.5 mt-[-4px]">
+          <div class="flex items-center gap-2 pl-2">
+            {#if currentStyle.triggerWord}
+              <button
+                type="button"
+                class="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-medium transition-all
+                       bg-blue-50 text-blue-600 hover:bg-blue-100
+                       dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/40"
+                on:click={() => addTrigger(currentStyle.triggerWord)}
+              >
+                <iconify-icon icon="mdi:magic-staff" />
+                <span class="truncate max-w-[120px]">{$i18n.t('+ Add Recommended')}</span>
+              </button>
+            {/if}
+          </div>
+
+          <MyButton
+            round
+            size="large"
+            disabled={isLoading}
+            type="primary"
+            htmlType="submit"
+            class="!px-4 shadow-[0_0_15px_rgba(194,19,242,0.4)] hover:shadow-[0_0_20px_rgba(194,19,242,0.6)] transition-all duration-300 active:scale-95"
+          >
+            <span class="flex items-center gap-1.5">
+              {#if isLoading}
+                <iconify-icon icon="eos-icons:loading" class="text-lg animate-spin" />
+                {$i18n.t('Generating...')}
+              {:else}
+                <iconify-icon icon="mdi:sparkles" class="text-lg text-white" />
+
+                {#if costUsd !== null}
+                  <span class="w-[1px] h-3 bg-white/30 mx-0.5" />
+                  <span class="text-sm font-bold font-mono">
+                    {costUsd === 0 ? 'FREE' : `$${costUsd.toFixed(3)}`}
+                  </span>
+                {/if}
+              {/if}
+            </span>
+          </MyButton>
+        </div>
+
+        {#if errors.globalPrompt}
+          <div class="min-h-[20px] flex items-center px-2 border-t border-gray-100 dark:border-gray-800 pt-2 mx-2">
+            <div
+              class="text-[10px] text-error-500 font-medium flex items-center gap-1 animate-in fade-in slide-in-from-left-1"
+            >
+              <iconify-icon icon="mdi:alert-circle" />
+              <span>{errors.globalPrompt}</span>
+            </div>
+          </div>
+        {/if}
+      </div>
+    </div>
   </form>
 </section>

@@ -172,11 +172,9 @@
   </nav>
 
   <main
-    class="w-full flex flex-col gap-5 md:flex-row pt-[60.8px] md:pt-[80px] pb-3 px-3 h-screen overflow-auto md:overflow-hidden md:px-4"
+    class="w-full flex flex-col gap-2 md:flex-row pt-[60.8px] md:pt-[80px] pb-3 px-3 h-screen overflow-auto md:overflow-hidden md:px-4"
   >
-    <div
-      class="border-border-light flex flex-col gap-2 pr-3 relative dark:border-border-dark border-r flex-[2.5] xl:flex-[1.7] md:overflow-y-auto scroll-fade"
-    >
+    <div class=" flex flex-col gap-2 relative flex-[2.5] xl:flex-[1.4] md:overflow-y-auto scroll-fade">
       <div class="max-w-[300px]">
         <MySelect options={modelOptions} bind:value={currentModelValue} />
       </div>

@@ -14,6 +14,7 @@ type Deps = {
 
 export function usePikaState(i18n: any, deps: Deps) {
   const { pay, submitTask, loadHistory, walletAddress } = deps;
+  const t = get(i18n).t;
 
   // 1. 状态
   const form = writable({
@@ -44,7 +45,7 @@ export function usePikaState(i18n: any, deps: Deps) {
   const validate = () => {
     const $f = get(form);
     if ($f.files.length < 2) {
-      toast.warning(i18n.t('Please upload images'));
+      toast.warning(t('Please upload images'));
       return false;
     }
 

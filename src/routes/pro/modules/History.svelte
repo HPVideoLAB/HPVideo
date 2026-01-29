@@ -1,5 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher, getContext } from 'svelte';
+  import MyButton from '$lib/components/common/MyButton.svelte';
+  // 1. 引入我们刚才封装的全局指令
+  import { lazyRender } from '@/actions/lazyRender';
 
   const dispatch = createEventDispatcher<{ select: HistoryItem }>();
   const i18n: any = getContext('i18n');
@@ -13,28 +16,40 @@
     status: Status;
     prompt: string;
     outputUrl?: string;
-    thumbUrl?: string; // 虽然定义了，但我们不再使用它
+    thumbUrl?: string;
   };
 
   export let items: HistoryItem[] = [];
   export let selectedId: string | undefined;
 
-  // 追踪视频真实加载状态
+  // 视频加载动画状态
   let loadedMedia = new Set<string>();
-
   function handleMediaLoaded(id: string) {
     loadedMedia.add(id);
     loadedMedia = new Set(loadedMedia);
   }
+
+  // --- 懒加载核心逻辑 ---
+
+  // 2. 存储“允许渲染”的 ID 集合
+  let visibleIds = new Set<string>();
+
+  // 3. 回调函数：指令告诉我们“这个ID可见了”，我们把它加入集合
+  function handleVisible(id: string) {
+    if (!visibleIds.has(id)) {
+      visibleIds.add(id);
+      visibleIds = new Set(visibleIds);
+    }
+  }
 </script>
 
 <section
-  class="rounded-2xl border border-border-light dark:border-border-dark
+  class="scroll-fade rounded-2xl border border-border-light dark:border-border-dark
          bg-bg-light dark:bg-bg-dark shadow-sm overflow-hidden
-         md:h-[calc(100vh-90px)] md:overflow-y-auto scroll-fade"
+         md:h-[calc(100vh-90px)] md:overflow-y-auto"
 >
   <div
-    class="sticky top-0 z-10
+    class="sticky top-0 z-10 bg-purple-500
            p-3 flex items-center justify-between gap-2
            border-b border-border-light dark:border-border-dark
            bg-bg-light/90 dark:bg-bg-dark/80
@@ -45,7 +60,7 @@
     <div class="text-xs text-text-lightSecondary dark:text-text-darkSecondary">{items.length}</div>
   </div>
 
-  <div class="p-3 pt-2 space-y-2">
+  <div class="w-full pr-0 p-3 pt-2 space-y-2 grid grid-cols-2 xl:grid-cols-1 gap-2">
     {#if items.length === 0}
       <div
         class="rounded-xl border border-border-light dark:border-border-dark
@@ -71,11 +86,12 @@
         >
           <div class="flex flex-col gap-2">
             <div
+              use:lazyRender={{ id: it.id, onVisible: handleVisible }}
               class={`w-full aspect-video rounded-xl overflow-hidden relative
                       bg-gray-100 dark:bg-gray-950
                       border border-border-light/60 dark:border-border-dark/60`}
             >
-              {#if !it.outputUrl || !loadedMedia.has(it.id)}
+              {#if !it.outputUrl || !loadedMedia.has(it.id) || !visibleIds.has(it.id)}
                 <div
                   class="absolute inset-0 z-20 flex items-center justify-center
                          bg-gray-200/70 dark:bg-gray-900/60
@@ -98,7 +114,7 @@
                 </div>
               {/if}
 
-              {#if it.outputUrl}
+              {#if it.outputUrl && visibleIds.has(it.id)}
                 <video
                   src={it.outputUrl}
                   class={`w-full h-full object-cover transition-opacity duration-500
@@ -106,6 +122,7 @@
                   muted
                   loop
                   playsinline
+                  preload="metadata"
                   on:loadeddata={() => handleMediaLoaded(it.id)}
                   on:mouseenter={(e) => e.currentTarget.play()}
                   on:mouseleave={(e) => e.currentTarget.pause()}
@@ -117,21 +134,13 @@
               {/if}
             </div>
 
-            <div class="px-1">
-              <p class="text-xs text-text-lightSecondary dark:text-text-darkSecondary line-clamp-1 truncate">
+            <div class="flex items-center md:items-start md:flex-col gap-2">
+              <MyButton class="text-xs w-fit " round size="tiny" type="default">
+                {it.model}
+              </MyButton>
+              <p class="text-[9px] pl-1.5 text-text-lightSecondary dark:text-text-darkSecondary line-clamp-1 truncate">
                 {it.prompt}
               </p>
-
-              <div class="flex justify-between items-center mt-1">
-                <span
-                  class="text-[10px] px-1.5 py-0.5 rounded-full
-                         border border-border-light dark:border-border-dark
-                         bg-gray-50 dark:bg-gray-900/50
-                         text-text-lightSecondary dark:text-text-darkSecondary"
-                >
-                  {it.model}
-                </span>
-              </div>
             </div>
           </div>
         </button>
@@ -141,24 +150,21 @@
 </section>
 
 <style>
+  /* 确保这个类名存在，且有滚动属性，指令依赖它来计算位置 */
   .scroll-fade {
-    scrollbar-gutter: stable;
+    position: relative; /* 建议加上 relative */
 
-    /* 默认：thumb 透明（视觉隐藏） */
+    scrollbar-gutter: stable;
     --sb-thumb: rgba(180, 180, 180, 0);
     --sb-thumb-dark: rgba(180, 180, 180, 0);
-
-    /* Firefox 默认 */
     scrollbar-width: thin;
     scrollbar-color: rgba(180, 180, 180, 0) transparent;
   }
 
-  /* hover 或 focus-within：thumb 显现（更“平滑”） */
   .scroll-fade:hover,
   .scroll-fade:focus-within {
     --sb-thumb: rgba(180, 180, 180, 0.35);
     --sb-thumb-dark: rgba(180, 180, 180, 0.25);
-
     scrollbar-color: rgba(180, 180, 180, 0.35) transparent;
   }
 
@@ -167,7 +173,6 @@
     scrollbar-color: rgba(180, 180, 180, 0.25) transparent;
   }
 
-  /* WebKit */
   .scroll-fade::-webkit-scrollbar {
     width: 10px;
   }
@@ -183,7 +188,6 @@
     background-clip: padding-box;
   }
 
-  /* 暗色：thumb 读另一个变量 */
   .dark .scroll-fade::-webkit-scrollbar-thumb {
     background-color: var(--sb-thumb-dark);
   }

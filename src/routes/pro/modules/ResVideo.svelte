@@ -186,13 +186,15 @@
           </div>
         </div>
       {:else}
-        <div class="w-full mx-auto">
+        <div class="w-full mx-auto cursor-pointer">
           <video
             style={boxStyle()}
             class="w-full rounded-2xl border border-border-light dark:border-border-dark bg-black shadow-sm"
             controls
             preload="metadata"
             src={item.outputUrl}
+            on:mouseenter={(e) => e.currentTarget.play()}
+            on:mouseleave={(e) => e.currentTarget.pause()}
           />
         </div>
       {/if}

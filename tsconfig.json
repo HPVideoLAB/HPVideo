@@ -9,7 +9,17 @@
     "skipLibCheck": true,
     "sourceMap": true,
     "strict": true,
-    "noImplicitAny": false // 新增
+    "noImplicitAny": false, // 新增
+    // --- 关键修复 ---
+    // 强制把自动生成的过时选项关掉，防止报错
+    "importsNotUsedAsValues": "remove",
+    "preserveValueImports": false,
+
+    // 启用新版标准
+    "verbatimModuleSyntax": true,
+
+    // 忽略 TS 5.0 的版本兼容警告
+    "ignoreDeprecations": "5.0"
   }
   // Path aliases are handled by https://kit.svelte.dev/docs/configuration#alias
   //

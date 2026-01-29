@@ -91,7 +91,7 @@
     >
       {#if !imageFile}
         <!-- 空态：更克制的 dropzone -->
-        <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="absolute inset-0 flex items-center justify-center p-2">
           <div
             class={`
               w-full h-full rounded-2xl border-2 border-dashed

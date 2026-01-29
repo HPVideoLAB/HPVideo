@@ -13,6 +13,7 @@ type Deps = {
 
 export function useWanState(i18n: any, deps: Deps) {
   const { pay, submitTask, loadHistory, walletAddress } = deps;
+  const t = get(i18n).t;
 
   const form = writable({
     video: null as File | null,
@@ -33,7 +34,7 @@ export function useWanState(i18n: any, deps: Deps) {
   const validate = () => {
     const $f = get(form);
     if (!$f.video) {
-      toast.warning(i18n.t('Please upload video'));
+      toast.warning(t('Please upload video'));
       return false;
     }
 
