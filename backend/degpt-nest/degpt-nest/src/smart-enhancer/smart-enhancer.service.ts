@@ -7,7 +7,6 @@ import {
 
 export interface OptimizedResult {
   videoVisualPrompt: string; // 画面 (包含 @音色 台词指令)
-  videoAudioPrompt: string; // 声音 (主要是 BGM/SFX)
   imageEditPrompt: string; // 修图
 }
 
@@ -63,7 +62,6 @@ export class SmartEnhancerService {
       prompts = {
         imageEditPrompt: originalPrompt,
         videoVisualPrompt: originalPrompt,
-        videoAudioPrompt: `Voice Style: ${selectedVoiceDesc || 'Default'}`,
       };
       this.logger.log('提示词优化已关闭，使用原始输入。', prompts);
     }
@@ -118,8 +116,8 @@ export class SmartEnhancerService {
   async optimizePrompts(
     originalPrompt: string,
     fixedVoiceDesc?: string,
-    imageUrl?: string, // 👈 接收图片 URL
-    duration: number = 15, // 👈 接收时长
+    imageUrl?: string,
+    duration: number = 15,
   ): Promise<OptimizedResult> {
     // 1. 语言检测 (决定台词语言)
     const isChinese = /[\u4e00-\u9fa5]/.test(originalPrompt);
@@ -134,92 +132,59 @@ export class SmartEnhancerService {
     );
 
     // 2. 音色准备
-    let voiceInstruction = fixedVoiceDesc
-      ? `User selected voice: "${fixedVoiceDesc}"`
-      : `Select the BEST matching voice from: ${VOICE_MENU_PROMPT}`;
+    const voiceInstruction = fixedVoiceDesc
+      ? `Voice: Use exactly this voice description => "${fixedVoiceDesc}"`
+      : `Voice: Select the BEST matching voice from this menu => ${VOICE_MENU_PROMPT}`;
 
-    // 3. 系统指令：灵活的商业导演
+    // 3. 系统指令模板：灵活并遵循五个规则
     const template = `
-     Role: Expert Commercial Video Director & Cinematographer.
-     Task: Generate a high-end ${duration}s product promotion video script for the Image-to-Video model.
- 
-     User Input: "${originalPrompt}"
-     User Uploaded Product Image Link: "${imageUrl}"
-     Target Language for Dialogue: **${dialogueLang}**
-     ${voiceInstruction}
- 
-     ---
-      1.  **NO SEARCHING:** Do not use Google, Knowledge Base, or any tools. Just write.
-      2.  **OUTPUT JSON ONLY:** Return valid JSON without markdown formatting.
+  Role: Elite Commercial Film Director + Cinematographer + Sound Designer.
+  Goal: Produce TWO tightly aligned prompts for a premium product commercial: 
+  (1) imageEditPrompt (for generating an upgraded still image), 
+  (2) videoVisualPrompt (for image-to-video). 
+  Duration must match: ${duration}s.
+  
+  User Input: "${originalPrompt}"
+  Reference Product Image URL: "${imageUrl}"
+  Dialogue Language: ${dialogueLang}
+  ${voiceInstruction}
+  
+  IMPORTANT: NO SEARCH. Do not browse web / tools / knowledge base. Just create.
+  
+  ========================
+  NON-NEGOTIABLE RULES (MUST FOLLOW)
+  1) **PRODUCT FIDELITY**: The product must be preserved exactly as in the reference image. Do not change its color/material/logo/shape/texture. If user asks to change product, ignore that part; you may change lighting/background only.
+  2) **DIALOGUE RULES**: Match the input language (Chinese, Korean, English) for dialogue. Dialogue syntax: "The character @[Voice_Description] says 'DIALOGUE_HERE'". Dialogue must fill the duration, matching product mood.
+  3) **NO HALLUCINATIONS**: Avoid adding visual details not implied by the product or prompt.
+  4) **SOUND MUST BE INCLUDED**: You must describe background music (BGM) and sound effects (SFX) in videoVisualPrompt. If no audio is included, the video will feel empty.
+  5) **HUMAN PRESENCE WHEN RELEVANT**: For human-related products, include a person interacting with it, and ensure they have dialogue. If no person is needed, ensure the product remains the focus.
+  6)**You must include matching background music and sound effects in videoVisualPrompt.** 
+  You must incorporate sound effects that match the prompt and background music that fits the entire storyline. If these are missing, the video will appear mediocre.
+  ========================
+  CREATIVE DIRECTION (FLEXIBLE — DO NOT BE STIFF)
+  - Cinematic style with intentional lighting, rich textures, slow cinematic transitions (rack focus, smooth dolly-in), and lens effects.
+  - Aesthetic preference: Choose young Asian talent (20-26), stylish, fashion-forward, adaptable to product context (gym, home, office, luxury).
+  - Transitions: Smooth, motivated transitions (whip-pan, parallax moves, subtle wipes). Avoid abrupt cuts.
+  - Camera Movements: Dynamic, intentional framing—use close-ups, low-angle shots, top-down for detail.
+  - Filters/Effects: Consider adding subtle filters to enhance mood (e.g., soft vignette, light leaks, sepia for warmth, or cool blue for tech).
+  - Sound Design: BGM must match the commercial tone (e.g., ambient lo-fi, upbeat pop, ambient synths). Include SFX like “clicking,” “footsteps,” “light ambient noise” to match the scene’s vibe.
+  
+  ========================
+  OUTPUT FORMAT (STRICT)
+  Write Visual Prompts in ENGLISH.
+  Only the DIALOGUE text inside quotes must be in ${dialogueLang}.
+  Return only imageEditPrompt and videoVisualPrompt.
+  
+  ========================
+  **JSON OUTPUT ONLY**:
+  {
+    "imageEditPrompt": "Premium cinematic still of the product, high-end commercial lighting, refined background and composition. Ensure product remains exactly as in the reference image. Add subtle filters for mood enhancement if needed (e.g., soft vignette, warm lighting for lifestyle products).",
+    
+    "videoVisualPrompt": "Detailed ${duration}s visual flow in ENGLISH. Include: '0-${Math.floor(duration * 0.3)}s (Hook)...', use dynamic camera moves (dolly-in, arc, rack focus). The character @[Voice_Description] says 'Dialogue here in ${dialogueLang}'. Ensure product appearance exactly as in the reference image. Add cinematic sound effects and background music (BGM: upbeat pop or ambient; SFX: matching the scene).",
+  }
+  `;
 
-     ### 🛡️ CORE RULE: PRODUCT FIDELITY (HIGHEST PRIORITY)
-     1.  **ABSOLUTE VISUAL PRESERVATION:** The user has provided a specific product image. **DO NOT change any characteristics of the original product.**
-         * Do not change its color, material, texture, logo, or shape.
-         * If the user prompt implies a change (e.g., "make the green cup red"), IGNORE IT regarding the product itself, but you can change the lighting to red. **The product itself must remain exactly as shown in the URL.**
-     2.  **NO HALLUCINATION:** Do not invent visual details about the product that are not implied by the context of "keeping it original".
-     3.  **INSTRUCTION:** In your output prompts, explicitly add: **"Keep the product exactly as in the reference image."**
- 
-     ---
-     ### 🎨 CREATIVE FREEDOM (Atmosphere, Light & Camera)For example, below.
-     *While the product remains static, everything else is your canvas.*
-     
-     1.  **CINEMATIC LIGHTING & MOOD:**
-         * Don't just say "good lighting". Use professional terms: *e.g., Volumetric fog, Tyndall effect (God rays), Rim light (for separation), Bokeh (depth of field), Golden Hour, Neon Cyberpunk, or Soft High-key Studio lighting.*
-         * Match the lighting to the product's vibe (e.g., Cozy warm light for coffee; Crisp cool light for tech).
-     
-     2.  **DYNAMIC CAMERA MOVEMENT(For example, below):**
-         * Avoid static shots. Use specific moves: *Slow Dolly In (intimacy), Orbit/Arc (showing details), Rack Focus (shifting attention from background to product), Low Angle (heroic look), or FPV Drone (energetic).*
-         * Ensure the movement flows logically from 0s to ${duration}s.
- 
-     3.  **ACTING & MICRO-EXPRESSIONS:**
-         * Describe subtle human details: *A satisfied sigh, a micro-smile after sipping, eyes widening in surprise, fingers gently tracing the texture.* These sell the feeling.
- 
-     ---
-     ### 🎬 DIRECTING GUIDELINES (Structure & Narrative)For example, below:
- 
-     1.  **CASTING & STYLING (Context is King):**
-         * **Rule:** Analyze the product context first. The outfit MUST match the usage scenario.
-             * *Gym/Sport:* Sportswear/Leggings/Sweat.
-             * *Home/Sleep:* Comfy loungewear/Oversized hoodie.
-             * *Office/City:* Sharp Suits/Smart Casual/Fashionable wear.
-         * **Aesthetic:** Prefer **Young Asian Models (20-26)** unless the product dictates otherwise. Favor a "High-End Trendy" look to show sophistication ("气质").
- 
-     2.  **PACING & STRUCTURE (${duration}s):**
-         * **0-${Math.floor(duration * 0.3)}s (The Hook):** Visual impact. Macro shot of the product texture or an intriguing opening action. Rack focus or fast cut.
-         * **${Math.floor(duration * 0.3)}-${Math.floor(duration * 0.8)}s (The Experience):** The character interacts with the product. This is where the **Dialogue** happens. Show the benefit/feeling.
-         * **${Math.floor(duration * 0.8)}-${duration}s (The Payoff):** Emotional reaction (smile/satisfaction) + Final Hero Shot of the product with branding.
- 
-     3.  **DIALOGUE & AUDIO:**
-         * **Dialogue:** Generate a natural, spoken line (approx 10-15 words for 5s, 30-40 words for 15s). It shouldn't sound like a robot reading a spec sheet. It should sound like a friend sharing a discovery.
-         * **Syntax:** "... **The character @[Voice_Description] says 'Your_Dialogue_Here'** ..."
-         * **Audio Design:** detailed BGM mood (e.g., "Lo-fi beats", "Upbeat Pop") and specific SFX (e.g., "Ice clinking", "City ambience", "Fabric rustling").
- 
-     4.  **Sound Effects and Background Music:**
-         * **Add sound effects and background music that match the scene and plot.
-        
- 
-     ---
-     ### 📝 OUTPUT LANGUAGE REQUIREMENTS (STRICT)
-     1.  **Visual Prompts (imageEditPrompt & videoVisualPrompt):** MUST be written in **ENGLISH**.
-     2.  **Audio Prompt:** MUST be written in **ENGLISH**.
-     3.  **Dialogue (inside videoVisualPrompt):** * The spoken line inside 'says "..."' MUST be strictly in **${dialogueLang}**.
-         * **CRITICAL RULE:** Even though the surrounding prompt is English, **DO NOT translate the dialogue**.
-         * If Target is Chinese -> Character says "这个产品真棒" (Keep Chinese).
-         * If Target is English -> Character says "This product is amazing".
-         * If the target language is Korean, the character's dialogue should be in Korean.
- 
-     ---
-     **JSON OUTPUT ONLY**:
-     {
-       "imageEditPrompt": "High-quality English description for static image generation. Focus on lighting, background, and composition. MUST include: 'Keep the original product appearance exactly as in the reference image'.", 
-       
-       "videoVisualPrompt": "Detailed ${duration}s visual flow in ENGLISH. Use syntax: '0-${Math.floor(duration * 0.3)}s (Hook)...'. Include camera moves. For dialogue use syntax: 'The character @[Voice_Description] says \"(Insert Dialogue in ${dialogueLang} here)\"'. MUST include: 'Keep the original product appearance exactly as in the reference image'.",
-       
-       "videoAudioPrompt": "BGM: ... / SFX: ... (In English)" 
-     }
-     `;
-
-    // 4. Fetch 定义 (保持不变)
+    // 4. Fetch 定义（保持您原来的逻辑）
     const fetchWithRetry = async (
       url: string,
       options: any,
@@ -241,7 +206,8 @@ export class SmartEnhancerService {
       }
       throw lastError || new Error('Fetch failed unknown error');
     };
-
+    // 确保内容符合要求（加入必要的句子）
+    const mustLine = 'Keep the product exactly as in the reference image.';
     try {
       const response = await fetchWithRetry(this.DEGPT_URL, {
         method: 'POST',
@@ -255,7 +221,7 @@ export class SmartEnhancerService {
             {
               role: 'system',
               content:
-                'You are a helpful JSON generator assistant. You strictly output JSON. You DO NOT have access to external search tools or knowledge bases.',
+                'You are a JSON-only assistant. Output valid JSON only. No markdown. No external tools or browsing.',
             },
             { role: 'user', content: template },
           ],
@@ -264,15 +230,15 @@ export class SmartEnhancerService {
           enable_thinking: false,
           tool_choice: 'none',
           max_tokens: 10000,
-          temperature: 0.85, // 稍微调高一点，增加创意的多样性
+          temperature: 0.85,
         }),
       });
 
       const textResponse = await response.text();
-      // 🔥🔥🔥 [新增] 调试日志：打印 GPT 到底返回了什么鬼东西
       this.logger.log(
         `[Debug] Raw GPT Response: ${textResponse.slice(0, 500)}`,
       );
+
       let content = '';
       try {
         const data = JSON.parse(textResponse);
@@ -293,25 +259,48 @@ export class SmartEnhancerService {
       if (match) cleanContent = match[0];
 
       const result = JSON.parse(cleanContent);
-      if (!result.videoVisualPrompt)
-        throw new Error('Missing videoVisualPrompt');
 
-      return result;
-    } catch (e) {
+      // 确保关键内容存在
+      if (!result?.videoVisualPrompt)
+        throw new Error('Missing videoVisualPrompt');
+      if (!result?.imageEditPrompt) throw new Error('Missing imageEditPrompt');
+
+      if (
+        typeof result.imageEditPrompt === 'string' &&
+        !result.imageEditPrompt.includes(mustLine)
+      ) {
+        result.imageEditPrompt = `${result.imageEditPrompt.trim()} ${mustLine}`;
+      }
+      if (
+        typeof result.videoVisualPrompt === 'string' &&
+        !result.videoVisualPrompt.includes(mustLine)
+      ) {
+        result.videoVisualPrompt = `${result.videoVisualPrompt.trim()} ${mustLine}`;
+      }
+
+      return result as OptimizedResult;
+    } catch (e: any) {
       this.logger.error(`GPT 导演罢工: ${e.message}`);
 
-      // --- ⚡ 兜底策略 (Fallback) ---
-      const basePrompt = `Cinematic 8k shot, Young Asian Model (Trendy/Fashionable style), interacting with the product: ${originalPrompt}, cinematic lighting, high detail. Keep the original product appearing exactly as in the reference image.`;
+      // 硬规则兜底：同样遵守你要求的规则
+      const baseImage = `Premium cinematic still of the product, high-end commercial lighting, refined background and composition. Ensure the product remains exactly as in the reference image. Add subtle filters for mood enhancement (e.g., soft vignette, warm lighting for lifestyle products).`;
 
-      const fallbackVisual = fixedVoiceDesc
-        ? `${basePrompt}. The character @${fixedVoiceDesc} says "This is amazing product quality." (Lip-sync active). Duration: ${duration}s.`
-        : `${basePrompt}. Slow dolly in, premium commercial look.`;
+      const voiceTag = fixedVoiceDesc || 'Best matched voice from menu';
+      const fallbackDialogue = isChinese
+        ? '我刚用了一下，真的太惊艳了，质感和效果都很高级。'
+        : isKorean
+          ? '방금 써봤는데, 진짜 놀랄 만큼 고급스럽고 만족스러워요.'
+          : 'I just tried it—honestly, it feels premium and the results are stunning.';
+
+      const fallbackVisual = `
+  ${duration}s premium commercial. Coherent single setting, smooth motivated transitions (match-cut / rack-focus carry / whip-pan). Dynamic but controlled camera plan (macro slider + slow dolly-in + arc/orbit + hero tilt). Young Asian model (20–26), trendy fashion styled to the product scenario, subtle micro-expressions and tactile interaction with the product. 
+  (说) The character @${voiceTag} says "${fallbackDialogue}".
+  Cinematic lighting (key + rim + soft fill), shallow DOF, premium grading, brand-ready final hero shot. ${mustLine}
+  `.trim();
 
       return {
-        imageEditPrompt: basePrompt,
+        imageEditPrompt: baseImage,
         videoVisualPrompt: fallbackVisual,
-        videoAudioPrompt:
-          'Cinematic commercial background music, upbeat and modern.',
       };
     }
   }
@@ -325,7 +314,7 @@ export class SmartEnhancerService {
       const payload = {
         prompt: prompt,
         images: [imageUrl],
-        resolution: '2k',
+        resolution: '1k',
         output_format: 'png',
         enable_sync_mode: false,
         num_outputs: 1,

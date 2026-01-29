@@ -99,7 +99,7 @@
                          animate-pulse"
                 >
                   {#if it.status === 'processing'}
-                    <div class="flex flex-col items-center text-text-lightSecondary dark:text-text-darkSecondary">
+                    <div class="flex flex-col items-center text-text-light dark:text-text-dark">
                       <iconify-icon icon="eos-icons:loading" class="text-2xl mb-1" />
                       <span class="text-[10px]">{$i18n.t('Generating...')}</span>
                     </div>
