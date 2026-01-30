@@ -259,6 +259,11 @@ export function useVideoGeneration() {
       const payload = strategy.buildPayload(rawArgs, ossUrls, rawArgs.txHash);
       console.log(payload, 'payloadpayloadpayloadpayload');
 
+      // 🔥 修复：将实际的 model 值同步到 history 中，避免 modelKey 和实际 model 不一致
+      history.update((l) =>
+        l.map((item) => (item.id === tempId ? { ...item, params: { ...item.params, model: payload.model } } : item))
+      );
+
       // 5. 运行核心任务
       await _runTaskCore(payload, tempId, address, onSuccess, strategy.pollConfig);
     } catch (e: any) {

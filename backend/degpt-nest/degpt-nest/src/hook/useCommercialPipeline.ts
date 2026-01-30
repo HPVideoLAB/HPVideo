@@ -41,10 +41,10 @@ export const useCommercialPipeline = () => {
       prompt: args.prompt,
       image: args.image, // WaveSpeed 通常直接传字符串 URL
       duration: args.duration || 5,
-      ratio: '16:9', // 或者根据 image 自动推断，Wan 通常需要这个
-      resolution: args.resolution || '1080p',
+      resolution: args.resolution || '720p',
       seed: args.seed && args.seed !== -1 ? args.seed : -1,
       negative_prompt: args.negative_prompt,
+      shot_type: 'multi',
     };
 
     logger.log(

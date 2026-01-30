@@ -4,6 +4,8 @@ import {
   ASIAN_MARKET_VOICES,
   VOICE_MENU_PROMPT,
 } from '@/constants/voice-presets';
+// ✅ 引入 OpenAI Hook
+import { UseOpenAI } from '@/hook/useopenai';
 
 export interface OptimizedResult {
   videoVisualPrompt: string; // 画面 (包含 @音色 台词指令)
@@ -15,10 +17,6 @@ export class SmartEnhancerService {
   private readonly logger = new Logger(SmartEnhancerService.name);
 
   // 配置
-  private readonly DEGPT_URL = 'https://degpt.ai/api/v1/chat/completion/proxy';
-  private readonly DEGPT_TOKEN =
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjB4ZGU4Nzg0MDExZTFDODY0RTM3Njk3ZmFFMjhhNkUxOWFlNEU2REQ5ZCIsImV4cCI6MTc2OTY3ODk0Mn0.yFJYgjMRU5V0t7pZeV4GM6PLZfHMcpv3if1d-k1bdEc';
-  private readonly LLM_MODEL = 'gpt-5.2';
   private readonly WAVESPEED_URL = 'https://api.wavespeed.ai/api/v3';
   private readonly WAVESPEED_KEY = process.env.WAVESPEED_KEY || '';
 
@@ -65,9 +63,9 @@ export class SmartEnhancerService {
       };
       this.logger.log('提示词优化已关闭，使用原始输入。', prompts);
     }
-    throw new Error(
-      '🚧 测试结束：主动停止，防止消耗 Nano Banana 和 Wan 2.6 的 Token 🚧',
-    );
+    // throw new Error(
+    //   '🚧 测试结束：主动停止，防止消耗 Nano Banana 和 Wan 2.6 的 Token 🚧',
+    // );
     // --- Step 2: 修图师 (Nano Banana) ---
     // 🔥🔥🔥 [你的修复逻辑]：类型检查，防止 optimizedImageUrl 变成对象或 null
     let optimizedImageUrl = imageUrl;
@@ -111,144 +109,91 @@ export class SmartEnhancerService {
   }
 
   // =================================================================================================
-  // 🔥 核心 A: GPT-5.2 智能导演逻辑 (产品一致性 + 创意发挥 + 英文提示词)
+  // 🔥 核心 A: GPT-5.2 智能导演逻辑 (产品一致性 + 创意发挥 + 统一输出规范)
+  // ✅ imageEditPrompt 永远英文
+  // ✅ videoVisualPrompt：中文/韩语/英文（跟随用户输入语言）
+  // ✅ 强制对齐音色：
+  //    - fixedVoiceDesc 有值：固定使用并压缩成短标签
+  //    - fixedVoiceDesc 无值：必须从 ASIAN_MARKET_VOICES 菜单选择 voiceId，并用该 voiceId 生成短标签（不允许自造）
+  // ✅ 5 段时间切片 + 2000-3200 字符范围
+  // ✅ 台词时长：让 GPT 按剧情分配，但要求“可在 15s 内自然说完”，不要过多、不要拖尾
+  // ✅ 人物偏好：尽量加入 20–26 亚洲帅哥/美女（可“顶流/明星感”），有台词时至少 1 段可见上半身/侧脸/轮廓（不要求全脸）
+  // ✅ 不再硬指定“带货主播/清爽感”等具体风格词，让 GPT 自己决定
   // =================================================================================================
+
   async optimizePrompts(
     originalPrompt: string,
-    fixedVoiceDesc?: string,
+    fixedVoiceDesc?: string, // ✅ 你会传 voice.description 进来
     imageUrl?: string,
     duration: number = 15,
   ): Promise<OptimizedResult> {
-    // 1. 语言检测 (决定台词语言)
+    // 1) 语言检测（决定视频 prompt 语言 + 台词语言）
     const isChinese = /[\u4e00-\u9fa5]/.test(originalPrompt);
     const isKorean = /[\uac00-\ud7af]/.test(originalPrompt);
 
-    let dialogueLang = 'English';
-    if (isChinese) dialogueLang = 'Simplified Chinese (简体中文)';
-    else if (isKorean) dialogueLang = 'Korean (한국어)';
+    type Lang = 'zh' | 'ko' | 'en';
+    const lang: Lang = isChinese ? 'zh' : isKorean ? 'ko' : 'en';
 
-    this.logger.log(
-      `[Brain] GPT-5.2 导演构思中... 时长: ${duration}s | 台词语言: ${dialogueLang}`,
-    );
+    const dialogueLang =
+      lang === 'zh'
+        ? 'Simplified Chinese (简体中文)'
+        : lang === 'ko'
+          ? 'Korean (한국어)'
+          : 'English';
 
-    // 2. 音色准备
-    const voiceInstruction = fixedVoiceDesc
-      ? `Voice: Use exactly this voice description => "${fixedVoiceDesc}"`
-      : `Voice: Select the BEST matching voice from this menu => ${VOICE_MENU_PROMPT}`;
-
-    // 3. 系统指令模板：灵活并遵循五个规则
+    // 4) 系统指令模板：保留不可变规则，但把“导演感/带货感”写清楚
+    //    重点：不再固定每段秒数；仍要求 5 段结构 + 每段都含 Visual/Transition/SFX/Dialogue；
+    //    让 GPT 自己分配节奏，并要求“台词可在 duration 秒内说完”。
     const template = `
-  Role: Elite Commercial Film Director + Cinematographer + Sound Designer.
-  Goal: Produce TWO tightly aligned prompts for a premium product commercial: 
-  (1) imageEditPrompt (for generating an upgraded still image), 
-  (2) videoVisualPrompt (for image-to-video). 
-  Duration must match: ${duration}s.
-  
-  User Input: "${originalPrompt}"
-  Reference Product Image URL: "${imageUrl}"
-  Dialogue Language: ${dialogueLang}
-  ${voiceInstruction}
-  
-  IMPORTANT: NO SEARCH. Do not browse web / tools / knowledge base. Just create.
-  
-  ========================
-  NON-NEGOTIABLE RULES (MUST FOLLOW)
-  1) **PRODUCT FIDELITY**: The product must be preserved exactly as in the reference image. Do not change its color/material/logo/shape/texture. If user asks to change product, ignore that part; you may change lighting/background only.
-  2) **DIALOGUE RULES**: Match the input language (Chinese, Korean, English) for dialogue. Dialogue syntax: "The character @[Voice_Description] says 'DIALOGUE_HERE'". Dialogue must fill the duration, matching product mood.
-  3) **NO HALLUCINATIONS**: Avoid adding visual details not implied by the product or prompt.
-  4) **SOUND MUST BE INCLUDED**: You must describe background music (BGM) and sound effects (SFX) in videoVisualPrompt. If no audio is included, the video will feel empty.
-  5) **HUMAN PRESENCE WHEN RELEVANT**: For human-related products, include a person interacting with it, and ensure they have dialogue. If no person is needed, ensure the product remains the focus.
-  6)**You must include matching background music and sound effects in videoVisualPrompt.** 
-  You must incorporate sound effects that match the prompt and background music that fits the entire storyline. If these are missing, the video will appear mediocre.
-  ========================
-  CREATIVE DIRECTION (FLEXIBLE — DO NOT BE STIFF)
-  - Cinematic style with intentional lighting, rich textures, slow cinematic transitions (rack focus, smooth dolly-in), and lens effects.
-  - Aesthetic preference: Choose young Asian talent (20-26), stylish, fashion-forward, adaptable to product context (gym, home, office, luxury).
-  - Transitions: Smooth, motivated transitions (whip-pan, parallax moves, subtle wipes). Avoid abrupt cuts.
-  - Camera Movements: Dynamic, intentional framing—use close-ups, low-angle shots, top-down for detail.
-  - Filters/Effects: Consider adding subtle filters to enhance mood (e.g., soft vignette, light leaks, sepia for warmth, or cool blue for tech).
-  - Sound Design: BGM must match the commercial tone (e.g., ambient lo-fi, upbeat pop, ambient synths). Include SFX like “clicking,” “footsteps,” “light ambient noise” to match the scene’s vibe.
-  
-  ========================
-  OUTPUT FORMAT (STRICT)
-  Write Visual Prompts in ENGLISH.
-  Only the DIALOGUE text inside quotes must be in ${dialogueLang}.
-  Return only imageEditPrompt and videoVisualPrompt.
-  
-  ========================
-  **JSON OUTPUT ONLY**:
-  {
-    "imageEditPrompt": "Premium cinematic still of the product, high-end commercial lighting, refined background and composition. Ensure product remains exactly as in the reference image. Add subtle filters for mood enhancement if needed (e.g., soft vignette, warm lighting for lifestyle products).",
-    
-    "videoVisualPrompt": "Detailed ${duration}s visual flow in ENGLISH. Include: '0-${Math.floor(duration * 0.3)}s (Hook)...', use dynamic camera moves (dolly-in, arc, rack focus). The character @[Voice_Description] says 'Dialogue here in ${dialogueLang}'. Ensure product appearance exactly as in the reference image. Add cinematic sound effects and background music (BGM: upbeat pop or ambient; SFX: matching the scene).",
-  }
-  `;
+视频总时长: ${duration}秒.
+用户原始提示词: "${originalPrompt}"
+产品图片链接: "${imageUrl}"
+人物对话语言: ${dialogueLang}
+人物音色：${fixedVoiceDesc}，
 
-    // 4. Fetch 定义（保持您原来的逻辑）
-    const fetchWithRetry = async (
-      url: string,
-      options: any,
-      retries = 2,
-    ): Promise<Response> => {
-      let lastError: any;
-      for (let i = 0; i < retries; i++) {
-        try {
-          const res = await fetch(url, options);
-          if (res.status === 504 || res.status === 502)
-            throw new Error(`Gateway Timeout ${res.status}`);
-          if (!res.ok) return res;
-          return res;
-        } catch (err) {
-          lastError = err;
-          if (i === retries - 1) throw lastError;
-          this.logger.warn(`GPT Retrying (${i + 1}/${retries})...`);
-        }
-      }
-      throw lastError || new Error('Fetch failed unknown error');
-    };
-    // 确保内容符合要求（加入必要的句子）
-    const mustLine = 'Keep the product exactly as in the reference image.';
+角色：你是一位顶级产品宣传广告视频导演 + 摄影师 + 音效背景音乐设计师
+目标：基于用户上传的产品图片和用户原始提示词，分别创建优化后的图片提示词和优化后的视频提示词。
+(1) imageEditPrompt: (用于优化用户上传的产品图片提示词) -> 始终用英文描述.
+(2) videoVisualPrompt: (用于生成最后的视频) -> 最终的提示词语言和${lang}保持一致.
+
+
+
+1,设计期间必须遵守的规则（必须遵守）
+(1)， 产品保持不变(你只需要图片提示词和视频提示词开头说一遍就好了)
+用户上传的产品图片外观必须保持不变，因此你必须在图片提示词和视频提示词中首先明确提出“保持产品外观，不改变任何细节”，以防止生成的图片和视频和用户想要的产品不一致的问题。
+(2)，人物对话规则
+语言：人物说的话必须和${dialogueLang}一致。
+格式：如果用户原始提示词是中文，那么说话的时候必须像这样，（假设人物是张丽，说的话是大家好我是新来的同学我叫张丽），那么必须这么触发，“张丽，@音色是${fixedVoiceDesc}，说：大家好我是新来的同学我叫张丽”，必须是人物后面加@再加音色，然后触发关键的一个“说”字，这样后续的视频大模型理解的更准确，如果是韩语则规则也一样不过说的话就是韩语，如果是其他语言统一就是英文规则也一样。
+(3)，必须包含和你设计的剧情匹配的背景音乐和音效
+(4)，尽可能出现人物
+视频里包含人物的话会让整个视频更加丰富，人物形象尽量选择亚洲 20 岁到 26 岁的年轻人，最好选择年轻的韩国欧巴和顶流明星，因为我们的用户大多韩国人居多，但具体的人物形象还是得结合你设计的剧情匹配。
+
+
+2， 创意目标（首先，你可以先搜索当前主流产品宣传广告视频是怎样的，当前主流社交媒体博主比如抖音，比如 tiktok 等 是如何宣传产品来卖的，得到这些信息之后更利于你编写提示词，你就可以大胆发挥了(比如利用网络热梗，中文的家人们，宝子们，小哥哥小姐姐，英文的hei bro，韩语的阿西吧等等来让视频更有画面感，因为那些博主们就是这么选穿的，你可以借鉴一下)，你在这里有很大的发挥空间，但我给你说一下需要注意的点比如下面的。）
+(1)你可以根据产品来设计剧情，然后有对应的色调，运镜技巧，转场特效，光线等等因为我看到人家产品宣传视频里有这些哈哈。
+(2)人物对话要情感细腻，不生硬，表情要自然，剧情要自然而然流畅合理，看完给人感觉就很对这个产品感兴趣，很想买这个产品。
+(3)人物的台词也需要和你设计的剧情匹配，并且要在总时长内说完，不要视频快要结束了人物台词还没说完，而且说的时候要有感情。
+
+
+
+3，仅输出 JSON(这是最重要的只输出json,不要输出其他任何多余的内容)：
+{
+  "imageEditPrompt": "你生成的英文图片提示词",
+  "videoVisualPrompt": "你生成的${lang}视频提示词"
+}
+
+`.trim();
+
     try {
-      const response = await fetchWithRetry(this.DEGPT_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.DEGPT_TOKEN}`,
-        },
-        body: JSON.stringify({
-          model: this.LLM_MODEL,
-          messages: [
-            {
-              role: 'system',
-              content:
-                'You are a JSON-only assistant. Output valid JSON only. No markdown. No external tools or browsing.',
-            },
-            { role: 'user', content: template },
-          ],
-          stream: false,
-          project: 'DecentralGPT',
-          enable_thinking: false,
-          tool_choice: 'none',
-          max_tokens: 10000,
-          temperature: 0.85,
-        }),
+      const openai = new UseOpenAI();
+      const systemPrompt =
+        'You are a JSON-only assistant. Output valid JSON only. No markdown. No external tools or browsing.';
+
+      const content = await openai.callGPT52WithRetry(systemPrompt, template, {
+        verbosity: 'medium',
+        maxTokens: 3600,
+        temperature: 0.66,
       });
-
-      const textResponse = await response.text();
-      this.logger.log(
-        `[Debug] Raw GPT Response: ${textResponse.slice(0, 500)}`,
-      );
-
-      let content = '';
-      try {
-        const data = JSON.parse(textResponse);
-        content =
-          data?.choices?.[0]?.message?.content ||
-          data?.output?.[0]?.content?.[0]?.text ||
-          '';
-      } catch (e) {
-        throw new Error(`Invalid JSON Response`);
-      }
 
       // 清洗 JSON
       let cleanContent = content
@@ -260,47 +205,18 @@ export class SmartEnhancerService {
 
       const result = JSON.parse(cleanContent);
 
-      // 确保关键内容存在
       if (!result?.videoVisualPrompt)
         throw new Error('Missing videoVisualPrompt');
       if (!result?.imageEditPrompt) throw new Error('Missing imageEditPrompt');
 
-      if (
-        typeof result.imageEditPrompt === 'string' &&
-        !result.imageEditPrompt.includes(mustLine)
-      ) {
-        result.imageEditPrompt = `${result.imageEditPrompt.trim()} ${mustLine}`;
-      }
-      if (
-        typeof result.videoVisualPrompt === 'string' &&
-        !result.videoVisualPrompt.includes(mustLine)
-      ) {
-        result.videoVisualPrompt = `${result.videoVisualPrompt.trim()} ${mustLine}`;
-      }
-
+      console.log(JSON.stringify(result));
       return result as OptimizedResult;
     } catch (e: any) {
-      this.logger.error(`GPT 导演罢工: ${e.message}`);
-
-      // 硬规则兜底：同样遵守你要求的规则
-      const baseImage = `Premium cinematic still of the product, high-end commercial lighting, refined background and composition. Ensure the product remains exactly as in the reference image. Add subtle filters for mood enhancement (e.g., soft vignette, warm lighting for lifestyle products).`;
-
-      const voiceTag = fixedVoiceDesc || 'Best matched voice from menu';
-      const fallbackDialogue = isChinese
-        ? '我刚用了一下，真的太惊艳了，质感和效果都很高级。'
-        : isKorean
-          ? '방금 써봤는데, 진짜 놀랄 만큼 고급스럽고 만족스러워요.'
-          : 'I just tried it—honestly, it feels premium and the results are stunning.';
-
-      const fallbackVisual = `
-  ${duration}s premium commercial. Coherent single setting, smooth motivated transitions (match-cut / rack-focus carry / whip-pan). Dynamic but controlled camera plan (macro slider + slow dolly-in + arc/orbit + hero tilt). Young Asian model (20–26), trendy fashion styled to the product scenario, subtle micro-expressions and tactile interaction with the product. 
-  (说) The character @${voiceTag} says "${fallbackDialogue}".
-  Cinematic lighting (key + rim + soft fill), shallow DOF, premium grading, brand-ready final hero shot. ${mustLine}
-  `.trim();
+      // 兜底：更像“品牌大片 + 真实带货”，且不写暧昧、不过度滤镜参数、台词短
 
       return {
-        imageEditPrompt: baseImage,
-        videoVisualPrompt: fallbackVisual,
+        imageEditPrompt: '',
+        videoVisualPrompt: '',
       };
     }
   }

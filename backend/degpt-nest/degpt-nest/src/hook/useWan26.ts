@@ -23,12 +23,12 @@ export const useWan26 = () => {
       prompt: params.prompt,
       // ✅ 接收 DTO 传来的参数
       duration: params.duration,
-      resolution: params.resolution || '1080p', // 默认 1080p
-      negative_prompt: params.negative_prompt,
-      shot_type: params.shot_type || 'multi', // 默认多镜头叙事
+      resolution: params.resolution || '720p', // 默认 1080p
+      // negative_prompt: params.negative_prompt,
+      shot_type: 'multi', // 默认多镜头叙事
 
       enable_prompt_expansion: true,
-      seed: params.seed ?? -1,
+      seed: -1,
     };
 
     logger.log(`Submitting Wan 2.6 Task: ${JSON.stringify(payload)}`);

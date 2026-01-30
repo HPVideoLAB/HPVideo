@@ -184,6 +184,15 @@ export const useCommercialPipelineRunner = () => {
       );
     }
   };
-
+  let a = {
+    prompt:
+      "15s premium cinematic product commercial, image-to-video. Maintain the cup exactly as in the reference image (no changes to design, color, material, logo, texture). Setting stays minimal: modern tabletop, soft neutral background, controlled reflections. Camera style: smooth dolly, arc moves, rack focus, macro close-ups, motivated transitions (parallax slide, subtle whip-pan). Color grade: clean commercial with gentle warm highlights, soft vignette.\n\nBGM (0-15s): upbeat modern lo-fi pop with bright plucks, light kick, soft claps, and warm bass; energetic but classy.\nSFX (throughout): soft studio room tone, subtle cloth movement, gentle fingertip taps, micro “whoosh” transitions, ceramic/metallic contact sounds only if contact is shown, light sparkle accent on hero reveal.\n\n0-3s (Hook): Extreme close-up macro glide across the cup’s surface and edge, shallow DOF, highlights roll smoothly as camera dolly-slides left-to-right. Rack focus reveals the cup’s key visual area. SFX: tiny airy whoosh + soft sparkle. The character @[Energetic, bright, youthful male voice, college student vibe, friendly, sunny and optimistic, clear articulation.] says '第一眼就很心动，这 个杯子也太有质感了吧！'\n\n3-6s (Lifestyle touch): Cut via subtle parallax wipe to a medium close-up. A young Asian male (20-26, clean casual campus style) enters frame; only hands and lower face briefly visible to keep product primary. He gently picks up the cup (no twisting or actions that imply features not visible). Camera: slow dolly-in with slight arc around the cup in his hand; background stays soft and uncluttered. SFX: soft hand movement, faint fabric rustle. Dialogue continues: '拿在手里刚刚好，日常上课、通勤都很搭。'\n\n6-9s (Detail hero): Macro detail sequence: top-down then low-angle close-up, rack focus between rim and body; controlled specular highlights, crisp edges. Transition: micro whip-pan that lands on a stable hero close-up. SFX: gentle whoosh. Dialogue: '细节做得很到位，看着干净利落，越看越喜欢。'\n\n9-12s (Use moment): Medium shot at a bright desk scene. He sets the cup down carefully on the tabletop; camera follows with a stabilized tilt-down and slight push-in to a hero resting position. Keep actions neutral—no visible liquid if not shown in reference. SFX: soft, satisfying “tap” on table + room tone. Dialogue: '不管放在书桌还是办公室，一摆上就很有氛围。'\n\n12-15s (Final hero + CTA): Final hero frame: cup centered, slow dolly-in, subtle rotating light sweep to accent contours; background gradient clean with negative space for brand text (no new logos added). End on a crisp still-like hold. SFX: gentle rising whoosh + soft sparkle accent on final frame. Dialogue: '想要高级感和实用兼顾，就选它——现在就去看看！' Keep the product exactly as in the reference image.",
+    image:
+      'https://d2p7pge43lyniu.cloudfront.net/output/3cbaefcc-0822-4c4f-8cc8-9c3a91027f1d.png',
+    duration: 15,
+    ratio: '16:9',
+    resolution: '720p',
+    seed: -1,
+  };
   return { run };
 };

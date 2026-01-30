@@ -28,6 +28,10 @@ export function IsOnlyForModel(
           // 2. 获取当前请求的 model 值
           const currentModel = (args.object as any).model;
 
+          // 2.1 如果 model 字段本身不存在或为空，返回 false
+          // 这样可以给出更清晰的错误提示
+          if (!currentModel) return false;
+
           // 3. 获取允许的模型列表
           const [models] = args.constraints;
 
@@ -38,6 +42,12 @@ export function IsOnlyForModel(
         defaultMessage(args: ValidationArguments) {
           const [models] = args.constraints;
           const currentModel = (args.object as any).model;
+
+          // 如果 model 字段缺失，给出更明确的错误提示
+          if (!currentModel) {
+            return `参数 '${args.property}' 需要指定 model 字段! 它仅适用于: [${models.join(', ')}]`;
+          }
+
           return `参数 '${args.property}' 不可用! 它仅适用于: [${models.join(', ')}], 但你当前的模型是 '${currentModel}'`;
         },
       },
