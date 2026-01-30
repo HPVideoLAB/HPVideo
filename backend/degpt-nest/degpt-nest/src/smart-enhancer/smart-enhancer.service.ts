@@ -65,9 +65,9 @@ export class SmartEnhancerService {
       };
       this.logger.log('提示词优化已关闭，使用原始输入。', prompts);
     }
-    // throw new Error(
-    //   '🚧 测试结束：主动停止，防止消耗 Nano Banana 和 Wan 2.6 的 Token 🚧',
-    // );
+    throw new Error(
+      '🚧 测试结束：主动停止，防止消耗 Nano Banana 和 Wan 2.6 的 Token 🚧',
+    );
     // --- Step 2: 修图师 (Nano Banana) ---
     // 🔥🔥🔥 [你的修复逻辑]：类型检查，防止 optimizedImageUrl 变成对象或 null
     let optimizedImageUrl = imageUrl;
