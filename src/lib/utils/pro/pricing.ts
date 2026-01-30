@@ -23,7 +23,7 @@ const WAN_26_RATES = {
 // 2K: $0.04/s -> x2 = $0.08/s
 // 4K: $0.05/s -> x2 = $0.10/s
 const UPSCALE_RATES = {
-  '2k': 0.08,
+  '2k': 0.04,
   '4k': 0.05,
 };
 
