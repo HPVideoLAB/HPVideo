@@ -148,7 +148,13 @@ export function useVideoGeneration() {
       const { requestId } = await submitLargeLanguageModel(payload, addressArg);
 
       // 临时ID -> 真实 requestId
-      history.update((list) => list.map((item) => (item.id === tempId ? { ...item, id: requestId } : item)));
+      // 🔥 修复：如果 requestId 已存在（重试场景），先移除旧记录，避免重复 key
+      history.update((list) => {
+        // 1. 移除所有与 requestId 相同的旧记录（可能是之前失败的任务）
+        const filtered = list.filter((item) => item.id !== requestId);
+        // 2. 将当前的 tempId 替换为 requestId
+        return filtered.map((item) => (item.id === tempId ? { ...item, id: requestId } : item));
+      });
 
       const abortController = new AbortController();
 
