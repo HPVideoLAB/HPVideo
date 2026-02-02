@@ -1,3 +1,4 @@
+// C:\Users\28639\Desktop\DBC\HPVideo\backend\degpt-nest\degpt-nest\src\large-language-model\dto\modules\pika.ts
 import {
   IsArray,
   ArrayMinSize,
@@ -15,9 +16,9 @@ import {
   ValidationOptions,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { IsOnlyForModel } from '../model-validator'; // 假设校验器在上一级
+import { IsOnlyForModel } from '../model-validator';
 
-// Pika 专属子对象
+// Pika 专属子对象 (保持不变)
 export class TransitionDto {
   @IsInt()
   @Min(1)
@@ -28,7 +29,7 @@ export class TransitionDto {
   prompt?: string;
 }
 
-// Pika 专属校验器 (直接搬运)
+// Pika 专属校验器 (保持不变)
 function IsValidPikaframesTransitions(options?: ValidationOptions) {
   return function (object: any, propertyName: string) {
     registerDecorator({
@@ -67,6 +68,8 @@ function IsValidPikaframesTransitions(options?: ValidationOptions) {
 }
 
 export class PikaDto {
+  // images 是 Pika 独有的（注意是复数），其他模型用的是 image (单数)
+  // 所以这里保留 IsOnlyForModel 是安全的，不会误伤其他模型
   @ValidateIf((o) => o.model === 'pika')
   @IsOnlyForModel(['pika'])
   @IsArray()
@@ -75,15 +78,17 @@ export class PikaDto {
   @IsUrl({}, { each: true })
   images?: string[];
 
-  // 🔥 【修改点】加上 @ValidateIf，把这个字段锁死在 Pika 内部
-  // 这样当 model 是 commercial-pipeline 时，这行代码会自动失效，不会报错
+  // 🔥🔥🔥 【修改点】resolution 是共享字段（Commercial/Wan2.6 也有）
+  // 必须删掉 IsOnlyForModel，只保留 ValidateIf
   @IsOptional()
   @ValidateIf((o) => o.model === 'pika')
-  @IsOnlyForModel(['pika'])
+  // ❌ 删除这一行: @IsOnlyForModel(['pika'])
   @IsIn(['720p', '1080p'])
   resolution?: '720p' | '1080p';
 
+  // transitions 是 Pika 独有，保留 IsOnlyForModel 没问题
   @IsOptional()
+  @ValidateIf((o) => o.model === 'pika') // 建议补上这个，保持风格统一
   @IsOnlyForModel(['pika'])
   @IsArray()
   @ValidateNested({ each: true })

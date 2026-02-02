@@ -112,7 +112,7 @@
           <div class="space-y-2">
             {#each transitions as t, i}
               <div
-                class="rounded-2xl border border-border-light bg-gray-50 p-3 dark:border-border-dark dark:bg-gray-950/50"
+                class="rounded-2xl border border-border-light  p-3 dark:border-border-dark "
               >
                 <div class="mb-2 flex items-center justify-between">
                   <div class="text-xs font-medium text-gray-700 dark:text-gray-300">{$i18n.t('Segment')} {i + 1}</div>

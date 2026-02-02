@@ -43,12 +43,12 @@ export function IsOnlyForModel(
           const [models] = args.constraints;
           const currentModel = (args.object as any).model;
 
-          // 如果 model 字段缺失，给出更明确的错误提示
+          // If the model field is missing, provide a clearer error message
           if (!currentModel) {
-            return `参数 '${args.property}' 需要指定 model 字段! 它仅适用于: [${models.join(', ')}]`;
+            return `Parameter '${args.property}' requires a model field! It is only applicable for: [${models.join(', ')}]`;
           }
 
-          return `参数 '${args.property}' 不可用! 它仅适用于: [${models.join(', ')}], 但你当前的模型是 '${currentModel}'`;
+          return `Parameter '${args.property}' is not available! It is only applicable for: [${models.join(', ')}], but your current model is '${currentModel}'`;
         },
       },
     });
