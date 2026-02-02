@@ -3,15 +3,10 @@ import { writable, get } from 'svelte/store';
 import { getAccount } from '@wagmi/core';
 import { config as wconfig } from '$lib/utils/wallet/bnb/index';
 import { toast } from 'svelte-sonner';
+import { NEST_API_BASE_URL } from '$lib/constants';
 
 // 👇 引入 API
-import {
-  uploadImagesToOss,
-  submitLargeLanguageModel,
-  getLargeLanguageModelResult,
-  getHistoryList,
-} from '$lib/apis/model/pika';
-import { pollTaskResult } from '../../routes/pro/modules/task';
+import { uploadImagesToOss, submitLargeLanguageModel, getHistoryList } from '$lib/apis/model/pika';
 
 // =================================================================================
 // 1. 🔥 核心策略表：所有模型的“差异”都在这里配置
@@ -26,7 +21,7 @@ const MODEL_STRATEGIES: Record<
     getThumb: (args: any) => string;
     // 组装发给后端的 API Payload
     buildPayload: (args: any, ossUrls: string[], txHash?: string) => any;
-    // 轮询配置 (不同模型速度不一样)
+    // SSE 超时配置 (不同模型生成速度不一样，timeoutMs 用于设置 SSE 连接超时)
     pollConfig: { intervalMs: number; timeoutMs: number };
   }
 > = {
@@ -135,7 +130,7 @@ export function useVideoGeneration() {
   };
 
   // =========================================================
-  // 🔥 核心运行逻辑 (内部复用，不对外暴露)
+  // 🔥 核心运行逻辑 (内部复用，不对外暴露) - 使用 SSE 替代轮询
   // =========================================================
   const _runTaskCore = async (
     payload: any,
@@ -144,6 +139,9 @@ export function useVideoGeneration() {
     onSuccess: (() => void) | undefined,
     pollConfig: { intervalMs: number; timeoutMs: number }
   ) => {
+    let eventSource: EventSource | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
     try {
       const { requestId } = await submitLargeLanguageModel(payload, addressArg);
 
@@ -156,25 +154,98 @@ export function useVideoGeneration() {
         return filtered.map((item) => (item.id === tempId ? { ...item, id: requestId } : item));
       });
 
-      const abortController = new AbortController();
+      // 🔥 使用 SSE 替代轮询
+      await new Promise<void>((resolve, reject) => {
+        // 建立 SSE 连接
+        eventSource = new EventSource(`${NEST_API_BASE_URL}/large-language-model/${requestId}/stream`);
 
-      await pollTaskResult({
-        requestId,
-        fetcher: getLargeLanguageModelResult,
-        signal: abortController.signal,
-        intervalMs: pollConfig.intervalMs, // 透传策略配置
-        timeoutMs: pollConfig.timeoutMs,
-        onCompleted: (url: string) => {
-          console.log('✅ 生成完成');
-          history.update((list) =>
-            list.map((item) => (item.id === requestId ? { ...item, status: 'completed', outputUrl: url } : item))
-          );
-          isGenerating.set(false);
-          onSuccess?.();
-        },
+        // 设置超时
+        timeoutId = setTimeout(() => {
+          if (eventSource) eventSource.close();
+          reject(new Error('SSE connection timeout'));
+        }, pollConfig.timeoutMs);
+
+        // 监听 completed 事件
+        eventSource.addEventListener('completed', (event) => {
+          console.log('✅ SSE: 生成完成');
+
+          try {
+            const data = JSON.parse(event.data);
+
+            // 更新历史记录
+            history.update((list) =>
+              list.map((item) =>
+                item.id === requestId
+                  ? {
+                      ...item,
+                      status: 'completed',
+                      outputUrl: data.outputUrl || data.resultUrl,
+                      thumbUrl: data.thumbUrl,
+                    }
+                  : item
+              )
+            );
+
+            isGenerating.set(false);
+            onSuccess?.();
+
+            // 清理
+            if (timeoutId) clearTimeout(timeoutId);
+            if (eventSource) eventSource.close();
+            resolve();
+          } catch (parseError) {
+            console.error('Failed to parse SSE data:', parseError);
+            reject(parseError);
+          }
+        });
+
+        // 监听 failed 事件
+        eventSource.addEventListener('failed', (event) => {
+          console.error('❌ SSE: 任务失败 (failed event)');
+
+          try {
+            const data = JSON.parse(event.data);
+            const errorMsg = data.error || data.message || 'Task failed';
+
+            // 清理
+            if (timeoutId) clearTimeout(timeoutId);
+            if (eventSource) eventSource.close();
+            reject(new Error(errorMsg));
+          } catch (parseError) {
+            reject(new Error('Task failed'));
+          }
+        });
+
+        // 监听 error 事件（后端某些情况下会发送 error 而不是 failed）
+        eventSource.addEventListener('error', (event: any) => {
+          console.error('❌ SSE: 任务失败 (error event)');
+
+          try {
+            const data = JSON.parse(event.data);
+            const errorMsg = data.error || data.message || 'Task failed';
+
+            // 清理
+            if (timeoutId) clearTimeout(timeoutId);
+            if (eventSource) eventSource.close();
+            reject(new Error(errorMsg));
+          } catch (parseError) {
+            reject(new Error('Task failed'));
+          }
+        });
+
+        // 监听连接错误
+        eventSource.onerror = (error) => {
+          console.error('❌ SSE connection error:', error);
+
+          // 清理
+          if (timeoutId) clearTimeout(timeoutId);
+          if (eventSource) eventSource.close();
+          reject(new Error('SSE connection error'));
+        };
       });
     } catch (error: any) {
       console.error('Task Failed:', error);
+
       // 失败逻辑
       history.update((list) => {
         const targetId = list.find((i) => i.id === tempId) ? tempId : list.find((i) => i.status === 'processing')?.id;
@@ -183,7 +254,12 @@ export function useVideoGeneration() {
       isGenerating.set(false);
 
       toast.error(`生成出错: ${error.message}`);
+
+      throw error;
     } finally {
+      // 清理资源
+      if (timeoutId) clearTimeout(timeoutId);
+      if (eventSource) (eventSource as EventSource).close();
       isGenerating.set(false);
     }
   };

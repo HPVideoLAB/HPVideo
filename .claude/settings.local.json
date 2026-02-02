@@ -3,7 +3,8 @@
     "allow": [
       "Skill(commit-commands:commit)",
       "Skill(commit-commands:commit:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(npm run check:*)"
     ]
   }
 }

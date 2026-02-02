@@ -9,6 +9,7 @@ import { usePika } from '@/hook/usepika';
 import { useModelDispatcher } from '@/hook/useModelDispatcher';
 import { useCommercialPipelineRunner } from '@/hook/useCommercialPipelineRunner';
 import { SmartEnhancerService } from '@/smart-enhancer/smart-enhancer.service';
+import { SSEConnectionManager } from './sse-connection.manager';
 
 @Injectable()
 export class LargeLanguageModelService {
@@ -17,6 +18,7 @@ export class LargeLanguageModelService {
   constructor(
     @InjectModel(LargeMode.name) private catModel: Model<LargeModeDocument>,
     private readonly smartEnhancerService: SmartEnhancerService,
+    private readonly sseConnectionManager: SSEConnectionManager,
   ) {}
 
   // =======================================================
@@ -28,12 +30,36 @@ export class LargeLanguageModelService {
 
     if (!txHash) throw new BadRequestException('支付凭证丢失');
 
-    // 🛡️ 幂等性检查
+    // 🛡️ 幂等性检查 + 超时重试支持
     const record = await this.catModel.findOne({ txHash });
     if (record) {
-      if (record.status === 'processing' || record.status === 'completed') {
+      // 检查任务是否超时（创建时间超过 2 小时）
+      const createdAt = (record as any).createdAt || new Date();
+      const now = new Date();
+      const ageInMinutes = (now.getTime() - createdAt.getTime()) / 1000 / 60;
+
+      if (record.status === 'completed') {
         throw new BadRequestException('该支付凭证已使用，请勿重复提交');
       }
+
+      if (record.status === 'processing') {
+        // 如果任务还在 processing 但已经超时，允许重试
+        if (ageInMinutes > 120) {
+          this.logger.warn(
+            `Task ${record.requestId} timeout (${Math.round(ageInMinutes)} minutes), allowing retry`,
+          );
+          // 标记旧任务为 failed
+          record.status = 'failed';
+          await record.save();
+        } else {
+          // 🔥 任务还在正常处理中，返回现有的 requestId（而不是报错）
+          this.logger.log(
+            `Task ${record.requestId} already processing (${Math.round(ageInMinutes)} minutes), returning existing requestId`,
+          );
+          return { requestId: record.requestId };
+        }
+      }
+
       this.logger.log(`Retrying failed task for hash: ${txHash}`);
     }
 
@@ -51,6 +77,7 @@ export class LargeLanguageModelService {
         txHash,
         smartEnhancerService: this.smartEnhancerService,
         catModel: this.catModel,
+        sseConnectionManager: this.sseConnectionManager, // 🔥 传入 SSE 管理器
       });
     }
 
@@ -166,9 +193,25 @@ export class LargeLanguageModelService {
       record.status = 'completed';
       record.outputUrl = apiResult.resultUrl as any;
       await record.save();
+
+      // 🔥 Push SSE completion event for legacy models
+      this.sseConnectionManager.sendCompletion(record.requestId, {
+        id: record.requestId,
+        status: record.status,
+        resultUrl: record.outputUrl,
+        thumbUrl: record.thumbUrl,
+        modelName: record.modelName,
+        prompt: record.prompt,
+      });
     } else if (apiResult.status === 'failed') {
       record.status = 'failed';
       await record.save();
+
+      // 🔥 Push SSE error event for legacy models
+      this.sseConnectionManager.sendError(record.requestId, {
+        message: 'Task failed',
+        requestId: record.requestId,
+      });
     }
 
     return apiResult;

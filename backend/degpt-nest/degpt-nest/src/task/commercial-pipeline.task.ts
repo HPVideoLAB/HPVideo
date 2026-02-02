@@ -8,6 +8,7 @@ import {
 } from '@/large-language-model/schemas/creatimg-schema';
 import { useVideoUpscalerPro } from '@/hook/useVideoUpscalerPro';
 import { useCommercialPipeline } from '@/hook/useCommercialPipeline';
+import { SSEConnectionManager } from '@/large-language-model/sse-connection.manager';
 
 @Injectable()
 export class CommercialPipelineTask {
@@ -19,6 +20,7 @@ export class CommercialPipelineTask {
   constructor(
     @InjectModel(LargeMode.name)
     private readonly largeModeModel: Model<LargeModeDocument>,
+    private readonly sseConnectionManager: SSEConnectionManager,
   ) {}
 
   // ========================================================
@@ -67,6 +69,12 @@ export class CommercialPipelineTask {
                 task.status = 'failed';
                 task.params.pipeline.error = 'No output URL';
                 await task.save();
+
+                // 🔥 Push SSE event
+                this.sseConnectionManager.sendError(task.requestId, {
+                  message: 'No output URL from Wan 2.6',
+                  requestId: task.requestId,
+                });
                 return;
               }
 
@@ -83,6 +91,14 @@ export class CommercialPipelineTask {
                 task.params.pipeline.stage = 'upscaling';
                 task.params.pipeline.wanOutputUrl = rawVideoUrl;
                 task.params.pipeline.upscaleRequestId = upscaleId;
+
+                // 🔥 Push SSE status update
+                this.sseConnectionManager.sendStatusUpdate(task.requestId, {
+                  status: 'processing',
+                  stage: 'upscaling',
+                  message: 'Video generation completed, starting upscaling',
+                  requestId: task.requestId,
+                });
               } else {
                 // 任务直接完成
                 task.params.pipeline.stage = 'completed';
@@ -91,11 +107,29 @@ export class CommercialPipelineTask {
               }
               task.markModified('params');
               await task.save();
+
+              // 🔥 Push SSE completion event (if not going to upscale)
+              if (!upscale || upscale === 'default') {
+                this.sseConnectionManager.sendCompletion(task.requestId, {
+                  id: task.requestId,
+                  status: task.status,
+                  resultUrl: task.outputUrl,
+                  thumbUrl: task.thumbUrl,
+                  modelName: task.modelName,
+                  prompt: task.prompt,
+                });
+              }
             } else if (wanResult.status === 'FAILED') {
               this.logger.error(`[Failed] Wan 2.6 失败: ${task.requestId}`);
               task.status = 'failed';
               task.params.pipeline.error = wanResult.errorMessage;
               await task.save();
+
+              // 🔥 Push SSE error event
+              this.sseConnectionManager.sendError(task.requestId, {
+                message: wanResult.errorMessage || 'Wan 2.6 generation failed',
+                requestId: task.requestId,
+              });
             }
             // RUNNING 状态不做操作，直接结束本次检查
           } catch (innerErr) {
@@ -156,6 +190,16 @@ export class CommercialPipelineTask {
               task.params.pipeline.stage = 'completed';
               task.markModified('params');
               await task.save();
+
+              // 🔥 Push SSE completion event with full task data
+              this.sseConnectionManager.sendCompletion(task.requestId, {
+                id: task.requestId,
+                status: task.status,
+                resultUrl: task.outputUrl,
+                thumbUrl: task.thumbUrl,
+                modelName: task.modelName,
+                prompt: task.prompt,
+              });
             } else if (result.status === 'failed') {
               // 降级策略
               task.outputUrl = task.params.pipeline.wanOutputUrl;
@@ -163,6 +207,17 @@ export class CommercialPipelineTask {
               task.params.pipeline.stage = 'completed_with_error';
               task.markModified('params');
               await task.save();
+
+              // 🔥 Push SSE completion event with warning
+              this.sseConnectionManager.sendCompletion(task.requestId, {
+                id: task.requestId,
+                status: task.status,
+                resultUrl: task.outputUrl,
+                thumbUrl: task.thumbUrl,
+                modelName: task.modelName,
+                prompt: task.prompt,
+                warning: 'Upscaling failed, using original video',
+              });
             }
           } catch (innerErr) {
             this.logger.error(

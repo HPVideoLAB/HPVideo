@@ -13,7 +13,6 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { IsOnlyForModel } from '../model-validator';
 
 // Wan 专属子对象 (保持不变)
 export class LoraDto {
@@ -51,8 +50,7 @@ export class WanDto {
   // --- 下面这些目前是 Wan 2.1 独有的，保留 IsOnlyForModel 没问题 ---
 
   @IsOptional()
-  @ValidateIf((o) => o.model === 'wan-2.1') // 建议补上 ValidateIf
-  @IsOnlyForModel(['wan-2.1'])
+  @ValidateIf((o) => o.model === 'wan-2.1')
   @IsArray()
   @ArrayMaxSize(3)
   @ValidateNested({ each: true })
@@ -60,30 +58,26 @@ export class WanDto {
   loras?: LoraDto[];
 
   @IsOptional()
-  @ValidateIf((o) => o.model === 'wan-2.1') // 建议补上 ValidateIf
-  @IsOnlyForModel(['wan-2.1'])
+  @ValidateIf((o) => o.model === 'wan-2.1')
   @IsNumber()
   strength?: number;
 
   @IsOptional()
-  @ValidateIf((o) => o.model === 'wan-2.1') // 建议补上 ValidateIf
-  @IsOnlyForModel(['wan-2.1'])
+  @ValidateIf((o) => o.model === 'wan-2.1')
   @IsInt()
   @Min(1)
   @Max(40)
   num_inference_steps?: number;
 
   @IsOptional()
-  @ValidateIf((o) => o.model === 'wan-2.1') // 建议补上 ValidateIf
-  @IsOnlyForModel(['wan-2.1'])
+  @ValidateIf((o) => o.model === 'wan-2.1')
   @IsNumber()
   @Min(0)
   @Max(20)
   guidance_scale?: number;
 
   @IsOptional()
-  @ValidateIf((o) => o.model === 'wan-2.1') // 建议补上 ValidateIf
-  @IsOnlyForModel(['wan-2.1'])
+  @ValidateIf((o) => o.model === 'wan-2.1')
   @IsNumber()
   @Min(1)
   @Max(10)

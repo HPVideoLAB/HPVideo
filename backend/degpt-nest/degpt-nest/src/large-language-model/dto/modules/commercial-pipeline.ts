@@ -9,7 +9,6 @@ import {
   IsUrl,
   ValidateIf,
 } from 'class-validator';
-import { IsOnlyForModel } from '../model-validator';
 import { ASIAN_MARKET_VOICES } from '@/constants/voice-presets';
 
 export class CommercialPipelineDto {
@@ -52,20 +51,17 @@ export class CommercialPipelineDto {
 
   @IsOptional()
   @ValidateIf((o) => o.model === 'commercial-pipeline')
-  @IsOnlyForModel(['commercial-pipeline']) // 独有字段，可以保留
   @IsString()
   @IsIn(ASIAN_MARKET_VOICES.map((v) => v.id))
   voice_id?: string;
 
   @IsOptional()
   @ValidateIf((o) => o.model === 'commercial-pipeline')
-  @IsOnlyForModel(['commercial-pipeline']) // 独有字段，可以保留
   @IsBoolean()
   enableSmartEnhance?: boolean;
 
   @IsOptional()
   @ValidateIf((o) => o.model === 'commercial-pipeline')
-  @IsOnlyForModel(['commercial-pipeline']) // 独有字段，可以保留
   @IsString()
   @IsIn(['default', '720p', '1080p', '2k', '4k'])
   enableUpscale?: 'default' | '720p' | '1080p' | '2k' | '4k';

@@ -15,8 +15,9 @@ export const useCommercialPipelineRunner = () => {
     txHash: string;
     smartEnhancerService: SmartEnhancerService;
     catModel: any;
+    sseConnectionManager?: any; // 🔥 新增：SSE 连接管理器
   }) => {
-    const { dto, record, userId, txHash, smartEnhancerService, catModel } =
+    const { dto, record, userId, txHash, smartEnhancerService, catModel, sseConnectionManager } =
       args;
 
     const originalPrompt = dto.prompt ?? '';
@@ -74,113 +75,124 @@ export const useCommercialPipelineRunner = () => {
       enableUpscale: upscaleTarget, // 🔥 这里存真正的超分指令
     };
 
+    // 🔥🔥🔥 关键修改：先创建数据库记录并返回 requestId，然后异步处理 🔥🔥🔥
     try {
-      // 1) Smart Enhancer
-      const enableOpt = dto.enableSmartEnhance !== false;
+      // 1. 先创建数据库记录（状态为 processing）
+      if (record) {
+        record.requestId = pipelineId;
+        record.userId = userId;
+        record.modelName = 'commercial-pipeline';
+        record.prompt = originalPrompt;
+        record.params = { ...dto, pipeline: pipelineStateBase };
+        record.status = 'processing';
+        record.thumbUrl = productImage; // 先用原图作为缩略图
+        record.outputUrl = '';
+        await record.save();
+      } else {
+        const newRecord = new catModel({
+          requestId: pipelineId,
+          userId,
+          txHash,
+          modelName: 'commercial-pipeline',
+          prompt: originalPrompt,
+          params: { ...dto, pipeline: pipelineStateBase },
+          status: 'processing',
+          thumbUrl: productImage, // 先用原图作为缩略图
+          outputUrl: '',
+        });
+        await newRecord.save();
+      }
 
-      const r = await smartEnhancerService.runTest(
-        originalPrompt,
-        productImage,
-        enableOpt,
-        dto.voice_id,
-        dto.duration, // 👈 ✅ [关键] 必须把 DTO 里的时长传进去！
-      );
+      // 2. 立即返回 requestId 给前端
+      logger.log(`[Commercial Pipeline] 任务已创建: ${pipelineId}，开始后台处理`);
 
-      const finalPrompt = r.finalOutput.videoPrompt;
-      const startFrame = r.finalOutput.startFrame;
+      // 3. 在后台异步处理（不阻塞响应）
+      setImmediate(async () => {
+        try {
+          // Smart Enhancer
+          const enableOpt = dto.enableSmartEnhance !== false;
 
-      // 2) 提交给 Wan 2.6
-      const { submitWan } = useCommercialPipeline();
-      const wanId = await submitWan({
-        image: startFrame as any,
-        prompt: finalPrompt,
-        seed: dto.seed,
-        duration: dto.duration,
+          const r = await smartEnhancerService.runTest(
+            originalPrompt,
+            productImage,
+            enableOpt,
+            dto.voice_id,
+            dto.duration,
+          );
 
-        // 🔥 这里使用解析出来的 baseResolution (720p 或 1080p)
-        resolution: baseResolution,
+          const finalPrompt = r.finalOutput.videoPrompt;
+          const startFrame = r.finalOutput.startFrame;
 
-        negative_prompt: dto.negative_prompt,
-        shot_type: dto.shot_type,
+          // 提交给 Wan 2.6
+          const { submitWan } = useCommercialPipeline();
+          const wanId = await submitWan({
+            image: startFrame as any,
+            prompt: finalPrompt,
+            seed: dto.seed,
+            duration: dto.duration,
+            resolution: baseResolution,
+            negative_prompt: dto.negative_prompt,
+            shot_type: dto.shot_type,
+          });
+
+          const pipelineState: PipelineState = {
+            ...pipelineStateBase,
+            stage: 'wan_submitted',
+            videoPrompt: finalPrompt,
+            startFrame,
+            wanRequestId: wanId,
+            enableUpscale: upscaleTarget,
+          };
+
+          // 更新数据库
+          const taskRecord = await catModel.findOne({ requestId: pipelineId });
+          if (taskRecord) {
+            taskRecord.params = { ...dto, pipeline: pipelineState };
+            taskRecord.thumbUrl = startFrame;
+            await taskRecord.save();
+            logger.log(`[Commercial Pipeline] 任务 ${pipelineId} 已提交到 Wan 2.6: ${wanId}`);
+          }
+        } catch (e: any) {
+          const errMsg = e?.message || 'Unknown error';
+          logger.error(`[Commercial Pipeline] 后台处理失败: ${errMsg}`);
+
+          const failedPipelineState: PipelineState = {
+            ...pipelineStateBase,
+            stage: 'completed_with_error',
+            error: errMsg,
+          };
+
+          // 更新为失败状态
+          const taskRecord = await catModel.findOne({ requestId: pipelineId });
+          if (taskRecord) {
+            taskRecord.params = { ...dto, pipeline: failedPipelineState };
+            taskRecord.status = 'failed';
+            await taskRecord.save();
+            logger.error(`[Commercial Pipeline] 任务 ${pipelineId} 标记为失败`);
+
+            // 🔥 通过 SSE 推送失败事件
+            if (sseConnectionManager) {
+              sseConnectionManager.sendEvent(pipelineId, 'failed', {
+                id: pipelineId,
+                status: 'failed',
+                error: errMsg,
+                modelName: 'commercial-pipeline',
+                prompt: originalPrompt,
+              });
+            }
+          }
+        }
       });
 
-      const pipelineState: PipelineState = {
-        ...pipelineStateBase,
-        stage: 'wan_submitted',
-        videoPrompt: finalPrompt,
-        startFrame,
-        wanRequestId: wanId,
-
-        // 🔥 再次确认这里存的是 upscaleTarget ('default'/'2k'/'4k')
-        // 这样你的 Cron Task 逻辑不用改，它只认 default/2k/4k
-        enableUpscale: upscaleTarget,
-      };
-
-      // 3) 存库
-      if (record) {
-        record.requestId = pipelineId;
-        record.userId = userId;
-        record.modelName = 'commercial-pipeline';
-        record.prompt = originalPrompt;
-        record.params = { ...dto, pipeline: pipelineState };
-        record.status = 'processing';
-        record.thumbUrl = startFrame;
-        record.outputUrl = '';
-        await record.save();
-      } else {
-        const newRecord = new catModel({
-          requestId: pipelineId,
-          userId,
-          txHash,
-          modelName: 'commercial-pipeline',
-          prompt: originalPrompt,
-          params: { ...dto, pipeline: pipelineState },
-          status: 'processing',
-          thumbUrl: startFrame,
-          outputUrl: '',
-        });
-        await newRecord.save();
-      }
-
+      // 立即返回 requestId
       return { requestId: pipelineId };
     } catch (e: any) {
-      // ... 错误处理逻辑保持不变 ...
+      // 只有数据库操作失败才会到这里
       const errMsg = e?.message || 'Unknown error';
-      logger.error(`[Commercial Pipeline] 启动失败: ${errMsg}`);
-
-      const failedPipelineState: PipelineState = {
-        ...pipelineStateBase,
-        stage: 'completed_with_error',
-        error: errMsg,
-      };
-
-      if (record) {
-        record.requestId = pipelineId;
-        record.userId = userId;
-        record.modelName = 'commercial-pipeline';
-        record.prompt = originalPrompt;
-        record.params = { ...dto, pipeline: failedPipelineState };
-        record.status = 'failed';
-        record.outputUrl = '';
-        if (!record.thumbUrl) record.thumbUrl = '';
-        await record.save();
-      } else {
-        const newRecord = new catModel({
-          requestId: pipelineId,
-          userId,
-          txHash,
-          modelName: 'commercial-pipeline',
-          prompt: originalPrompt,
-          params: { ...dto, pipeline: failedPipelineState },
-          status: 'failed',
-          thumbUrl: '',
-          outputUrl: '',
-        });
-        await newRecord.save();
-      }
+      logger.error(`[Commercial Pipeline] 创建任务失败: ${errMsg}`);
 
       throw new BadRequestException(
-        `服务提交失败 (${errMsg})，凭证已记录，请稍后点击“重试”按钮。`,
+        `任务创建失败 (${errMsg})，请稍后重试。`,
       );
     }
   };

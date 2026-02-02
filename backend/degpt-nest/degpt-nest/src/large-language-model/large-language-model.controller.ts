@@ -6,15 +6,20 @@ import {
   Param,
   Res,
   Headers,
+  Logger,
 } from '@nestjs/common';
 import { LargeLanguageModelService } from './large-language-model.service';
 import { CreateLargeLanguageModelDto } from './dto/create-large-language-model.dto';
+import { SSEConnectionManager } from './sse-connection.manager';
 import type { Response } from 'express';
 
 @Controller('large-language-model')
 export class LargeLanguageModelController {
+  private readonly logger = new Logger(LargeLanguageModelController.name);
+
   constructor(
     private readonly largeLanguageModelService: LargeLanguageModelService,
+    private readonly sseConnectionManager: SSEConnectionManager,
   ) {}
 
   // =======================================================
@@ -57,5 +62,43 @@ export class LargeLanguageModelController {
     res.setHeader('Surrogate-Control', 'no-store');
 
     return this.largeLanguageModelService.findOne(id);
+  }
+
+  // =======================================================
+  // 4. SSE 实时推送 (🔥 新增接口)
+  // =======================================================
+  @Get(':id/stream')
+  async stream(@Param('id') id: string, @Res() res: Response) {
+    this.logger.log(`SSE connection request for requestId: ${id}`);
+
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+
+    // Check if task exists
+    const task = await this.largeLanguageModelService.findOne(id);
+    if (!task) {
+      res.write(`event: error\ndata: ${JSON.stringify({ message: 'Task not found' })}\n\n`);
+      res.end();
+      return;
+    }
+
+    // If task is already completed or failed, send final status and close
+    if (task.status === 'completed' || task.status === 'failed') {
+      this.logger.log(`Task ${id} already ${task.status}, sending final status`);
+      res.write(`event: ${task.status}\ndata: ${JSON.stringify(task)}\n\n`);
+      res.end();
+      return;
+    }
+
+    // Add connection to manager
+    this.sseConnectionManager.addConnection(id, res);
+
+    // Send initial status
+    res.write(`event: connected\ndata: ${JSON.stringify({ requestId: id, status: task.status })}\n\n`);
+
+    this.logger.log(`SSE connection established for requestId: ${id}`);
   }
 }

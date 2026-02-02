@@ -16,7 +16,6 @@ import {
   ValidationOptions,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { IsOnlyForModel } from '../model-validator';
 
 // Pika 专属子对象 (保持不变)
 export class TransitionDto {
@@ -69,9 +68,7 @@ function IsValidPikaframesTransitions(options?: ValidationOptions) {
 
 export class PikaDto {
   // images 是 Pika 独有的（注意是复数），其他模型用的是 image (单数)
-  // 所以这里保留 IsOnlyForModel 是安全的，不会误伤其他模型
   @ValidateIf((o) => o.model === 'pika')
-  @IsOnlyForModel(['pika'])
   @IsArray()
   @ArrayMinSize(2)
   @ArrayMaxSize(5)
@@ -86,10 +83,9 @@ export class PikaDto {
   @IsIn(['720p', '1080p'])
   resolution?: '720p' | '1080p';
 
-  // transitions 是 Pika 独有，保留 IsOnlyForModel 没问题
+  // transitions 是 Pika 独有
   @IsOptional()
-  @ValidateIf((o) => o.model === 'pika') // 建议补上这个，保持风格统一
-  @IsOnlyForModel(['pika'])
+  @ValidateIf((o) => o.model === 'pika')
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => TransitionDto)
