@@ -70,11 +70,6 @@ export class UseOpenAI {
       // 使用 OpenAI SDK 调用 Responses API
       const response: any = await this.openai.responses.create(requestParams);
 
-      // 🔍 调试：打印完整响应结构
-      this.logger.log(
-        `[OpenAI Debug] Response structure: ${JSON.stringify(response, null, 2).slice(0, 1000)}`,
-      );
-
       // 从响应中提取内容
       // 响应格式: { output: [{ content: [{ type: "output_text", text: "..." }] }] }
       let content: any = '';
