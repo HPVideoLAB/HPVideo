@@ -39,7 +39,7 @@ export const useSam3 = () => {
         },
         body: JSON.stringify(payload),
       },
-      30000, // 30秒超时
+      1800000, // 30秒超时
       { tag: 'submit_sam3' },
     );
 

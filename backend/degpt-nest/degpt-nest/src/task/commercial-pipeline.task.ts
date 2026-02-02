@@ -27,7 +27,7 @@ export class CommercialPipelineTask {
   // 1. 监工 A: 盯着 Wan 2.6
   // 优化点：频率改为每 30 秒 (或者 EVERY_MINUTE)
   // ========================================================
-  @Cron(CronExpression.EVERY_30_SECONDS)
+  @Cron(CronExpression.EVERY_10_SECONDS)
   async checkWanGenerationStatus() {
     if (this.isCheckingWan) return;
     this.isCheckingWan = true;
@@ -150,7 +150,7 @@ export class CommercialPipelineTask {
   // 2. 监工 B: 盯着 Upscale
   // 优化点：Upscale 比较快(几十秒)，可以用 10秒 或 30秒
   // ========================================================
-  @Cron(CronExpression.EVERY_30_SECONDS)
+  @Cron(CronExpression.EVERY_10_SECONDS)
   async checkUpscaleStatus() {
     if (this.isCheckingUpscale) return;
     this.isCheckingUpscale = true;

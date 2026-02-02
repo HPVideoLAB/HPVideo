@@ -67,7 +67,7 @@ export const useWan = () => {
         },
         body: JSON.stringify(payload),
       },
-      30000, // 30s timeout
+      1800000, // 30s timeout
       { tag: 'submit_wan' },
     );
 

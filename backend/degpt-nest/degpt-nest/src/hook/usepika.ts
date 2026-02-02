@@ -53,7 +53,7 @@ export const usePika = () => {
         },
         body: JSON.stringify(payload),
       },
-      20000,
+      1800000,
       { tag: 'submit' },
     );
 
@@ -83,7 +83,7 @@ export const usePika = () => {
     const resp = await fetchWithTimeout(
       `${baseUrl}/predictions/${requestId}/result`,
       { headers: { Authorization: `Bearer ${apiKey}` } },
-      15000,
+      1800000,
       { tag: 'poll', requestId },
     );
 

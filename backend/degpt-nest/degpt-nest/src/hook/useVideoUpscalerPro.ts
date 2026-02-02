@@ -32,7 +32,7 @@ export const useVideoUpscalerPro = () => {
         },
         body: JSON.stringify(payload),
       },
-      20000,
+      1800000,
       { tag: 'submit', model: 'video-upscaler-pro' },
     );
 
@@ -61,7 +61,7 @@ export const useVideoUpscalerPro = () => {
     const resp = await fetchWithTimeout(
       `${baseUrl}/predictions/${requestId}/result`,
       { headers: { Authorization: `Bearer ${apiKey}` } },
-      15000,
+      1800000,
       { tag: 'poll', requestId, model: 'video-upscaler-pro' },
     );
 
