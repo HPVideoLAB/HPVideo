@@ -112,7 +112,7 @@ export const useCommercialPipeline = () => {
         {
           headers: { Authorization: `Bearer ${apiKey}` },
         },
-        15000,
+        1800000, // 🔥 使用默认超时（30分钟）
         { tag: 'poll', requestId: taskId },
       );
 
