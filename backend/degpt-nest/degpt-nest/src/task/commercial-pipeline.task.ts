@@ -61,6 +61,31 @@ export class CommercialPipelineTask {
             const pipelineState = task.params.pipeline;
             const wanId = pipelineState.wanRequestId;
 
+            // 🔥 检查任务是否超时（创建时间超过 10 分钟且没有 wanRequestId）
+            const createdAt = (task as any).createdAt || new Date();
+            const now = new Date();
+            const ageInMinutes =
+              (now.getTime() - createdAt.getTime()) / 1000 / 60;
+
+            if (!wanId && ageInMinutes > 10) {
+              this.logger.warn(
+                `[Timeout] Task ${task.requestId} has no wanRequestId after ${Math.round(ageInMinutes)} minutes, marking as failed`,
+              );
+
+              task.status = 'failed';
+              task.params.pipeline.error = 'Task submission failed or timed out';
+              task.params.pipeline.stage = 'completed_with_error';
+              task.markModified('params');
+              await task.save();
+
+              // 🔥 Push SSE error event
+              this.sseConnectionManager.sendError(task.requestId, {
+                message: 'Task submission failed or timed out',
+                requestId: task.requestId,
+              });
+              return;
+            }
+
             const wanResult = await getWanResult(wanId);
 
             if (wanResult.status === 'SUCCEEDED') {
@@ -123,6 +148,8 @@ export class CommercialPipelineTask {
               this.logger.error(`[Failed] Wan 2.6 失败: ${task.requestId}`);
               task.status = 'failed';
               task.params.pipeline.error = wanResult.errorMessage;
+              task.params.pipeline.stage = 'completed_with_error';
+              task.markModified('params');
               await task.save();
 
               // 🔥 Push SSE error event
@@ -130,8 +157,45 @@ export class CommercialPipelineTask {
                 message: wanResult.errorMessage || 'Wan 2.6 generation failed',
                 requestId: task.requestId,
               });
+            } else if (wanResult.status === 'UNKNOWN') {
+              // 🔥 处理 UNKNOWN 状态：如果任务运行超过 30 分钟，标记为失败
+              if (ageInMinutes > 30) {
+                this.logger.error(
+                  `[Timeout] Task ${task.requestId} has been in UNKNOWN state for ${Math.round(ageInMinutes)} minutes, marking as failed`,
+                );
+                task.status = 'failed';
+                task.params.pipeline.error =
+                  wanResult.errorMessage || 'Task timeout or API error';
+                task.params.pipeline.stage = 'completed_with_error';
+                task.markModified('params');
+                await task.save();
+
+                // 🔥 Push SSE error event
+                this.sseConnectionManager.sendError(task.requestId, {
+                  message: 'Task timeout or API error',
+                  requestId: task.requestId,
+                });
+              }
+            } else if (wanResult.status === 'RUNNING') {
+              // 🔥 处理 RUNNING 状态：如果任务运行超过 30 分钟，标记为失败
+              if (ageInMinutes > 30) {
+                this.logger.error(
+                  `[Timeout] Task ${task.requestId} has been running for ${Math.round(ageInMinutes)} minutes, marking as failed`,
+                );
+                task.status = 'failed';
+                task.params.pipeline.error = 'Task timeout: exceeded maximum processing time';
+                task.params.pipeline.stage = 'completed_with_error';
+                task.markModified('params');
+                await task.save();
+
+                // 🔥 Push SSE error event
+                this.sseConnectionManager.sendError(task.requestId, {
+                  message: 'Task timeout: exceeded maximum processing time',
+                  requestId: task.requestId,
+                });
+              }
             }
-            // RUNNING 状态不做操作，直接结束本次检查
+            // 其他状态（PENDING）不做操作，继续等待
           } catch (innerErr) {
             this.logger.error(
               `Task ${task.requestId} check error: ${innerErr.message}`,

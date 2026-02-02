@@ -109,6 +109,16 @@ export const useCommercialPipelineRunner = () => {
       // 3. 在后台异步处理（不阻塞响应）
       setImmediate(async () => {
         try {
+          // 🔥 发送 SSE 状态更新：开始处理
+          if (sseConnectionManager) {
+            sseConnectionManager.sendStatusUpdate(pipelineId, {
+              status: 'processing',
+              stage: 'enhancing',
+              message: 'Optimizing prompt and generating start frame...',
+              requestId: pipelineId,
+            });
+          }
+
           // Smart Enhancer
           const enableOpt = dto.enableSmartEnhance !== false;
 
@@ -122,6 +132,16 @@ export const useCommercialPipelineRunner = () => {
 
           const finalPrompt = r.finalOutput.videoPrompt;
           const startFrame = r.finalOutput.startFrame;
+
+          // 🔥 发送 SSE 状态更新：开始提交视频生成
+          if (sseConnectionManager) {
+            sseConnectionManager.sendStatusUpdate(pipelineId, {
+              status: 'processing',
+              stage: 'submitting',
+              message: 'Submitting video generation task...',
+              requestId: pipelineId,
+            });
+          }
 
           // 提交给 Wan 2.6
           const { submitWan } = useCommercialPipeline();
@@ -151,6 +171,16 @@ export const useCommercialPipelineRunner = () => {
             taskRecord.thumbUrl = startFrame;
             await taskRecord.save();
             logger.log(`[Commercial Pipeline] 任务 ${pipelineId} 已提交到 Wan 2.6: ${wanId}`);
+
+            // 🔥 发送 SSE 状态更新：视频生成中
+            if (sseConnectionManager) {
+              sseConnectionManager.sendStatusUpdate(pipelineId, {
+                status: 'processing',
+                stage: 'generating',
+                message: 'Video generation in progress...',
+                requestId: pipelineId,
+              });
+            }
           }
         } catch (e: any) {
           const errMsg = e?.message || 'Unknown error';

@@ -209,7 +209,6 @@ export class SmartEnhancerService {
         throw new Error('Missing videoVisualPrompt');
       if (!result?.imageEditPrompt) throw new Error('Missing imageEditPrompt');
 
-      console.log(JSON.stringify(result));
       return result as OptimizedResult;
     } catch (e: any) {
       // 兜底：更像“品牌大片 + 真实带货”，且不写暧昧、不过度滤镜参数、台词短

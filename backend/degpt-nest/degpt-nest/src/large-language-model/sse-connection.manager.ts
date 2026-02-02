@@ -109,7 +109,7 @@ export class SSEConnectionManager {
    * Send an error event and close connections
    */
   sendError(requestId: string, error: any): void {
-    this.sendEvent(requestId, 'error', error);
+    this.sendEvent(requestId, 'failed', error); // 🔥 改用 'failed' 避免与原生 error 事件冲突
     this.closeConnections(requestId);
   }
 

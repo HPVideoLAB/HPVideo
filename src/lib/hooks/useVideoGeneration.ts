@@ -9,7 +9,7 @@ import { NEST_API_BASE_URL } from '$lib/constants';
 import { uploadImagesToOss, submitLargeLanguageModel, getHistoryList } from '$lib/apis/model/pika';
 
 // =================================================================================
-// 1. 🔥 核心策略表：所有模型的“差异”都在这里配置
+// 1. 🔥 核心策略表：所有模型的"差异"都在这里配置
 //    以后加新模型，只需要在这里加一段配置，不需要改下面的逻辑代码
 // =================================================================================
 const MODEL_STRATEGIES: Record<
@@ -92,7 +92,7 @@ const MODEL_STRATEGIES: Record<
       txHash,
     }),
 
-    // 轮询配置 (假设商业视频生成较慢，设为 3秒一次，超时 30分钟)
+    // 轮询配置 (假设商业视频生成较慢，设为 3秒一次，超时 60分钟)
     pollConfig: { intervalMs: 30000, timeoutMs: 3600000 },
   },
 };
@@ -139,8 +139,9 @@ export function useVideoGeneration() {
     onSuccess: (() => void) | undefined,
     pollConfig: { intervalMs: number; timeoutMs: number }
   ) => {
-    let eventSource: EventSource | null = null;
+    let eventSource: EventSource | any = null;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let isCompleted = false; // 🔥 添加标志位，避免重复处理
 
     try {
       const { requestId } = await submitLargeLanguageModel(payload, addressArg);
@@ -157,17 +158,48 @@ export function useVideoGeneration() {
       // 🔥 使用 SSE 替代轮询
       await new Promise<void>((resolve, reject) => {
         // 建立 SSE 连接
+        console.log(`🔌 建立 SSE 连接: ${NEST_API_BASE_URL}/large-language-model/${requestId}/stream`);
         eventSource = new EventSource(`${NEST_API_BASE_URL}/large-language-model/${requestId}/stream`);
 
         // 设置超时
         timeoutId = setTimeout(() => {
-          if (eventSource) eventSource.close();
-          reject(new Error('SSE connection timeout'));
+          if (!isCompleted) {
+            console.error('⏰ SSE 连接超时');
+            if (eventSource) eventSource.close();
+            reject(new Error('SSE connection timeout'));
+          }
         }, pollConfig.timeoutMs);
+
+        // 🔥 监听 status 事件（进度更新）
+        eventSource.addEventListener('status', (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            console.log('📊 SSE: 状态更新', data);
+
+            // 更新历史记录中的状态信息（可选，用于显示进度）
+            history.update((list) =>
+              list.map((item) =>
+                item.id === requestId
+                  ? {
+                      ...item,
+                      params: {
+                        ...item.params,
+                        currentStage: data.stage,
+                        statusMessage: data.message,
+                      },
+                    }
+                  : item
+              )
+            );
+          } catch (parseError) {
+            console.error('Failed to parse status event:', parseError);
+          }
+        });
 
         // 监听 completed 事件
         eventSource.addEventListener('completed', (event) => {
           console.log('✅ SSE: 生成完成');
+          isCompleted = true;
 
           try {
             const data = JSON.parse(event.data);
@@ -194,7 +226,7 @@ export function useVideoGeneration() {
             if (eventSource) eventSource.close();
             resolve();
           } catch (parseError) {
-            console.error('Failed to parse SSE data:', parseError);
+            console.error('Failed to parse completed event:', parseError);
             reject(parseError);
           }
         });
@@ -202,6 +234,7 @@ export function useVideoGeneration() {
         // 监听 failed 事件
         eventSource.addEventListener('failed', (event) => {
           console.error('❌ SSE: 任务失败 (failed event)');
+          isCompleted = true;
 
           try {
             const data = JSON.parse(event.data);
@@ -216,30 +249,22 @@ export function useVideoGeneration() {
           }
         });
 
-        // 监听 error 事件（后端某些情况下会发送 error 而不是 failed）
-        eventSource.addEventListener('error', (event: any) => {
-          console.error('❌ SSE: 任务失败 (error event)');
-
-          try {
-            const data = JSON.parse(event.data);
-            const errorMsg = data.error || data.message || 'Task failed';
-
-            // 清理
-            if (timeoutId) clearTimeout(timeoutId);
-            if (eventSource) eventSource.close();
-            reject(new Error(errorMsg));
-          } catch (parseError) {
-            reject(new Error('Task failed'));
-          }
-        });
-
-        // 监听连接错误
+        // 🔥 监听连接错误（这是 EventSource 的原生错误事件，没有 data）
         eventSource.onerror = (error) => {
-          console.error('❌ SSE connection error:', error);
+          console.error('❌ SSE connection error (onerror):', error);
+
+          // 🔥 如果任务已完成，忽略连接错误（可能是服务器正常关闭连接）
+          if (isCompleted) {
+            console.log('ℹ️ SSE: 任务已完成，忽略连接关闭事件');
+            return;
+          }
 
           // 清理
           if (timeoutId) clearTimeout(timeoutId);
-          if (eventSource) eventSource.close();
+          if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
+            eventSource.close();
+          }
+
           reject(new Error('SSE connection error'));
         };
       });
@@ -259,7 +284,7 @@ export function useVideoGeneration() {
     } finally {
       // 清理资源
       if (timeoutId) clearTimeout(timeoutId);
-      if (eventSource) (eventSource as EventSource).close();
+      if (eventSource) eventSource.close();
       isGenerating.set(false);
     }
   };
