@@ -66,7 +66,7 @@ dark:border-border-dark"
 
         <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
           {$i18n.t('Unleash your creative potential, experience')}
-          <span class="text-primary-500/90 dark:text-primary-400">HPVideo AI</span>
+          <span class="text-primary-500/90 dark:text-primary-400">{$i18n.t('HPVideo AI')}</span>
           {$i18n.t("'s magic.")}
         </p>
 

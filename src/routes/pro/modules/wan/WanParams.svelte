@@ -145,7 +145,7 @@
 
         {#if showAdvanced}
           <div
-            class="mt-2 grid grid-cols-2 gap-3 p-3 rounded-2xl border border-border-light dark:border-border-dark bg-gray-50/50 dark:bg-gray-950/30 animate-in slide-in-from-top-2 fade-in duration-200"
+            class="mt-2 grid grid-cols-2 gap-3 p-3 rounded-2xl border border-border-light dark:border-border-dark   animate-in slide-in-from-top-2 fade-in duration-200"
           >
             <div class="col-span-2 sm:col-span-1 space-y-1">
               <label class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{$i18n.t('Seed')}</label>
@@ -269,7 +269,7 @@
                 {#if costUsd !== null}
                   <span class="w-[1px] h-3 bg-white/30 mx-0.5" />
                   <span class="text-sm font-bold font-mono">
-                    {costUsd === 0 ? 'FREE' : `$${costUsd.toFixed(3)}`}
+                    {costUsd === 0 ? $i18n.t('FREE') : `$${costUsd.toFixed(3)}`}
                   </span>
                 {/if}
               {/if}

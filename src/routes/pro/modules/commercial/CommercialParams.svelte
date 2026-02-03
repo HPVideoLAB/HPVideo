@@ -147,7 +147,7 @@
                 size="small"
                 type={enableSmartEnhance ? 'primary' : 'default'}
                 htmlType="button"
-                tooltip={'When enabled, AI automatically optimizes prompts, adds camera movements, lighting details, and micro-expressions.'}
+                tooltip={$i18n.t('When enabled, AI automatically optimizes prompts, adds camera movements, lighting details, and micro-expressions.')}
                 on:click={() => {
                   enableSmartEnhance = !enableSmartEnhance;
                 }}
@@ -175,7 +175,7 @@
                     {#if costUsd !== null}
                       <span class="w-[1px] h-3 bg-white/30 mx-0.5" />
                       <span class="text-sm font-bold font-mono">
-                        {costUsd === 0 ? 'FREE' : `$${costUsd.toFixed(3)}`}
+                        {costUsd === 0 ? $i18n.t('FREE') : `$${costUsd.toFixed(3)}`}
                       </span>
                     {/if}
                   {/if}

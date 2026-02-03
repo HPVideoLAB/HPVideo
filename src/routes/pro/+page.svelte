@@ -165,7 +165,7 @@
       <span
         class="text-base md:text-2xl font-bold tracking-tight bg-gradient-to-r from-primary-400 via-primary-500 to-violet-400 bg-clip-text text-transparent drop-shadow-[0_1px_10px_rgba(194,19,242,0.22)]"
       >
-        HPVideo Pro
+        {$i18n.t('HPVideo Pro')}
       </span>
     </a>
     <div><WalletConnect /></div>
