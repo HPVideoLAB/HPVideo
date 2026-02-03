@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Response } from 'express';
 
 interface SSEConnection {
@@ -8,7 +8,7 @@ interface SSEConnection {
 }
 
 @Injectable()
-export class SSEConnectionManager {
+export class SSEConnectionManager implements OnModuleDestroy {
   private readonly logger = new Logger(SSEConnectionManager.name);
   private connections: Map<string, SSEConnection[]> = new Map();
   private heartbeatInterval: NodeJS.Timeout;
@@ -68,7 +68,9 @@ export class SSEConnectionManager {
   sendEvent(requestId: string, event: string, data: any): void {
     const connections = this.connections.get(requestId);
     if (!connections || connections.length === 0) {
-      this.logger.debug(`No active SSE connections for requestId: ${requestId}`);
+      this.logger.debug(
+        `No active SSE connections for requestId: ${requestId}`,
+      );
       return;
     }
 
@@ -98,19 +100,35 @@ export class SSEConnectionManager {
   }
 
   /**
-   * Send a completion event and close connections
+   * Send a completion event and close connections gracefully
+   * 🔥 核心修复：增加 2 秒延时，防止发完秒挂导致前端报错
    */
   sendCompletion(requestId: string, data: any): void {
     this.sendEvent(requestId, 'completed', data);
-    this.closeConnections(requestId);
+
+    // 延时关闭，给前端留出接收数据的时间
+    setTimeout(() => {
+      this.closeConnections(requestId);
+      this.logger.log(
+        `[Graceful Close] Connections closed for ${requestId} after 2s delay`,
+      );
+    }, 2000);
   }
 
   /**
-   * Send an error event and close connections
+   * Send an error event and close connections gracefully
+   * 🔥 核心修复：增加 2 秒延时
    */
   sendError(requestId: string, error: any): void {
-    this.sendEvent(requestId, 'failed', error); // 🔥 改用 'failed' 避免与原生 error 事件冲突
-    this.closeConnections(requestId);
+    this.sendEvent(requestId, 'failed', error);
+
+    // 延时关闭，确保错误信息能传达给前端
+    setTimeout(() => {
+      this.closeConnections(requestId);
+      this.logger.log(
+        `[Graceful Close] Error connections closed for ${requestId} after 2s delay`,
+      );
+    }, 2000);
   }
 
   /**
@@ -132,7 +150,7 @@ export class SSEConnectionManager {
     });
 
     this.connections.delete(requestId);
-    this.logger.log(`All SSE connections closed for requestId: ${requestId}`);
+    // this.logger.log(`All SSE connections closed for requestId: ${requestId}`); // 此时日志已在上面打印，避免重复
   }
 
   /**
@@ -162,7 +180,7 @@ export class SSEConnectionManager {
           }
         });
       });
-    }, 30000); // Send heartbeat every 30 seconds
+    }, 15000); // 建议改为 15秒 (原 30秒)，防止激进的负载均衡器切断连接
   }
 
   /**

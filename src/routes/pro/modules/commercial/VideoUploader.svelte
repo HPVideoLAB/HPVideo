@@ -12,7 +12,7 @@
   let isDragging = false;
 
   // ✅ 封面模式：cover 更像“首帧封面”，contain 看完整图
-  let fitMode: 'cover' | 'contain' = 'cover';
+  let fitMode: 'cover' | 'contain' = 'contain';
 
   // 监听文件变化，生成/销毁预览图
   $: if (imageFile) {
