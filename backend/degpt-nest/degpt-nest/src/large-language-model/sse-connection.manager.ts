@@ -14,12 +14,12 @@ export class SSEConnectionManager implements OnModuleDestroy {
   private heartbeatInterval: NodeJS.Timeout;
 
   constructor() {
-    // Start heartbeat to keep connections alive
+    // 启动心跳保活
     this.startHeartbeat();
   }
 
   /**
-   * Add a new SSE connection for a request
+   * 添加新的 SSE 连接
    */
   addConnection(requestId: string, response: Response): void {
     const connection: SSEConnection = {
@@ -36,14 +36,14 @@ export class SSEConnectionManager implements OnModuleDestroy {
       `SSE connection added for requestId: ${requestId}. Total connections: ${existing.length}`,
     );
 
-    // Setup connection cleanup on client disconnect
+    // 监听客户端断开连接
     response.on('close', () => {
       this.removeConnection(requestId, response);
     });
   }
 
   /**
-   * Remove a specific SSE connection
+   * 移除特定连接
    */
   private removeConnection(requestId: string, response: Response): void {
     const connections = this.connections.get(requestId);
@@ -63,7 +63,7 @@ export class SSEConnectionManager implements OnModuleDestroy {
   }
 
   /**
-   * Send an event to all connections for a specific requestId
+   * 发送标准 SSE 事件
    */
   sendEvent(requestId: string, event: string, data: any): void {
     const connections = this.connections.get(requestId);
@@ -79,6 +79,12 @@ export class SSEConnectionManager implements OnModuleDestroy {
     connections.forEach((conn) => {
       try {
         conn.response.write(message);
+
+        // 🔥 强制刷新缓冲区 (如果使用了 Compression 中间件，这行很重要)
+        if ((conn.response as any).flush) {
+          (conn.response as any).flush();
+        }
+
         this.logger.debug(
           `SSE event sent to requestId: ${requestId}, event: ${event}`,
         );
@@ -93,14 +99,14 @@ export class SSEConnectionManager implements OnModuleDestroy {
   }
 
   /**
-   * Send a status update event
+   * 发送状态更新
    */
   sendStatusUpdate(requestId: string, data: any): void {
     this.sendEvent(requestId, 'status', data);
   }
 
   /**
-   * Send a completion event and close connections gracefully
+   * 发送完成信号并优雅关闭
    * 🔥 核心修复：增加 2 秒延时，防止发完秒挂导致前端报错
    */
   sendCompletion(requestId: string, data: any): void {
@@ -116,7 +122,7 @@ export class SSEConnectionManager implements OnModuleDestroy {
   }
 
   /**
-   * Send an error event and close connections gracefully
+   * 发送错误信号并优雅关闭
    * 🔥 核心修复：增加 2 秒延时
    */
   sendError(requestId: string, error: any): void {
@@ -132,7 +138,7 @@ export class SSEConnectionManager implements OnModuleDestroy {
   }
 
   /**
-   * Close all connections for a specific requestId
+   * 关闭特定请求的所有连接
    */
   private closeConnections(requestId: string): void {
     const connections = this.connections.get(requestId);
@@ -150,11 +156,14 @@ export class SSEConnectionManager implements OnModuleDestroy {
     });
 
     this.connections.delete(requestId);
-    // this.logger.log(`All SSE connections closed for requestId: ${requestId}`); // 此时日志已在上面打印，避免重复
   }
 
   /**
-   * Send heartbeat to all active connections to keep them alive
+   * 发送心跳包保活
+   * 🔥 核心修复：
+   * 1. 频率改为 5秒 (更频繁地刺激网络)
+   * 2. 使用 'event: ping' 可见事件，而不是 ': heartbeat' 注释
+   * 3. 强制 flush 穿透 Nginx 缓冲
    */
   private startHeartbeat(): void {
     this.heartbeatInterval = setInterval(() => {
@@ -165,12 +174,19 @@ export class SSEConnectionManager implements OnModuleDestroy {
 
       if (totalConnections === 0) return;
 
-      this.logger.debug(`Sending heartbeat to ${totalConnections} connections`);
+      // this.logger.debug(`Sending ping to ${totalConnections} connections`);
 
       this.connections.forEach((connections, requestId) => {
         connections.forEach((conn) => {
           try {
-            conn.response.write(': heartbeat\n\n');
+            // ✅ 发送真实数据包，防止被 Nginx/Cloudflare 视为空闲
+            const pingMessage = `event: ping\ndata: {"time": "${new Date().toISOString()}"}\n\n`;
+            conn.response.write(pingMessage);
+
+            // ✅ 强制刷新，防止 Nginx Gzip 缓冲
+            if ((conn.response as any).flush) {
+              (conn.response as any).flush();
+            }
           } catch (error) {
             this.logger.error(
               `Failed to send heartbeat to requestId: ${requestId}`,
@@ -180,18 +196,18 @@ export class SSEConnectionManager implements OnModuleDestroy {
           }
         });
       });
-    }, 15000); // 建议改为 15秒 (原 30秒)，防止激进的负载均衡器切断连接
+    }, 5000); // 5秒一次心跳
   }
 
   /**
-   * Get the number of active connections for a requestId
+   * 获取活跃连接数
    */
   getConnectionCount(requestId: string): number {
     return this.connections.get(requestId)?.length || 0;
   }
 
   /**
-   * Get total number of active connections
+   * 获取总活跃连接数
    */
   getTotalConnectionCount(): number {
     return Array.from(this.connections.values()).reduce(
@@ -201,7 +217,7 @@ export class SSEConnectionManager implements OnModuleDestroy {
   }
 
   /**
-   * Cleanup on module destroy
+   * 模块销毁时清理资源
    */
   onModuleDestroy(): void {
     if (this.heartbeatInterval) {

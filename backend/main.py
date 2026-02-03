@@ -173,8 +173,12 @@ async def check_url(request: Request, call_next):
 
 
 # ====== Nest 反向代理（放在 app.mount 之前） ======
-NEST_ORIGIN = os.getenv("NEST_ORIGIN", "http://127.0.0.1:3008")
+# 必须引入 StreamingResponse 来支持流式传输
+from starlette.responses import StreamingResponse, Response
+import aiohttp
+import os
 
+NEST_ORIGIN = os.getenv("NEST_ORIGIN", "http://127.0.0.1:3008")
 
 HOP_BY_HOP_HEADERS = {
     "connection",
@@ -207,22 +211,53 @@ async def _proxy_to_nest(path: str, request: Request):
     params = dict(request.query_params)
     body = await request.body()
 
-    # 🔥🔥🔥 核心修改在这里：改为 300秒 (5分钟) 🔥🔥🔥
-    # 之前可能是 120 或者默认值，导致上传大文件时 Python 层断开连接
+    # 🔥 改为 3000秒 (50分钟)，防止长连接被 Python 切断
     timeout = aiohttp.ClientTimeout(total=3000)
 
-    async with aiohttp.ClientSession(timeout=timeout) as session:
-        async with session.request(
+    # ⚠️ 关键修改 1: 手动创建 Session，不能用 async with，否则返回时连接就断了
+    session = aiohttp.ClientSession(timeout=timeout)
+
+    try:
+        # ⚠️ 关键修改 2: 发起请求，只等待“连接建立”，不等待 Body 读完
+        req = session.request(
             method=request.method,
             url=upstream_url,
             params=params,
             data=body,
             headers=headers,
-        ) as r:
-            # 保持你原来的逻辑（等待全部读取完毕再返回），简单稳定
-            content = await r.read()
-            resp_headers = _filter_headers(r.headers)
-            return Response(content=content, status_code=r.status, headers=resp_headers)
+        )
+        r = await req
+
+        # 过滤响应头
+        resp_headers = _filter_headers(r.headers)
+
+        # 🔥🔥🔥 关键修改 3: 定义流生成器 (一边读后端，一边吐给前端) 🔥🔥🔥
+        async def stream_generator():
+            try:
+                # 每次读取 1KB 数据就立即转发，不要积压
+                async for chunk in r.content.iter_chunked(1024):
+                    if chunk:
+                        yield chunk
+            except Exception as e:
+                log.error(f"Stream error: {e}")
+            finally:
+                # 传输结束或断开连接时，关闭后端连接
+                r.close()
+                await session.close()
+
+        # 🔥🔥🔥 关键修改 4: 使用 StreamingResponse 立即返回流，而不是 Response
+        return StreamingResponse(
+            stream_generator(),
+            status_code=r.status,
+            media_type=r.headers.get("Content-Type"),  # 自动透传 text/event-stream
+            headers=resp_headers,
+        )
+
+    except Exception as e:
+        # 出错时记得关闭 session
+        await session.close()
+        log.error(f"Proxy error: {e}")
+        return Response(content=str(e), status_code=500)
 
 
 @app.api_route(

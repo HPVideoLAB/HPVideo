@@ -303,7 +303,7 @@ export function useVideoGeneration() {
       });
 
       isGenerating.set(false);
-      toast.error(`生成出错: ${error.message}`);
+      toast.error(`failed: ${error.message}`);
 
       // 不需要 throw error，因为我们在 catch 里处理了 UI 状态
       // 如果外部还有 try-catch 也可以 throw
