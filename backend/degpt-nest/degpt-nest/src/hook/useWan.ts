@@ -22,7 +22,7 @@ export const useWan = () => {
   const baseUrl = process.env.WAVESPEED_URL;
 
   const submitWanTask = async (args: WanTaskArgs): Promise<string> => {
-    if (!apiKey || !baseUrl) throw new Error('环境变量配置缺失');
+    if (!apiKey || !baseUrl) throw new Error('Environment variable configuration missing');
 
     // 解构参数并设置默认值 (与文档保持一致)
     const {
@@ -74,17 +74,17 @@ export const useWan = () => {
     const text = await resp.text();
     if (!resp.ok) {
       logger.error(`[Wan Error] Status: ${resp.status}, Body: ${text}`);
-      throw new Error(`Wan 提交失败: ${resp.status}`);
+      throw new Error(`Wan submission failed: ${resp.status}`);
     }
 
     try {
       const json = JSON.parse(text);
       // 根据文档，Response 结构是 data.id
       const requestId = json?.data?.id;
-      if (!requestId) throw new Error('未获取到 requestId');
+      if (!requestId) throw new Error('Failed to get requestId');
       return requestId;
     } catch (e) {
-      throw new Error(`解析响应失败: ${e.message}`);
+      throw new Error(`Response parsing failed: ${e.message}`);
     }
   };
 

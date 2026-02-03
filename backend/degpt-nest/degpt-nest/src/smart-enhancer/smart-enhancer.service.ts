@@ -194,7 +194,6 @@ export class SmartEnhancerService {
         maxTokens: 3600,
         temperature: 0.66,
       });
-
       // 清洗 JSON
       let cleanContent = content
         .replace(/```json/g, '')
@@ -208,14 +207,41 @@ export class SmartEnhancerService {
       if (!result?.videoVisualPrompt)
         throw new Error('Missing videoVisualPrompt');
       if (!result?.imageEditPrompt) throw new Error('Missing imageEditPrompt');
-
+      console.log('提示词生成成功');
       return result as OptimizedResult;
     } catch (e: any) {
-      // 兜底：更像“品牌大片 + 真实带货”，且不写暧昧、不过度滤镜参数、台词短
+      this.logger.error(
+        `[GPT Error] OpenAI 优化失败，启用英文兜底: ${e.message}`,
+      );
+
+      // --- 1. 兜底图片提示词 (通用电商高质感) ---
+      // 强调：专业摄影、4k、影棚光、清晰聚焦
+      const fallbackImagePrompt = `Professional product photography of ${originalPrompt}. High resolution, 4k, studio lighting, clean background, photorealistic, sharp focus, cinematic lighting, commercial quality.`;
+
+      // --- 2. 兜底视频提示词 (包含音色指令) ---
+      let dialoguePart = '';
+
+      // ⚠️ 关键：如果用户选了音色，必须手动拼接 @音色 指令，否则视频会哑巴
+      // 既然 GPT 挂了，就直接让人物念出“用户原始输入的 Prompt”作为临时台词
+      if (fixedVoiceDesc) {
+        // 格式严格遵守：角色 @音色是XXX 说：内容
+        dialoguePart = `\n\nNarrator, @Voice is ${fixedVoiceDesc}, says: "${originalPrompt}"`;
+      }
+
+      const fallbackVideoPrompt = `Cinematic product commercial video for ${originalPrompt}.
+    High quality, 4k, highly detailed.
+    Camera movement: Slow dolly in, smooth pan, elegant transitions.
+    Lighting: Soft studio lighting, professional color grading.
+    Sound: Background music is upbeat and modern commercial style.${dialoguePart}`;
+
+      this.logger.warn('⚠️ 已使用兜底提示词生成', {
+        fallbackImagePrompt,
+        fallbackVideoPrompt,
+      });
 
       return {
-        imageEditPrompt: '',
-        videoVisualPrompt: '',
+        imageEditPrompt: fallbackImagePrompt,
+        videoVisualPrompt: fallbackVideoPrompt,
       };
     }
   }

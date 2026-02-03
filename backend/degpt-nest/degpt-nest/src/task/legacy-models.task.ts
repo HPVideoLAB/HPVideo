@@ -12,7 +12,10 @@ import { usePika } from '@/hook/usepika';
 @Injectable()
 export class LegacyModelsTask {
   private readonly logger = new Logger(LegacyModelsTask.name);
-  private isChecking = false;
+
+  // 🔥 优化：拆分锁，防止快/慢任务互相阻塞
+  private isCheckingFast = false;
+  private isCheckingSlow = false;
 
   constructor(
     @InjectModel(LargeMode.name)
@@ -23,13 +26,12 @@ export class LegacyModelsTask {
   // ========================================================
   // 监控快速模型 (Sam3, Wan 2.1) - 每 15 秒检查一次
   // ========================================================
-  @Cron('*/5 * * * * *') // 每 15 秒
+  @Cron('*/5 * * * * *') // 按需调整频率
   async checkFastModelsStatus() {
-    if (this.isChecking) return;
-    this.isChecking = true;
+    if (this.isCheckingFast) return; // 使用专用锁
+    this.isCheckingFast = true;
 
     try {
-      // 查询快速模型的 processing 任务
       const pendingTasks = await this.largeModeModel
         .find({
           modelName: { $in: ['sam3', 'wan-2.1'] },
@@ -38,19 +40,19 @@ export class LegacyModelsTask {
         .limit(20);
 
       if (pendingTasks.length === 0) {
-        this.isChecking = false;
+        this.isCheckingFast = false;
         return;
       }
 
       this.logger.log(
-        `[Fast Models Check] Checking ${pendingTasks.length} tasks (Sam3, Wan 2.1)...`,
+        `[Fast Models Check] Checking ${pendingTasks.length} tasks...`,
       );
 
       await this.processLegacyTasks(pendingTasks);
     } catch (err) {
       this.logger.error(`Cron Fast Models error: ${err.message}`);
     } finally {
-      this.isChecking = false;
+      this.isCheckingFast = false;
     }
   }
 
@@ -59,11 +61,10 @@ export class LegacyModelsTask {
   // ========================================================
   @Cron(CronExpression.EVERY_10_SECONDS)
   async checkSlowModelsStatus() {
-    if (this.isChecking) return;
-    this.isChecking = true;
+    if (this.isCheckingSlow) return; // 使用专用锁
+    this.isCheckingSlow = true;
 
     try {
-      // 查询慢速模型的 processing 任务
       const pendingTasks = await this.largeModeModel
         .find({
           modelName: { $in: ['pika', 'wan-2.6-i2v'] },
@@ -72,47 +73,48 @@ export class LegacyModelsTask {
         .limit(20);
 
       if (pendingTasks.length === 0) {
-        this.isChecking = false;
+        this.isCheckingSlow = false;
         return;
       }
 
       this.logger.log(
-        `[Slow Models Check] Checking ${pendingTasks.length} tasks (Pika, Wan 2.6)...`,
+        `[Slow Models Check] Checking ${pendingTasks.length} tasks...`,
       );
 
       await this.processLegacyTasks(pendingTasks);
     } catch (err) {
       this.logger.error(`Cron Slow Models error: ${err.message}`);
     } finally {
-      this.isChecking = false;
+      this.isCheckingSlow = false;
     }
   }
 
   // ========================================================
-  // 通用处理逻辑（提取出来复用）
+  // 通用处理逻辑
   // ========================================================
   private async processLegacyTasks(pendingTasks: any[]) {
     const { getResult } = usePika();
 
-    // 并发查询所有任务
     await Promise.allSettled(
       pendingTasks.map(async (task) => {
         try {
-          // 🔥 检查任务是否超时（创建时间超过 2 小时）
-          const createdAt = (task as any).createdAt || new Date();
+          // 🔥🔥🔥 核心修复：使用 updatedAt 防止误杀重试任务 🔥🔥🔥
+          // 如果是重试的任务，updatedAt 是几秒前，而 createdAt 可能是几小时前
+          const lastActiveTime =
+            (task as any).updatedAt || (task as any).createdAt || new Date();
           const now = new Date();
           const ageInMinutes =
-            (now.getTime() - createdAt.getTime()) / 1000 / 60;
+            (now.getTime() - lastActiveTime.getTime()) / 1000 / 60;
 
+          // 这里的超时设置为 120 分钟 (2小时)
           if (ageInMinutes > 120) {
             this.logger.warn(
-              `[Timeout] Task ${task.requestId} has been processing for ${Math.round(ageInMinutes)} minutes, marking as failed`,
+              `[Timeout] Task ${task.requestId} stuck for ${Math.round(ageInMinutes)} mins. Marking as failed.`,
             );
 
             task.status = 'failed';
             await task.save();
 
-            // 🔥 Push SSE error event
             this.sseConnectionManager.sendError(task.requestId, {
               message: 'Task timeout: exceeded maximum processing time',
               requestId: task.requestId,
@@ -122,10 +124,7 @@ export class LegacyModelsTask {
 
           const result = await getResult(task.requestId);
 
-          // 🔥 添加详细日志
-          this.logger.debug(
-            `[${task.modelName}] ${task.requestId} status: ${result.status}`,
-          );
+          // this.logger.debug(`[${task.modelName}] ${task.requestId} status: ${result.status}`);
 
           if (result.status === 'completed') {
             this.logger.log(
@@ -136,7 +135,6 @@ export class LegacyModelsTask {
             task.outputUrl = result.resultUrl as any;
             await task.save();
 
-            // 🔥 Push SSE completion event
             this.sseConnectionManager.sendCompletion(task.requestId, {
               id: task.requestId,
               status: task.status,
@@ -153,7 +151,6 @@ export class LegacyModelsTask {
             task.status = 'failed';
             await task.save();
 
-            // 🔥 Push SSE error event
             this.sseConnectionManager.sendError(task.requestId, {
               message: 'Task failed',
               requestId: task.requestId,

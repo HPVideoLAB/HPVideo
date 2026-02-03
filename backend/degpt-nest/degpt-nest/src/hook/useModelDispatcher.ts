@@ -92,7 +92,7 @@ export const useModelDispatcher = () => {
       }
 
       default:
-        throw new BadRequestException('不支持的模型类型');
+        throw new BadRequestException('Unsupported model type');
     }
   };
 

@@ -14,8 +14,8 @@ export const usePika = () => {
     seed?: number;
     transitions?: Array<{ duration: number; prompt?: string }>;
   }): Promise<string> => {
-    if (!apiKey) throw new Error('请检查 WAVESPEED_KEY');
-    if (!baseUrl) throw new Error('请检查 WAVESPEED_URL');
+    if (!apiKey) throw new Error('Please check WAVESPEED_KEY');
+    if (!baseUrl) throw new Error('Please check WAVESPEED_URL');
 
     const {
       prompt,
@@ -25,12 +25,12 @@ export const usePika = () => {
       transitions,
     } = args;
 
-    if (!prompt?.trim()) throw new Error('缺少 prompt');
+    if (!prompt?.trim()) throw new Error('Missing prompt');
     if (!Array.isArray(images) || images.length < 2)
-      throw new Error('images 至少 2 张（接口要求）');
-    if (images.length > 5) throw new Error('images 最多 5 张（接口要求）');
+      throw new Error('At least 2 images required (API requirement)');
+    if (images.length > 5) throw new Error('Maximum 5 images allowed (API requirement)');
     if (transitions && transitions.length !== images.length - 1) {
-      throw new Error('transitions 长度必须等于 images.length - 1');
+      throw new Error('transitions length must equal images.length - 1');
     }
 
     const payload: any = {
@@ -58,11 +58,11 @@ export const usePika = () => {
     );
 
     const text = await resp.text();
-    if (!resp.ok) throw new Error(`提交失败: ${resp.status}, ${text}`);
+    if (!resp.ok) throw new Error(`Submission failed: ${resp.status}, ${text}`);
 
     const json = JSON.parse(text);
     const requestId = json?.data?.id;
-    if (!requestId) throw new Error(`提交成功但未拿到 requestId: ${text}`);
+    if (!requestId) throw new Error(`Submission succeeded but no requestId received: ${text}`);
 
     logger.log(`[submit] ok requestId=${requestId}`);
     return requestId;
@@ -77,8 +77,8 @@ export const usePika = () => {
     raw?: any;
   }> => {
     console.log(requestId);
-    if (!apiKey) throw new Error('请检查 WAVESPEED_KEY');
-    if (!baseUrl) throw new Error('请检查 WAVESPEED_URL');
+    if (!apiKey) throw new Error('Please check WAVESPEED_KEY');
+    if (!baseUrl) throw new Error('Please check WAVESPEED_URL');
 
     const resp = await fetchWithTimeout(
       `${baseUrl}/predictions/${requestId}/result`,
@@ -88,7 +88,7 @@ export const usePika = () => {
     );
 
     const text = await resp.text();
-    if (!resp.ok) throw new Error(`查询失败: ${resp.status}, ${text}`);
+    if (!resp.ok) throw new Error(`Query failed: ${resp.status}, ${text}`);
 
     const json = JSON.parse(text);
     const data = json?.data;

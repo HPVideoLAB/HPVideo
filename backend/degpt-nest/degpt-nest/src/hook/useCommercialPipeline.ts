@@ -31,8 +31,8 @@ export const useCommercialPipeline = () => {
     negative_prompt?: string;
     shot_type?: 'single' | 'multi';
   }): Promise<string> => {
-    if (!apiKey) throw new Error('请检查 WAVESPEED_KEY');
-    if (!baseUrl) throw new Error('请检查 WAVESPEED_URL');
+    if (!apiKey) throw new Error('Please check WAVESPEED_KEY');
+    if (!baseUrl) throw new Error('Please check WAVESPEED_URL');
 
     // 构造请求体
     // 注意：这里需要确认 WaveSpeed 上 Wan 2.6/2.1 的具体参数名
@@ -79,7 +79,7 @@ export const useCommercialPipeline = () => {
     const requestId = json?.data?.id;
 
     if (!requestId) {
-      throw new Error(`提交成功但未拿到 requestId: ${text}`);
+      throw new Error(`Submission succeeded but no requestId received: ${text}`);
     }
 
     logger.log(`[Wan Submit] 成功! Task ID: ${requestId}`);

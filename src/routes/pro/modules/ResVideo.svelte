@@ -151,7 +151,7 @@
               <img class="size-10" src="/creator/static/video/video_generating.png" alt="" />
               <span class="text-sm text-gray-50 mt-2">
                 {$i18n.t('Video Generating...')}
-                ({$i18n.t('(Estimated: ')}{modelDuration[item.model]}{$i18n.t(' minutes)')})
+                {$i18n.t('(Estimated: ')}{modelDuration[item.model]}{$i18n.t(' minutes)')}
               </span>
               <span class="text-xs text-gray-100/80 mt-1 px-6 text-center">
                 {$i18n.t('Please keep this page open')}

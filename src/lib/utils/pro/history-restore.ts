@@ -75,57 +75,43 @@ export async function restoreProParams(
       }
 
       // ================= Wan 2.1 =================
-    } else if (params.model === 'commercial-pipeline' || params.model.includes('commercial')) {
-      // ✅ 修正 1: 更新清洗逻辑，兼容旧数据 ('default') 并支持新数据 ('720p'/'1080p')
-      const normalizeUpscale = (v: any): '720p' | '1080p' | '2k' | '4k' => {
-        // 1. 如果已经是新版合法值，直接返回
-        if (v === '720p' || v === '1080p' || v === '2k' || v === '4k') return v;
-
-        // 2. 兼容旧版 string: 'default' -> 映射为标准 '1080p'
-        if (v === 'default') return '1080p';
-
-        // 3. 兼容更早的 boolean: true -> 4k, false -> 1080p
-        if (v === true) return '4k';
-        if (v === false) return '1080p';
-
-        // 4. 兜底
-        return '1080p';
-      };
-
+    } // ====================================================
+    // 🔵 2. Wan 2.1 逻辑 (已修复)
+    // ====================================================
+    else if (params.model === 'wan-2.1' || params.model.includes('wan')) {
+      // 构造基础参数对象，注意字段映射
       const basicData = {
         prompt: params.prompt || '',
-        voiceId: params.voice_id || params.voiceId || 'fresh_youth', // 兼容后端下划线
-        duration: params.duration || 15,
-
-        // ❌ 删除 resolution 字段 (Store 里已经删了)
-        // resolution: params.resolution || '720p',
-
-        enableSmartEnhance: params.enableSmartEnhance ?? true,
-
-        // ✅ 使用新的清洗函数
-        enableUpscale: normalizeUpscale(params.enableUpscale),
+        negative_prompt: params.negative_prompt || '',
+        strength: params.strength ?? 0.65,
+        seed: params.seed ?? -1,
+        // 后端字段 -> 前端 Store 字段映射
+        steps: params.num_inference_steps ?? 30,
+        duration: params.duration || 5,
+        cfg: params.guidance_scale ?? 6,
+        flow: params.flow_shift ?? 3,
+        loras: params.loras || [],
       };
 
-      // 检查是否有参考图需要恢复
-      if (params.image && typeof params.image === 'string') {
+      // Wan 通常是视频生视频 (V2V)，需要下载原视频
+      if (params.video && typeof params.video === 'string') {
         toast.promise(
           async () => {
-            // 下载图片转 File
-            const file = await urlToFileApi(params.image, `commercial_${Date.now()}.jpg`);
-            callbacks.setCommercial({ ...basicData, image: file });
+            const file = await urlToFileApi(params.video, `wan_${Date.now()}.mp4`);
+            callbacks.setWan({ ...basicData, video: file });
             await tick();
             await wait(200);
-            return t('Commercial material restored successfully');
+            return t('Wan material restored successfully');
           },
           {
-            loading: t('Restoring reference image...'),
+            loading: t('Restoring Wan video...'),
             success: (m) => m,
-            error: t('Image download failed'),
+            error: t('Video download failed'),
           }
         );
       } else {
-        callbacks.setCommercial({ ...basicData, image: null });
-        toast.success(t('Commercial parameters restored'));
+        callbacks.setWan({ ...basicData, video: null });
+        toast.success(t('Wan parameters restored'));
       }
     } else if (params.model === 'sam3' || params.model.includes('sam')) {
       const basicData = {

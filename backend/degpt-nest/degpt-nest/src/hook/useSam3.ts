@@ -13,7 +13,7 @@ export const useSam3 = () => {
   const baseUrl = process.env.WAVESPEED_URL;
 
   const submitSam3Task = async (args: Sam3TaskArgs): Promise<string> => {
-    if (!apiKey || !baseUrl) throw new Error('环境变量配置缺失');
+    if (!apiKey || !baseUrl) throw new Error('Environment variable configuration missing');
 
     // SAM3 只需要这三个参数
     const { video, prompt, apply_mask = true } = args;
@@ -46,16 +46,16 @@ export const useSam3 = () => {
     const text = await resp.text();
     if (!resp.ok) {
       logger.error(`[SAM3 Error] Status: ${resp.status}, Body: ${text}`);
-      throw new Error(`SAM3 提交失败: ${resp.status}`);
+      throw new Error(`SAM3 submission failed: ${resp.status}`);
     }
 
     try {
       const json = JSON.parse(text);
       const requestId = json?.data?.id;
-      if (!requestId) throw new Error('未获取到 requestId');
+      if (!requestId) throw new Error('Failed to get requestId');
       return requestId;
     } catch (e) {
-      throw new Error(`解析 SAM3 响应失败: ${e.message}`);
+      throw new Error(`SAM3 response parsing failed: ${e.message}`);
     }
   };
 

@@ -23,7 +23,8 @@ export const exampleData: Record<string, ExampleItem[]> = {
       model: 'pika',
       coverUrl:
         'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/f7fe8a67-cc5a-4579-a232-2bafbc296f54.jpg',
-      videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/59b706c7720e4b1d80104cd4188489d1/1.mp4',
+      videoUrl:
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/02/03/0d22fb49-50f6-4a8d-a3fa-878fe0cac75c.mp4',
       params: {
         model: 'pika',
         prompt:
@@ -45,7 +46,8 @@ export const exampleData: Record<string, ExampleItem[]> = {
       model: 'pika',
       coverUrl:
         'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/bc48ba88-057c-432f-b276-cbb7e1746e27.jpg',
-      videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/4da9d3eed38a4f6bb19173ea5df393ee/1.mp4',
+      videoUrl:
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/02/03/831161b6-e057-4259-a066-6d5465a16063.mp4',
       params: {
         model: 'pika',
         prompt:
@@ -67,7 +69,8 @@ export const exampleData: Record<string, ExampleItem[]> = {
       model: 'pika',
       coverUrl:
         'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/768d75c6-213d-4c3e-8dfe-b4f4329eda9b.jpg',
-      videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/df8f4618f5b345ceb16e9fd2b8ebc334/1.mp4',
+      videoUrl:
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/02/03/4cb044b5-a511-48ac-9ee3-3bf6b285038d.mp4',
       params: {
         model: 'pika',
         prompt:
@@ -89,7 +92,8 @@ export const exampleData: Record<string, ExampleItem[]> = {
       model: 'pika',
       coverUrl:
         'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/e1772859-e0b3-4485-b7c4-fbd24f1bb448.jpg',
-      videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/ac3c4eb522a741459230586acff598a6/1.mp4',
+      videoUrl:
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/02/03/68a7d610-5ab5-4276-a327-bd61e67fb21d.mp4',
       params: {
         model: 'pika',
         prompt:
@@ -120,7 +124,7 @@ export const exampleData: Record<string, ExampleItem[]> = {
       coverUrl:
         'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/02d60835-ab71-459f-8d93-b0e1dd14eaa3.png',
       videoUrl:
-        'https://d2p7pge43lyniu.cloudfront.net/output/cfcd952e-2176-4688-b057-f7e49055a390-u2_a4b50165-4c2a-45a2-b255-128a38dda155.mp4',
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/02/03/324b3fed-8cb9-43a3-8192-f6fc1bec87cf.mp4',
       params: {
         model: 'wan-2.1',
         video:
@@ -144,7 +148,7 @@ export const exampleData: Record<string, ExampleItem[]> = {
       coverUrl:
         'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/c2cca37c-cbc2-469c-bca0-9e05322f71d8.png',
       videoUrl:
-        'https://d2p7pge43lyniu.cloudfront.net/output/d55097e9-0693-4ad7-a4eb-9b9ee2ca14aa-u1_83eb1b7a-0e56-46e3-a420-71f9ad913a06.mp4',
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/02/03/81137e80-bf02-4dce-9d31-767617c82001.mp4',
       params: {
         model: 'wan-2.1',
         video:
@@ -161,54 +165,54 @@ export const exampleData: Record<string, ExampleItem[]> = {
         seed: -1,
       },
     },
-    {
-      id: 'wan-3',
-      title: 'Claymation Style',
-      model: 'wan-2.1',
-      coverUrl:
-        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/404b7026-a407-4a3f-bfe6-918020dafc3e.png',
-      videoUrl:
-        'https://d2p7pge43lyniu.cloudfront.net/output/f10acecc-ea5f-44b7-b2c9-a239e06a911e-u2_0076be01-8af1-451e-9a91-de4712e27005.mp4',
-      params: {
-        model: 'wan-2.1',
-        video:
-          'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/f5f563bd-0086-4a17-b2db-a740bb5dbe97.mp4',
-        prompt:
-          'Keep the original motion and timing. Restyle into claymation stop-motion look, plasticine texture, soft studio lighting, slightly choppy handmade feel but stable composition, no flicker.',
-        negative_prompt: 'flicker, jitter, warping, noisy artifacts, text, watermark',
-        loras: [],
-        strength: 0.85,
-        num_inference_steps: 30,
-        duration: 5,
-        guidance_scale: 6,
-        flow_shift: 4,
-        seed: -1,
-      },
-    },
-    {
-      id: 'wan-4',
-      title: 'Vintage Black & White Film',
-      model: 'wan-2.1',
-      coverUrl:
-        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/99050830-c420-41fe-b26d-77d74f905528.png',
-      videoUrl:
-        'https://d2p7pge43lyniu.cloudfront.net/output/0523df68-b228-4073-baee-7ff518b7e268-u2_4ebb44e9-aef9-48a6-bd95-171f1ace2780.mp4',
-      params: {
-        model: 'wan-2.1',
-        video:
-          'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/91265960-2138-4a3f-ba88-6bd8adb231e4.mp4',
-        prompt:
-          'Keep the same motion and timing. Convert to 1920s vintage silent film: black and white, soft contrast, subtle grain, occasional light scratches, stable composition, no flicker.',
-        negative_prompt: 'color, modern look, heavy flicker, warping, face distortion, text, watermark',
-        loras: [],
-        strength: 0.7,
-        num_inference_steps: 28,
-        duration: 5,
-        guidance_scale: 6,
-        flow_shift: 4,
-        seed: -1,
-      },
-    },
+    // {
+    //   id: 'wan-3',
+    //   title: 'Claymation Style',
+    //   model: 'wan-2.1',
+    //   coverUrl:
+    //     'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/404b7026-a407-4a3f-bfe6-918020dafc3e.png',
+    //   videoUrl:
+    //     'https://d2p7pge43lyniu.cloudfront.net/output/f10acecc-ea5f-44b7-b2c9-a239e06a911e-u2_0076be01-8af1-451e-9a91-de4712e27005.mp4',
+    //   params: {
+    //     model: 'wan-2.1',
+    //     video:
+    //       'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/f5f563bd-0086-4a17-b2db-a740bb5dbe97.mp4',
+    //     prompt:
+    //       'Keep the original motion and timing. Restyle into claymation stop-motion look, plasticine texture, soft studio lighting, slightly choppy handmade feel but stable composition, no flicker.',
+    //     negative_prompt: 'flicker, jitter, warping, noisy artifacts, text, watermark',
+    //     loras: [],
+    //     strength: 0.85,
+    //     num_inference_steps: 30,
+    //     duration: 5,
+    //     guidance_scale: 6,
+    //     flow_shift: 4,
+    //     seed: -1,
+    //   },
+    // },
+    // {
+    //   id: 'wan-4',
+    //   title: 'Vintage Black & White Film',
+    //   model: 'wan-2.1',
+    //   coverUrl:
+    //     'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/99050830-c420-41fe-b26d-77d74f905528.png',
+    //   videoUrl:
+    //     'https://d2p7pge43lyniu.cloudfront.net/output/0523df68-b228-4073-baee-7ff518b7e268-u2_4ebb44e9-aef9-48a6-bd95-171f1ace2780.mp4',
+    //   params: {
+    //     model: 'wan-2.1',
+    //     video:
+    //       'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/91265960-2138-4a3f-ba88-6bd8adb231e4.mp4',
+    //     prompt:
+    //       'Keep the same motion and timing. Convert to 1920s vintage silent film: black and white, soft contrast, subtle grain, occasional light scratches, stable composition, no flicker.',
+    //     negative_prompt: 'color, modern look, heavy flicker, warping, face distortion, text, watermark',
+    //     loras: [],
+    //     strength: 0.7,
+    //     num_inference_steps: 28,
+    //     duration: 5,
+    //     guidance_scale: 6,
+    //     flow_shift: 4,
+    //     seed: -1,
+    //   },
+    // },
   ],
 
   // ====================================================
@@ -223,7 +227,8 @@ export const exampleData: Record<string, ExampleItem[]> = {
       model: 'sam3',
       coverUrl:
         'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/5dc55255-ea62-4455-8fcc-c6a685790bf1.png',
-      videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/896e4973091747b8985a7eed122657c1/1.mp4',
+      videoUrl:
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/02/03/5dc194b8-dc40-40a3-a0e3-3dc63409be53.mp4',
       params: {
         model: 'sam3',
         prompt: 'the woman',
@@ -239,7 +244,8 @@ export const exampleData: Record<string, ExampleItem[]> = {
       model: 'sam3',
       coverUrl:
         'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/b62dd559-fb11-4e6f-9985-1ffe33bef460.png',
-      videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/a8873f79cd1d4fdbb965825f25afccc5/1.mp4',
+      videoUrl:
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/02/03/61b5fac2-3d6f-4a0e-a7b4-8f4735b1bfcb.mp4',
       params: {
         model: 'sam3',
         prompt: 'the car',
@@ -255,7 +261,8 @@ export const exampleData: Record<string, ExampleItem[]> = {
       model: 'sam3',
       coverUrl:
         'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/d6199a07-fd39-49b1-9f8e-237df92da44a.png',
-      videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/799b3effcbe241c6a96af98042e0e4d7/1.mp4',
+      videoUrl:
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/02/03/3328d0c1-2664-4d05-ade4-8a71bcd3ed1e.mp4',
       params: {
         model: 'sam3',
         prompt: 'cat,butterfly',
@@ -271,7 +278,8 @@ export const exampleData: Record<string, ExampleItem[]> = {
       model: 'sam3',
       coverUrl:
         'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/093a9726-a807-4d6e-a7fe-6b99106dfc71.png',
-      videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/4b64de75a49547a28ac9040cc5e6e8df/1.mp4',
+      videoUrl:
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/02/03/9ba215df-b178-4cea-830b-2cf1ea42a14a.mp4',
       params: {
         model: 'sam3',
         prompt: 'High heels, lipstick',
@@ -291,11 +299,14 @@ export const exampleData: Record<string, ExampleItem[]> = {
       title: 'Artisan Brew: Cinematic Coffee Showcase',
       model: 'commercial-pipeline',
       // 这里我放了占位图片/视频链接，你可以换成你自己生成的真实案例链接
-      coverUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/eef9be6fc3834c0788d7c74fd3e0cb6b/1.png',
-      videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/6f49bdf2c50e4ad6a6dfe818f67b09c3/1.mp4',
+      coverUrl:
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/02/03/a261ec7b-8533-4838-a015-cb96615f86de.png',
+      videoUrl:
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/02/03/0cba5084-a409-4e9a-8482-6bfd3cd9a523.mp4',
       params: {
         model: 'commercial-pipeline',
-        image: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/eef9be6fc3834c0788d7c74fd3e0cb6b/1.png',
+        image:
+          'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/02/03/a261ec7b-8533-4838-a015-cb96615f86de.png',
         prompt: '这个杯子的宣传视频',
         voiceId: 'fresh_youth',
         duration: 15,
@@ -309,12 +320,13 @@ export const exampleData: Record<string, ExampleItem[]> = {
       title: 'Midnight Aura: High-End Fragrance Aesthetics',
       model: 'commercial-pipeline',
       coverUrl:
-        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/27/23b03fb7-3855-4de7-a50f-bdd7a4edbbb9.jpg',
-      videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/217c8540aa864652a146677d4332f4e9/1.mp4',
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/02/03/b25ad2c8-920e-4b53-b65a-9c0958761c80.jpg',
+      videoUrl:
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/02/03/8aa679ed-7aec-4711-8014-e889715af162.mp4',
       params: {
         model: 'commercial-pipeline',
         image:
-          'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/27/23b03fb7-3855-4de7-a50f-bdd7a4edbbb9.jpg',
+          'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/02/03/b25ad2c8-920e-4b53-b65a-9c0958761c80.jpg',
         prompt: 'Elegant perfume bottle rotation, soft luxury lighting, macro details.',
         voiceId: 'elegant_queen',
         duration: 15,
@@ -328,12 +340,13 @@ export const exampleData: Record<string, ExampleItem[]> = {
       title: 'Vanguard Gear: Next-Gen Smartwatch Interaction',
       model: 'commercial-pipeline',
       coverUrl:
-        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/27/92dc7a3c-95ce-4a23-9c76-597bc20fd2ff.jpg',
-      videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/9c7ae95b61524caabdc5db3abbdb169b/1.mp4',
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/02/03/3d348df6-1f4a-4cf4-b892-4912eef72672.jpg',
+      videoUrl:
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/02/03/69a96d4c-17a9-46ee-b720-ec731c86bc0c.mp4',
       params: {
         model: 'commercial-pipeline',
         image:
-          'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/27/92dc7a3c-95ce-4a23-9c76-597bc20fd2ff.jpg',
+          'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/02/03/3d348df6-1f4a-4cf4-b892-4912eef72672.jpg',
         prompt: '이 스마트워치 홍보 영상에는 인물이 출연하고 대사가 있어야 합니다.',
         voiceId: 'cyber_ai',
         duration: 15,
@@ -348,12 +361,13 @@ export const exampleData: Record<string, ExampleItem[]> = {
       title: 'Iconic Glow: Social-First Beauty Campaign',
       model: 'commercial-pipeline',
       coverUrl:
-        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/27/2027b383-1643-4fa1-9b1a-fa32fe274f37.jpg',
-      videoUrl: 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/7d2d628a8da54248a0c60d8a671d8a77/1.mp4',
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/02/03/23d4340a-dc63-4072-889a-a39fe4bff85e.jpg',
+      videoUrl:
+        'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/02/03/3e284143-81c7-47b4-9440-dcf85573742e.mp4',
       params: {
         model: 'commercial-pipeline',
         image:
-          'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/27/2027b383-1643-4fa1-9b1a-fa32fe274f37.jpg',
+          'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/02/03/23d4340a-dc63-4072-889a-a39fe4bff85e.jpg',
         prompt: `（把镜头凑到脸旁）
 “家人们谁懂啊！这支口红的质地也太绝了！”
 （突然对着镜头亲了一口纸巾）

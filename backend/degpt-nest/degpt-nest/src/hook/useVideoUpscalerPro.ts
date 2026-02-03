@@ -11,12 +11,12 @@ export const useVideoUpscalerPro = () => {
     video: string;
     target_resolution?: '720p' | '1080p' | '2k' | '4k';
   }): Promise<string> => {
-    if (!apiKey) throw new Error('请检查 WAVESPEED_KEY');
-    if (!baseUrl) throw new Error('请检查 WAVESPEED_URL');
+    if (!apiKey) throw new Error('Please check WAVESPEED_KEY');
+    if (!baseUrl) throw new Error('Please check WAVESPEED_URL');
 
     const { video, target_resolution = '1080p' } = args;
 
-    if (!video?.trim()) throw new Error('缺少 video');
+    if (!video?.trim()) throw new Error('Missing video');
 
     const payload = { video, target_resolution };
 
@@ -37,11 +37,11 @@ export const useVideoUpscalerPro = () => {
     );
 
     const text = await resp.text();
-    if (!resp.ok) throw new Error(`提交失败: ${resp.status}, ${text}`);
+    if (!resp.ok) throw new Error(`Submission failed: ${resp.status}, ${text}`);
 
     const json = JSON.parse(text);
     const requestId = json?.data?.id;
-    if (!requestId) throw new Error(`提交成功但未拿到 requestId: ${text}`);
+    if (!requestId) throw new Error(`Submission succeeded but no requestId received: ${text}`);
 
     logger.log(`[submit] ok requestId=${requestId}`);
     return requestId;
@@ -55,8 +55,8 @@ export const useVideoUpscalerPro = () => {
     error?: string;
     raw?: any;
   }> => {
-    if (!apiKey) throw new Error('请检查 WAVESPEED_KEY');
-    if (!baseUrl) throw new Error('请检查 WAVESPEED_URL');
+    if (!apiKey) throw new Error('Please check WAVESPEED_KEY');
+    if (!baseUrl) throw new Error('Please check WAVESPEED_URL');
 
     const resp = await fetchWithTimeout(
       `${baseUrl}/predictions/${requestId}/result`,
@@ -66,7 +66,7 @@ export const useVideoUpscalerPro = () => {
     );
 
     const text = await resp.text();
-    if (!resp.ok) throw new Error(`查询失败: ${resp.status}, ${text}`);
+    if (!resp.ok) throw new Error(`Query failed: ${resp.status}, ${text}`);
 
     const json = JSON.parse(text);
     const data = json?.data;

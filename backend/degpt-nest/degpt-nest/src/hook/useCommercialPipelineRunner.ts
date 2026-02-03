@@ -17,15 +17,23 @@ export const useCommercialPipelineRunner = () => {
     catModel: any;
     sseConnectionManager?: any; // 🔥 新增：SSE 连接管理器
   }) => {
-    const { dto, record, userId, txHash, smartEnhancerService, catModel, sseConnectionManager } =
-      args;
+    const {
+      dto,
+      record,
+      userId,
+      txHash,
+      smartEnhancerService,
+      catModel,
+      sseConnectionManager,
+    } = args;
 
     const originalPrompt = dto.prompt ?? '';
     const productImage = dto.image;
 
     // 校验
-    if (!dto.duration) throw new BadRequestException('缺少 duration');
-    if (!productImage) throw new BadRequestException('缺少 image（产品图）');
+    if (!dto.duration) throw new BadRequestException('Missing duration');
+    if (!productImage)
+      throw new BadRequestException('Missing image (product image)');
 
     // =================================================================
     // 🔥🔥🔥 修改核心：解析画质参数 🔥🔥🔥
@@ -71,22 +79,28 @@ export const useCommercialPipelineRunner = () => {
       stage: 'wan_submitted',
       videoPrompt: '',
       startFrame: null,
-      wanRequestId: '',
+      wanRequestId: '', // 初始为空，等待下方异步填充
       enableUpscale: upscaleTarget, // 🔥 这里存真正的超分指令
     };
 
     // 🔥🔥🔥 关键修改：先创建数据库记录并返回 requestId，然后异步处理 🔥🔥🔥
     try {
-      // 1. 先创建数据库记录（状态为 processing）
+      // 1. 先创建/重置数据库记录（状态为 processing）
       if (record) {
         record.requestId = pipelineId;
         record.userId = userId;
         record.modelName = 'commercial-pipeline';
         record.prompt = originalPrompt;
+        // 🔥 彻底覆盖旧的 params，特别是清空之前的 wanRequestId，确保这次是全新的运行
         record.params = { ...dto, pipeline: pipelineStateBase };
         record.status = 'processing';
         record.thumbUrl = productImage; // 先用原图作为缩略图
         record.outputUrl = '';
+        // 🔥 重要：更新 createdAt，避免 Cron Task 误判为超时任务
+        (record as any).createdAt = new Date();
+
+        // 标记 params 已修改 (Mongoose 混合类型必须)
+        record.markModified('params');
         await record.save();
       } else {
         const newRecord = new catModel({
@@ -104,7 +118,9 @@ export const useCommercialPipelineRunner = () => {
       }
 
       // 2. 立即返回 requestId 给前端
-      logger.log(`[Commercial Pipeline] 任务已创建: ${pipelineId}，开始后台处理`);
+      logger.log(
+        `[Commercial Pipeline] 任务已创建: ${pipelineId}，开始后台处理`,
+      );
 
       // 3. 在后台异步处理（不阻塞响应）
       setImmediate(async () => {
@@ -160,17 +176,24 @@ export const useCommercialPipelineRunner = () => {
             stage: 'wan_submitted',
             videoPrompt: finalPrompt,
             startFrame,
-            wanRequestId: wanId,
+            wanRequestId: wanId, // ✅ 这里拿到了关键的第三方 ID
             enableUpscale: upscaleTarget,
           };
 
           // 更新数据库
+          // 注意：需重新 findOne，因为 record 对象在异步过程中可能不是最新的
           const taskRecord = await catModel.findOne({ requestId: pipelineId });
           if (taskRecord) {
             taskRecord.params = { ...dto, pipeline: pipelineState };
             taskRecord.thumbUrl = startFrame;
+
+            // 🔥 再次标记并保存，确保存入 wanId
+            taskRecord.markModified('params');
             await taskRecord.save();
-            logger.log(`[Commercial Pipeline] 任务 ${pipelineId} 已提交到 Wan 2.6: ${wanId}`);
+
+            logger.log(
+              `[Commercial Pipeline] 任务 ${pipelineId} 已提交到 Wan 2.6: ${wanId}`,
+            );
 
             // 🔥 发送 SSE 状态更新：视频生成中
             if (sseConnectionManager) {
@@ -197,12 +220,14 @@ export const useCommercialPipelineRunner = () => {
           if (taskRecord) {
             taskRecord.params = { ...dto, pipeline: failedPipelineState };
             taskRecord.status = 'failed';
+            taskRecord.markModified('params'); // 确保错误信息被保存
             await taskRecord.save();
             logger.error(`[Commercial Pipeline] 任务 ${pipelineId} 标记为失败`);
 
-            // 🔥 通过 SSE 推送失败事件
+            // 🔥 通过 SSE 推送失败事件并关闭连接
             if (sseConnectionManager) {
-              sseConnectionManager.sendEvent(pipelineId, 'failed', {
+              // ✅ 修正：改用 sendError，它会发送 failed 事件并调用 closeConnections()
+              sseConnectionManager.sendError(pipelineId, {
                 id: pipelineId,
                 status: 'failed',
                 error: errMsg,
@@ -222,19 +247,10 @@ export const useCommercialPipelineRunner = () => {
       logger.error(`[Commercial Pipeline] 创建任务失败: ${errMsg}`);
 
       throw new BadRequestException(
-        `任务创建失败 (${errMsg})，请稍后重试。`,
+        `Task creation failed (${errMsg}), please try again later.`,
       );
     }
   };
-  let a = {
-    prompt:
-      "15s premium cinematic product commercial, image-to-video. Maintain the cup exactly as in the reference image (no changes to design, color, material, logo, texture). Setting stays minimal: modern tabletop, soft neutral background, controlled reflections. Camera style: smooth dolly, arc moves, rack focus, macro close-ups, motivated transitions (parallax slide, subtle whip-pan). Color grade: clean commercial with gentle warm highlights, soft vignette.\n\nBGM (0-15s): upbeat modern lo-fi pop with bright plucks, light kick, soft claps, and warm bass; energetic but classy.\nSFX (throughout): soft studio room tone, subtle cloth movement, gentle fingertip taps, micro “whoosh” transitions, ceramic/metallic contact sounds only if contact is shown, light sparkle accent on hero reveal.\n\n0-3s (Hook): Extreme close-up macro glide across the cup’s surface and edge, shallow DOF, highlights roll smoothly as camera dolly-slides left-to-right. Rack focus reveals the cup’s key visual area. SFX: tiny airy whoosh + soft sparkle. The character @[Energetic, bright, youthful male voice, college student vibe, friendly, sunny and optimistic, clear articulation.] says '第一眼就很心动，这 个杯子也太有质感了吧！'\n\n3-6s (Lifestyle touch): Cut via subtle parallax wipe to a medium close-up. A young Asian male (20-26, clean casual campus style) enters frame; only hands and lower face briefly visible to keep product primary. He gently picks up the cup (no twisting or actions that imply features not visible). Camera: slow dolly-in with slight arc around the cup in his hand; background stays soft and uncluttered. SFX: soft hand movement, faint fabric rustle. Dialogue continues: '拿在手里刚刚好，日常上课、通勤都很搭。'\n\n6-9s (Detail hero): Macro detail sequence: top-down then low-angle close-up, rack focus between rim and body; controlled specular highlights, crisp edges. Transition: micro whip-pan that lands on a stable hero close-up. SFX: gentle whoosh. Dialogue: '细节做得很到位，看着干净利落，越看越喜欢。'\n\n9-12s (Use moment): Medium shot at a bright desk scene. He sets the cup down carefully on the tabletop; camera follows with a stabilized tilt-down and slight push-in to a hero resting position. Keep actions neutral—no visible liquid if not shown in reference. SFX: soft, satisfying “tap” on table + room tone. Dialogue: '不管放在书桌还是办公室，一摆上就很有氛围。'\n\n12-15s (Final hero + CTA): Final hero frame: cup centered, slow dolly-in, subtle rotating light sweep to accent contours; background gradient clean with negative space for brand text (no new logos added). End on a crisp still-like hold. SFX: gentle rising whoosh + soft sparkle accent on final frame. Dialogue: '想要高级感和实用兼顾，就选它——现在就去看看！' Keep the product exactly as in the reference image.",
-    image:
-      'https://d2p7pge43lyniu.cloudfront.net/output/3cbaefcc-0822-4c4f-8cc8-9c3a91027f1d.png',
-    duration: 15,
-    ratio: '16:9',
-    resolution: '720p',
-    seed: -1,
-  };
+
   return { run };
 };

@@ -43,8 +43,6 @@ export type SubmitReq = {
 
 // 生成任务ID
 export async function submitLargeLanguageModel(payload: SubmitReq, address): Promise<{ requestId: string }> {
-  const token = localStorage.getItem('token') || localStorage.getItem('access_token') || '';
-
   const res = await fetch(`${NEST_API_BASE_URL}/large-language-model`, {
     method: 'POST',
     headers: {

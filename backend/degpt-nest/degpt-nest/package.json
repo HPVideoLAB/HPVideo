@@ -31,6 +31,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
     "express": "^5.2.1",
+    "https-proxy-agent": "^7.0.6",
     "mongoose": "^9.0.0",
     "multer": "^2.0.2",
     "openai": "^6.9.1",

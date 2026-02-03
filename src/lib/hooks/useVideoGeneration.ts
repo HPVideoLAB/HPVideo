@@ -139,17 +139,19 @@ export function useVideoGeneration() {
     onSuccess: (() => void) | undefined,
     pollConfig: { intervalMs: number; timeoutMs: number }
   ) => {
-    let eventSource: EventSource | any = null;
+    let eventSource: any | null = null;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    let isCompleted = false; // 🔥 添加标志位，避免重复处理
+    let isCompleted = false; // 🔥 标志位：防止重复处理 success/fail/error
+    let realRequestId = ''; // 用于 catch 块中定位正确的 ID
 
     try {
       const { requestId } = await submitLargeLanguageModel(payload, addressArg);
+      realRequestId = requestId;
 
       // 临时ID -> 真实 requestId
       // 🔥 修复：如果 requestId 已存在（重试场景），先移除旧记录，避免重复 key
       history.update((list) => {
-        // 1. 移除所有与 requestId 相同的旧记录（可能是之前失败的任务）
+        // 1. 移除所有与 requestId 相同的旧记录（防止重试时 ID 冲突）
         const filtered = list.filter((item) => item.id !== requestId);
         // 2. 将当前的 tempId 替换为 requestId
         return filtered.map((item) => (item.id === tempId ? { ...item, id: requestId } : item));
@@ -158,25 +160,31 @@ export function useVideoGeneration() {
       // 🔥 使用 SSE 替代轮询
       await new Promise<void>((resolve, reject) => {
         // 建立 SSE 连接
-        console.log(`🔌 建立 SSE 连接: ${NEST_API_BASE_URL}/large-language-model/${requestId}/stream`);
-        eventSource = new EventSource(`${NEST_API_BASE_URL}/large-language-model/${requestId}/stream`);
+        const streamUrl = `${NEST_API_BASE_URL}/large-language-model/${requestId}/stream`;
+        console.log(`🔌 建立 SSE 连接: ${streamUrl}`);
 
-        // 设置超时
+        eventSource = new EventSource(streamUrl);
+
+        // 设置超时保险 (防止 SSE 挂死)
         timeoutId = setTimeout(() => {
           if (!isCompleted) {
             console.error('⏰ SSE 连接超时');
-            if (eventSource) eventSource.close();
+            if (eventSource) {
+              eventSource.close();
+              eventSource = null;
+            }
             reject(new Error('SSE connection timeout'));
           }
         }, pollConfig.timeoutMs);
 
-        // 🔥 监听 status 事件（进度更新）
+        // ------------------------------------------
+        // 1. 监听 status 事件（进度更新）
+        // ------------------------------------------
         eventSource.addEventListener('status', (event) => {
           try {
             const data = JSON.parse(event.data);
             console.log('📊 SSE: 状态更新', data);
 
-            // 更新历史记录中的状态信息（可选，用于显示进度）
             history.update((list) =>
               list.map((item) =>
                 item.id === requestId
@@ -196,10 +204,19 @@ export function useVideoGeneration() {
           }
         });
 
-        // 监听 completed 事件
+        // ------------------------------------------
+        // 2. 监听 completed 事件 (成功)
+        // ------------------------------------------
         eventSource.addEventListener('completed', (event) => {
           console.log('✅ SSE: 生成完成');
           isCompleted = true;
+
+          // 立即关闭连接
+          if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+          }
+          if (timeoutId) clearTimeout(timeoutId);
 
           try {
             const data = JSON.parse(event.data);
@@ -220,10 +237,6 @@ export function useVideoGeneration() {
 
             isGenerating.set(false);
             onSuccess?.();
-
-            // 清理
-            if (timeoutId) clearTimeout(timeoutId);
-            if (eventSource) eventSource.close();
             resolve();
           } catch (parseError) {
             console.error('Failed to parse completed event:', parseError);
@@ -231,60 +244,76 @@ export function useVideoGeneration() {
           }
         });
 
-        // 监听 failed 事件
+        // ------------------------------------------
+        // 3. 监听 failed 事件 (失败)
+        // ------------------------------------------
         eventSource.addEventListener('failed', (event) => {
-          console.error('❌ SSE: 任务失败 (failed event)');
+          console.error('❌ SSE: 收到后端 failed 事件');
           isCompleted = true;
+
+          // 🔥 关键：收到失败立即关闭连接，防止后续触发 onerror 导致逻辑混乱
+          if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+          }
+          if (timeoutId) clearTimeout(timeoutId);
 
           try {
             const data = JSON.parse(event.data);
             const errorMsg = data.error || data.message || 'Task failed';
-
-            // 清理
-            if (timeoutId) clearTimeout(timeoutId);
-            if (eventSource) eventSource.close();
-            reject(new Error(errorMsg));
+            reject(new Error(errorMsg)); // 向上抛出错误
           } catch (parseError) {
-            reject(new Error('Task failed'));
+            reject(new Error('Task failed (parse error)'));
           }
         });
 
-        // 🔥 监听连接错误（这是 EventSource 的原生错误事件，没有 data）
+        // ------------------------------------------
+        // 4. 监听连接错误 (onerror)
+        // ------------------------------------------
+        // 注意：当后端调用 res.end() 关闭连接时，浏览器也会触发 onerror
         eventSource.onerror = (error) => {
-          console.error('❌ SSE connection error (onerror):', error);
-
-          // 🔥 如果任务已完成，忽略连接错误（可能是服务器正常关闭连接）
+          // 如果已经标记为完成（无论成功还是失败），说明这是正常的连接断开，忽略
           if (isCompleted) {
-            console.log('ℹ️ SSE: 任务已完成，忽略连接关闭事件');
+            console.log('ℹ️ SSE: 连接关闭 (预期内，忽略)');
             return;
           }
 
-          // 清理
-          if (timeoutId) clearTimeout(timeoutId);
-          if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
-            eventSource.close();
-          }
+          console.error('❌ SSE 连接异常 (onerror):', error);
 
-          reject(new Error('SSE connection error'));
+          // 🔥 关键：EventSource 默认会自动重连。必须手动关闭它！
+          // 否则会无限重试，导致死循环
+          if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+          }
+          if (timeoutId) clearTimeout(timeoutId);
+
+          // 判定为连接意外断开
+          reject(new Error('SSE connection closed unexpectedly or failed'));
         };
       });
     } catch (error: any) {
       console.error('Task Failed:', error);
 
-      // 失败逻辑
+      // 失败 UI 更新逻辑
       history.update((list) => {
-        const targetId = list.find((i) => i.id === tempId) ? tempId : list.find((i) => i.status === 'processing')?.id;
+        // 优先使用 realRequestId，如果没有则使用 tempId
+        const targetId = realRequestId || tempId;
         return list.map((item) => (item.id === targetId ? { ...item, status: 'failed' } : item));
       });
-      isGenerating.set(false);
 
+      isGenerating.set(false);
       toast.error(`生成出错: ${error.message}`);
 
-      throw error;
+      // 不需要 throw error，因为我们在 catch 里处理了 UI 状态
+      // 如果外部还有 try-catch 也可以 throw
     } finally {
-      // 清理资源
+      // 兜底清理
       if (timeoutId) clearTimeout(timeoutId);
-      if (eventSource) eventSource.close();
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
       isGenerating.set(false);
     }
   };
@@ -376,7 +405,7 @@ export function useVideoGeneration() {
     } catch (e: any) {
       isGenerating.set(false);
       history.update((l) => l.filter((i) => i.id !== tempId));
-      alert(`${modelKey} 启动失败: ${e.message}`);
+      alert(`${modelKey} failed: ${e.message}`);
     }
   };
 

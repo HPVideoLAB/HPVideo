@@ -25,7 +25,6 @@ export class CommercialPipelineTask {
 
   // ========================================================
   // 1. 监工 A: 盯着 Wan 2.6
-  // 优化点：频率改为每 30 秒 (或者 EVERY_MINUTE)
   // ========================================================
   @Cron(CronExpression.EVERY_10_SECONDS)
   async checkWanGenerationStatus() {
@@ -61,30 +60,40 @@ export class CommercialPipelineTask {
             const pipelineState = task.params.pipeline;
             const wanId = pipelineState.wanRequestId;
 
-            // 🔥 检查任务是否超时（创建时间超过 10 分钟且没有 wanRequestId）
-            const createdAt = (task as any).createdAt || new Date();
+            // 🔥🔥🔥 核心修复：防止误杀重试任务 🔥🔥🔥
+            // 如果是重试任务，createdAt 会很久远，导致立刻超时。
+            // 所以优先使用 updatedAt (最后更新时间) 来判断“当前这轮”是否超时。
+            // (注意：前提是你的 Schema 开启了 timestamps: true)
+            const lastActiveTime =
+              (task as any).updatedAt || (task as any).createdAt || new Date();
             const now = new Date();
             const ageInMinutes =
-              (now.getTime() - createdAt.getTime()) / 1000 / 60;
+              (now.getTime() - lastActiveTime.getTime()) / 1000 / 60;
 
+            // 1. 检查提交阶段超时 (没有 wanRequestId 且超过 10 分钟)
+            // 这种通常是 OpenAI 挂了或者 Runner 里的逻辑卡死了
             if (!wanId && ageInMinutes > 10) {
               this.logger.warn(
-                `[Timeout] Task ${task.requestId} has no wanRequestId after ${Math.round(ageInMinutes)} minutes, marking as failed`,
+                `[Timeout] Task ${task.requestId} stuck in submission phase for ${Math.round(ageInMinutes)} mins. Marking as failed.`,
               );
 
               task.status = 'failed';
-              task.params.pipeline.error = 'Task submission failed or timed out';
+              task.params.pipeline.error =
+                'Task submission timed out (OpenAI or Network issue)';
               task.params.pipeline.stage = 'completed_with_error';
               task.markModified('params');
               await task.save();
 
               // 🔥 Push SSE error event
               this.sseConnectionManager.sendError(task.requestId, {
-                message: 'Task submission failed or timed out',
+                message: 'Task submission timed out',
                 requestId: task.requestId,
               });
               return;
             }
+
+            // 如果连 wanId 都没有，就不去查 Wavespeed 了，直接跳过等下次 (或等上面的超时杀掉)
+            if (!wanId) return;
 
             const wanResult = await getWanResult(wanId);
 
@@ -95,7 +104,6 @@ export class CommercialPipelineTask {
                 task.params.pipeline.error = 'No output URL';
                 await task.save();
 
-                // 🔥 Push SSE event
                 this.sseConnectionManager.sendError(task.requestId, {
                   message: 'No output URL from Wan 2.6',
                   requestId: task.requestId,
@@ -117,7 +125,6 @@ export class CommercialPipelineTask {
                 task.params.pipeline.wanOutputUrl = rawVideoUrl;
                 task.params.pipeline.upscaleRequestId = upscaleId;
 
-                // 🔥 Push SSE status update
                 this.sseConnectionManager.sendStatusUpdate(task.requestId, {
                   status: 'processing',
                   stage: 'upscaling',
@@ -133,7 +140,6 @@ export class CommercialPipelineTask {
               task.markModified('params');
               await task.save();
 
-              // 🔥 Push SSE completion event (if not going to upscale)
               if (!upscale || upscale === 'default') {
                 this.sseConnectionManager.sendCompletion(task.requestId, {
                   id: task.requestId,
@@ -152,16 +158,16 @@ export class CommercialPipelineTask {
               task.markModified('params');
               await task.save();
 
-              // 🔥 Push SSE error event
               this.sseConnectionManager.sendError(task.requestId, {
                 message: wanResult.errorMessage || 'Wan 2.6 generation failed',
                 requestId: task.requestId,
               });
             } else if (wanResult.status === 'UNKNOWN') {
-              // 🔥 处理 UNKNOWN 状态：如果任务运行超过 30 分钟，标记为失败
-              if (ageInMinutes > 30) {
+              // 🔥 UNKNOWN 超时逻辑
+              if (ageInMinutes > 60) {
+                // 放宽到 60 分钟，因为 Wan 2.6 很慢
                 this.logger.error(
-                  `[Timeout] Task ${task.requestId} has been in UNKNOWN state for ${Math.round(ageInMinutes)} minutes, marking as failed`,
+                  `[Timeout] Task ${task.requestId} UNKNOWN state for ${Math.round(ageInMinutes)} mins.`,
                 );
                 task.status = 'failed';
                 task.params.pipeline.error =
@@ -170,32 +176,31 @@ export class CommercialPipelineTask {
                 task.markModified('params');
                 await task.save();
 
-                // 🔥 Push SSE error event
                 this.sseConnectionManager.sendError(task.requestId, {
                   message: 'Task timeout or API error',
                   requestId: task.requestId,
                 });
               }
             } else if (wanResult.status === 'RUNNING') {
-              // 🔥 处理 RUNNING 状态：如果任务运行超过 30 分钟，标记为失败
-              if (ageInMinutes > 30) {
+              // 🔥 RUNNING 超时逻辑
+              if (ageInMinutes > 60) {
+                // 放宽到 60 分钟
                 this.logger.error(
-                  `[Timeout] Task ${task.requestId} has been running for ${Math.round(ageInMinutes)} minutes, marking as failed`,
+                  `[Timeout] Task ${task.requestId} RUNNING for ${Math.round(ageInMinutes)} mins.`,
                 );
                 task.status = 'failed';
-                task.params.pipeline.error = 'Task timeout: exceeded maximum processing time';
+                task.params.pipeline.error =
+                  'Task timeout: exceeded maximum processing time';
                 task.params.pipeline.stage = 'completed_with_error';
                 task.markModified('params');
                 await task.save();
 
-                // 🔥 Push SSE error event
                 this.sseConnectionManager.sendError(task.requestId, {
                   message: 'Task timeout: exceeded maximum processing time',
                   requestId: task.requestId,
                 });
               }
             }
-            // 其他状态（PENDING）不做操作，继续等待
           } catch (innerErr) {
             this.logger.error(
               `Task ${task.requestId} check error: ${innerErr.message}`,
@@ -212,7 +217,6 @@ export class CommercialPipelineTask {
 
   // ========================================================
   // 2. 监工 B: 盯着 Upscale
-  // 优化点：Upscale 比较快(几十秒)，可以用 10秒 或 30秒
   // ========================================================
   @Cron(CronExpression.EVERY_10_SECONDS)
   async checkUpscaleStatus() {
@@ -235,10 +239,12 @@ export class CommercialPipelineTask {
 
       const { getResult } = useVideoUpscalerPro();
 
-      // 同样使用并发查询
       await Promise.allSettled(
         scalingTasks.map(async (task) => {
           try {
+            // 这里也可以加上类似的超时逻辑，不过 Upscale 很快，不加也行
+            // 为了稳妥，如果你想加，也可以加上 ageInMinutes > 10 的判断
+
             const upscaleId = task.params.pipeline.upscaleRequestId;
             const result = await getResult(upscaleId);
 
@@ -255,7 +261,6 @@ export class CommercialPipelineTask {
               task.markModified('params');
               await task.save();
 
-              // 🔥 Push SSE completion event with full task data
               this.sseConnectionManager.sendCompletion(task.requestId, {
                 id: task.requestId,
                 status: task.status,
@@ -272,7 +277,6 @@ export class CommercialPipelineTask {
               task.markModified('params');
               await task.save();
 
-              // 🔥 Push SSE completion event with warning
               this.sseConnectionManager.sendCompletion(task.requestId, {
                 id: task.requestId,
                 status: task.status,
