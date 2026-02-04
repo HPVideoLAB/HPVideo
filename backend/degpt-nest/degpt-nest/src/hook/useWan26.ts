@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import { COMMERCIAL_VIDEO_NEGATIVE_PROMPT } from '@/constants/voice-presets';
 
 export const useWan26 = () => {
   const logger = new Logger('UseWan26');
@@ -24,10 +25,10 @@ export const useWan26 = () => {
       // ✅ 接收 DTO 传来的参数
       duration: params.duration,
       resolution: params.resolution || '720p', // 默认 1080p
-      // negative_prompt: params.negative_prompt,
+      negative_prompt: COMMERCIAL_VIDEO_NEGATIVE_PROMPT,
       shot_type: 'multi', // 默认多镜头叙事
 
-      enable_prompt_expansion: true,
+      enable_prompt_expansion: false,
       seed: -1,
     };
 

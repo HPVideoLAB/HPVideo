@@ -55,7 +55,7 @@ export class UseOpenAI {
         input: fullInput,
         reasoning: { effort: reasoningEffort },
         text: { verbosity: verbosity },
-        max_output_tokens: maxTokens,
+        // max_output_tokens: maxTokens,
       };
 
       if (reasoningEffort === 'none') {

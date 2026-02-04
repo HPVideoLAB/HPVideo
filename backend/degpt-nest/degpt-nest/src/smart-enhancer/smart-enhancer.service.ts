@@ -1,9 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 // ✅ 引入刚刚更新的音色库
-import {
-  ASIAN_MARKET_VOICES,
-  VOICE_MENU_PROMPT,
-} from '@/constants/voice-presets';
+import { ASIAN_MARKET_VOICES } from '@/constants/voice-presets';
 // ✅ 引入 OpenAI Hook
 import { UseOpenAI } from '@/hook/useopenai';
 
@@ -34,13 +31,30 @@ export class SmartEnhancerService {
       `>>> 启动流程 | Input: "${originalPrompt}" | Duration: ${duration}s | Optimization: ${enableOptimization}`,
     );
 
-    // --- 0. 查找音色描述 ---
+    // ==============================================================
+    // 🔥 1. 先进行语言检测 (用于决定选择哪种语言的音色描述)
+    // ==============================================================
+    const isChinese = /[\u4e00-\u9fa5]/.test(originalPrompt);
+    const isKorean = /[\uac00-\ud7af]/.test(originalPrompt);
+    // 决定语言 Key： 'zh' | 'ko' | 'en'
+    const langKey = isChinese ? 'zh' : isKorean ? 'ko' : 'en';
+
+    // ==============================================================
+    // 🔥 2. 根据语言 Key 查找对应的音色描述
+    // ==============================================================
     let selectedVoiceDesc = '';
     if (voiceId) {
       const preset = ASIAN_MARKET_VOICES.find((v) => v.id === voiceId);
       if (preset) {
-        selectedVoiceDesc = preset.description;
-        this.logger.log(`[Voice] 用户指定音色: ${preset.name}`);
+        // ✅ 核心修改：根据语言取值，如果对应语言没有（理论上都有），回退到英文
+        // @ts-ignore (如果 TS 报错说类型不匹配，因为我们刚改了结构)
+        selectedVoiceDesc =
+          preset.description[langKey] || preset.description.en || '';
+
+        this.logger.log(
+          `[Voice] 用户指定音色: ${preset.name} | 匹配语言: ${langKey}`,
+        );
+        this.logger.debug(`[Voice Desc]: ${selectedVoiceDesc.slice(0, 50)}...`);
       }
     }
 
@@ -145,35 +159,42 @@ export class SmartEnhancerService {
     //    重点：不再固定每段秒数；仍要求 5 段结构 + 每段都含 Visual/Transition/SFX/Dialogue；
     //    让 GPT 自己分配节奏，并要求“台词可在 duration 秒内说完”。
     const template = `
+角色：你是一位顶级的产品宣传广告视频导演 + 摄影师 + 音效背景音乐设计师，并且你非常熟悉现在的短视频比如抖音，TikTok，YouTube博主带货视频风格。
+目标：基于用户上传的产品图片和用户原始提示词，分别创建优化后的带货图片提示词和优化后的带货视频提示词。
+(1) imageEditPrompt: (用于优化用户上传的产品图片提示词) -> 始终用英文描述.
+(2) videoVisualPrompt: (用于生成最后的视频) -> 最终的提示词语言和${lang}保持一致.
+
+用户给你的数据(你可以把用户上传的图片链接打开看看长什么样，再结合用户提示词进行后续设计)：
 视频总时长: ${duration}秒.
 用户原始提示词: "${originalPrompt}"
 产品图片链接: "${imageUrl}"
 人物对话语言: ${dialogueLang}
-人物音色：${fixedVoiceDesc}，
-
-角色：你是一位顶级产品宣传广告视频导演 + 摄影师 + 音效背景音乐设计师
-目标：基于用户上传的产品图片和用户原始提示词，分别创建优化后的图片提示词和优化后的视频提示词。
-(1) imageEditPrompt: (用于优化用户上传的产品图片提示词) -> 始终用英文描述.
-(2) videoVisualPrompt: (用于生成最后的视频) -> 最终的提示词语言和${lang}保持一致.
+人物音色风格：${fixedVoiceDesc}，
 
 
+1,设计期间必须遵守的规则（必须严格遵守以下6点）
 
-1,设计期间必须遵守的规则（必须遵守）
 (1)， 产品保持不变(你只需要图片提示词和视频提示词开头说一遍就好了)
 用户上传的产品图片外观必须保持不变，因此你必须在图片提示词和视频提示词中首先明确提出“保持产品外观，不改变任何细节”，以防止生成的图片和视频和用户想要的产品不一致的问题。
-(2)，人物对话规则
-语言：人物说的话必须和${dialogueLang}一致。
-格式：如果用户原始提示词是中文，那么说话的时候必须像这样，（假设人物是张丽，说的话是大家好我是新来的同学我叫张丽），那么必须这么触发，“张丽，@音色是${fixedVoiceDesc}，说：大家好我是新来的同学我叫张丽”，必须是人物后面加@再加音色，然后触发关键的一个“说”字，这样后续的视频大模型理解的更准确，如果是韩语则规则也一样不过说的话就是韩语，如果是其他语言统一就是英文规则也一样。
-(3)，必须包含和你设计的剧情匹配的背景音乐和音效
-(4)，尽可能出现人物
-视频里包含人物的话会让整个视频更加丰富，人物形象尽量选择亚洲 20 岁到 26 岁的年轻人，最好选择年轻的韩国欧巴和顶流明星，因为我们的用户大多韩国人居多，但具体的人物形象还是得结合你设计的剧情匹配。
+
+(2),图片提示词和视频提示词必须场景相似，不能分歧太大，比如：如果视频里面有设计人物的话，那么图片里面必须有人物，因为生成视频模型就是根据我们的图片提示词来生成的，这两者越关联紧密，生成的视频越是能达到好的效果。
+
+(3)，视频提示词里人物的台词对话规则
+台词语言：人物说的话必须和${dialogueLang}一致
+格式：如果用户原始提示词是中文，那么说话的时候必须像这样，（假设人物是一位可爱的女孩子，说的话是大家好我是新来的同学，请大家多多关照），那么必须像这么触发，“一位可爱的女孩子，@音色是[${fixedVoiceDesc}]，说：大家好我是新来的同学，请大家多多关照”，必须是人物后面加@再加音色，然后触发关键的一个“说”字，这样后续的视频大模型理解的更准确，如果是韩语则规则也一样不过说的话就是韩语，如果是其他语言统一就是英文规则也一样。
+
+(4)，视频提示词里必须包含和你设计的剧情匹配的背景音乐和音效
+
+(5)，视频提示词里尽可能出现人物,而且人物要和用户选择的音色匹配，比如：不要音色是温柔的人物却是男的，这就会导致不匹配（但是如果用户指定的视频总时长是10s以下就不要出现人物了，不然最终视频就会很不合理,视频总时长大于等于10s才出现人物）
+视频里包含人物的话会让整个视频更加丰富，人物形象描述的话你自己根据用户上传的图片链接，和结合你设计的剧情，匹配人物形象，但是人物形象要真实现实一点，绝不能有AI感，要像真人一点。
+
+(6)，视频提示词里人物的对话台词，剧情，背景音乐，音效必须在用户指定的总时长${duration}秒内完成，剧情不要多也不要少才合适（比如用户指定的视频总时长是5秒那么我们就在4s左右完成剧情，10s就在9s左右完成剧情，15s就在14s左右完成剧情）
+绝对不能出现用户指定的时长是5s，却设计了超过5s的剧情和人物对话台词，要做到在用户规定的时长内完成剧情
 
 
-2， 创意目标（首先，你可以先搜索当前主流产品宣传广告视频是怎样的，当前主流社交媒体博主比如抖音，比如 tiktok 等 是如何宣传产品来卖的，得到这些信息之后更利于你编写提示词，你就可以大胆发挥了(比如利用网络热梗，中文的家人们，宝子们，小哥哥小姐姐，英文的hei bro，韩语的阿西吧等等来让视频更有画面感，因为那些博主们就是这么选穿的，你可以借鉴一下)，你在这里有很大的发挥空间，但我给你说一下需要注意的点比如下面的。）
-(1)你可以根据产品来设计剧情，然后有对应的色调，运镜技巧，转场特效，光线等等因为我看到人家产品宣传视频里有这些哈哈。
-(2)人物对话要情感细腻，不生硬，表情要自然，剧情要自然而然流畅合理，看完给人感觉就很对这个产品感兴趣，很想买这个产品。
-(3)人物的台词也需要和你设计的剧情匹配，并且要在总时长内说完，不要视频快要结束了人物台词还没说完，而且说的时候要有感情。
-
+2， 创意风格（首先，你一定要先搜索当前主流产品宣传广告视频是怎样的，我给你提供思路，你可以根据主流社交媒体比如抖音，比如 tiktok， YouTube等那些博主的带货宣传视频的风格，他们是如何宣传产品来卖的，得到这些数据之后，我们直接模仿写提示词就行了，还有你可以实时搜索当前流行的网络热梗加入它们到人物对话里，来让视频更有画面感），还要注意以下几点 。
+(1)视频风格，你可以参考抖音，TikTok，YouTube博主的带货视频风格，还可以有适合的色调，运镜，转场特效，光线等等。但是具体的你自己设计就行了，但是要确保整个视频剧情没有违和感，不突兀。
+(2)人物和人物对话台词要情感细腻，有情感，人物对话时表情不生硬，要自然，剧情要自然而然流畅合理，看完给人感觉就很对这个产品感兴趣，很想买这个产品。
 
 
 3，仅输出 JSON(这是最重要的只输出json,不要输出其他任何多余的内容)：
@@ -187,13 +208,15 @@ export class SmartEnhancerService {
     try {
       const openai = new UseOpenAI();
       const systemPrompt =
-        'You are a JSON-only assistant. Output valid JSON only. No markdown. No external tools or browsing.';
+        'You are a JSON-only assistant. Output valid JSON only. ';
 
       const content = await openai.callGPT52WithRetry(systemPrompt, template, {
         verbosity: 'medium',
         maxTokens: 3600,
         temperature: 0.66,
       });
+
+      console.log('contentcontentcontent', JSON.stringify(content));
       // 清洗 JSON
       let cleanContent = content
         .replace(/```json/g, '')

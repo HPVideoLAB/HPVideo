@@ -141,21 +141,13 @@ export async function restoreProParams(
 
       // ================= 🔥 [新增] 2. Commercial Logic =================
     } else if (params.model === 'commercial-pipeline' || params.model.includes('commercial')) {
-      // ✅ 最小改动：把 enableUpscale 统一成 'default' | '2k' | '4k'
-      const normalizeUpscale = (v: any): 'default' | '2k' | '4k' => {
-        if (v === '2k' || v === '4k' || v === 'default') return v;
-        // 兼容老数据 boolean：true -> 4k
-        if (v === true) return '4k';
-        return 'default';
-      };
-
       const basicData = {
         prompt: params.prompt || '',
         voiceId: params.voice_id || params.voiceId || 'fresh_youth', // 兼容后端下划线命名
         duration: params.duration || 15,
         resolution: params.resolution || '720p',
         enableSmartEnhance: params.enableSmartEnhance ?? true,
-        enableUpscale: normalizeUpscale(params.enableUpscale),
+        enableUpscale: params.enableUpscale || '720p',
       };
 
       // 检查是否有参考图需要恢复

@@ -53,3 +53,72 @@ services:
 networks:
   degpt-network:
     external: true
+# cat > /data/compose/hpvideo/docker-compose.prod.yml <<EOF
+# version: "3.8"
+
+# services:
+#   postgres:
+#     image: postgres:16
+#     container_name: hpvideo-postgres-prod
+#     environment:
+#       POSTGRES_USER: postgres
+#       POSTGRES_PASSWORD: dzy_123
+#       POSTGRES_DB: hpvideo_dp
+#     volumes:
+#       - /data/pg/hpvideo-prod:/var/lib/postgresql/data
+#     networks:
+#       - degpt-network
+#     restart: unless-stopped
+
+#   mongo:
+#     image: mongo:7
+#     container_name: hpvideo-mongo-prod
+#     volumes:
+#       - /data/mongo/hpvideo-prod:/data/db
+#     networks:
+#       - degpt-network
+#     restart: unless-stopped
+
+#   redis:
+#     image: redis:7-alpine
+#     container_name: hpvideo-redis-prod
+#     command: redis-server --requirepass dzy@123
+#     volumes:
+#       - /data/redis/hpvideo-prod:/data
+#     networks:
+#       - degpt-network
+#     restart: unless-stopped
+
+#   nest:
+#     image: aihpvideo/hpvideo-nest:prod
+#     container_name: nest
+#     env_file:
+#       - /data/env/hpvideo/prod/.env
+#     ports:
+#       - "3008:3008"
+#     networks:
+#       - degpt-network
+#     depends_on:
+#       - mongo
+#       - redis
+#     restart: unless-stopped
+
+#   webui:
+#     image: aihpvideo/hpvideo:prod
+#     container_name: hpvideo-prod
+#     env_file:
+#       - /data/env/hpvideo/prod/.env
+#     ports:
+#       - "5000:8080"
+#     networks:
+#       - degpt-network
+#     depends_on:
+#       - postgres
+#       - nest
+#       - redis
+#     restart: unless-stopped
+
+# networks:
+#   degpt-network:
+#     external: true
+# EOF

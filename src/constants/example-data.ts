@@ -312,7 +312,7 @@ export const exampleData: Record<string, ExampleItem[]> = {
         duration: 15,
         resolution: '1080p',
         enableSmartEnhance: true,
-        enableUpscale: false,
+        enableUpscale: '1080p',
       },
     },
     {
@@ -332,7 +332,7 @@ export const exampleData: Record<string, ExampleItem[]> = {
         duration: 15,
         resolution: '1080p',
         enableSmartEnhance: true,
-        enableUpscale: true,
+        enableUpscale: '1080p',
       },
     },
     {
@@ -352,7 +352,7 @@ export const exampleData: Record<string, ExampleItem[]> = {
         duration: 15,
         resolution: '1080p',
         enableSmartEnhance: true,
-        enableUpscale: false,
+        enableUpscale: '1080p',
       },
     },
 
@@ -381,7 +381,7 @@ export const exampleData: Record<string, ExampleItem[]> = {
         duration: 15,
         resolution: '1080p',
         enableSmartEnhance: true,
-        enableUpscale: false,
+        enableUpscale: '1080p',
       },
     },
   ],

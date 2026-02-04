@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { fetchWithTimeout } from '@/utils/fetchWithTimeout';
+import { COMMERCIAL_VIDEO_NEGATIVE_PROMPT } from '@/constants/voice-presets';
 
 export interface PipelineState {
   stage: 'wan_submitted' | 'upscaling' | 'completed' | 'completed_with_error';
@@ -43,8 +44,9 @@ export const useCommercialPipeline = () => {
       duration: args.duration || 5,
       resolution: args.resolution || '720p',
       seed: args.seed && args.seed !== -1 ? args.seed : -1,
-      negative_prompt: args.negative_prompt,
+      negative_prompt: COMMERCIAL_VIDEO_NEGATIVE_PROMPT,
       shot_type: 'multi',
+      enable_prompt_expansion: false,
     };
 
     logger.log(
@@ -79,7 +81,9 @@ export const useCommercialPipeline = () => {
     const requestId = json?.data?.id;
 
     if (!requestId) {
-      throw new Error(`Submission succeeded but no requestId received: ${text}`);
+      throw new Error(
+        `Submission succeeded but no requestId received: ${text}`,
+      );
     }
 
     logger.log(`[Wan Submit] 成功! Task ID: ${requestId}`);
