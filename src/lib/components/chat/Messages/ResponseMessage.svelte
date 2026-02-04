@@ -16,8 +16,6 @@
   import { config, settings, models, theme, paystatus } from '$lib/stores';
   import { imageGenerations } from '$lib/apis/images';
   import { approximateToHumanReadable, sanitizeResponseContent } from '$lib/utils';
-  import { WEBUI_BASE_URL } from '$lib/constants';
-
   import Name from './Name.svelte';
   import ProfileImage from './ProfileImage.svelte';
   import VideoGen from './VideoGen.svelte';
@@ -336,12 +334,15 @@
                     {/if}
                   </div>
                 {/if}
-                <VideoError
-                  bind:videosize={message.size}
-                  bind:isLastMessage
-                  bind:errtip={internetErr}
-                  {resentMessageHandler}
-                />
+
+                {#if !message.paymoney || message.paystatus}
+                  <VideoError
+                    bind:videosize={message.size}
+                    bind:isLastMessage
+                    bind:errtip={internetErr}
+                    {resentMessageHandler}
+                  />
+                {/if}
               {:else if message.content === '' && !message?.done}
                 {#if message.paymoney}
                   <div class="max-w-[600px]">
