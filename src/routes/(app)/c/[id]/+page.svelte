@@ -414,7 +414,11 @@
       // (逻辑保持不变)
       const bnbBalanceObj = await getBalance(wconfig, { address: account.address });
       if (bnbBalanceObj.value === 0n) {
-        toast.error('BNB 余额不足，无法支付 Gas 费');
+        // 1. Gas 费不足
+        // 原文：BNB 余额不足，无法支付 Gas 费
+        // 这种错误最常见，直接说 "Insufficient BNB for gas fees" 最地道
+        Toast.error('Insufficient BNB balance for gas fees.');
+
         $paystatus = false;
         return;
       }
@@ -434,12 +438,11 @@
       if (txResponse && txResponse.hash) {
         // --- 4. 轮询验证 ---
         console.log('Tx Hash:', txResponse.hash);
-        toast.info('支付请求已发送，正在链上确认...');
+        toast.info('Transaction submitted. Awaiting confirmation...');
 
         let retryCount = 0;
 
         // ★★★ 核心修改点：将重试次数从 5 改为 30 ★★★
-        // 30次 * 3秒 = 90秒等待时间，足以应对大多数链上拥堵
         const maxRetries = 30;
 
         // 定义轮询函数
@@ -476,7 +479,11 @@
               setTimeout(checkLoop, 3000); // 3秒后再次执行 checkLoop
             } else {
               // 超过重试次数
-              toast.warning('支付已上链，后端同步稍有延迟，请稍后刷新页面查看');
+              // 3. 后端延迟
+              // 原文：支付已上链，后端同步稍有延迟，请稍后刷新页面查看
+              // "Syncing takes a moment" 是解释延迟的标准说法，比 "delay" 听起来更像是一个正常过程而非错误
+              toast.warning('Payment confirmed on-chain. Syncing may take a moment—please refresh later.');
+
               $paystatus = false;
               // 注意：超时不重置为 unpaid，防止用户误以为没付款
             }
@@ -494,7 +501,9 @@
       await updatePayStatus(messageinfo, false, 'unpaid');
 
       if (e?.code === 4001 || (e?.message && e.message.includes('User rejected'))) {
-        toast.info('用户取消支付');
+        // 4. 取消
+        // 原文：用户取消支付
+        toast.info('Payment cancelled.');
       } else {
         toast.error($i18n.t('Pay Failed') + (e.message ? `: ${e.message}` : ''));
       }

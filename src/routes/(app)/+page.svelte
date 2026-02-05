@@ -421,7 +421,10 @@
       const preCheckResponse = await bnbpaycheck(localStorage.token, checkBody);
 
       if (preCheckResponse?.ok) {
-        toast.success('检测到该订单已完成支付，正在启动生成...');
+        // 1. 成功检测到支付
+        // 原文：检测到该订单已完成支付，正在启动生成...
+        Toast.success('Payment verified. Starting generation...');
+
         $paystatus = false;
         // 直接更新状态并触发生成
         await updatePayStatus(messageinfo, true, 'paying');
@@ -453,8 +456,8 @@
         let retryCount = 0;
         // 【修改点】将最大重试次数从 5 改为 30，给予约 90秒 的等待时间
         const maxRetries = 30;
-
-        toast.info('支付已提交，正在链上确认...');
+        // 2. 提交支付（修正了你原代码里那个奇怪的 $i18n 语法错误）
+        toast.info('Transaction submitted. Awaiting on-chain confirmation...');
 
         const checkLoop = async () => {
           let body = {
@@ -482,11 +485,11 @@
             retryCount++;
             if (retryCount < maxRetries) {
               // 可以把重试日志改为 debug 级别，避免刷屏
-              console.log(`链上确认中... (${retryCount}/${maxRetries})`);
               setTimeout(checkLoop, 3000); // 3秒轮询一次
             } else {
               // 只有真的很久很久（90秒）没反应才报超时
-              toast.warning('链上确认较慢，请稍后刷新页面查看历史记录');
+              toast.warning('On-chain confirmation takes time. Please check your History later.');
+
               $paystatus = false;
             }
           }
@@ -505,7 +508,9 @@
       }
 
       if (e?.code === 4001 || (e?.message && e.message.includes('User rejected'))) {
-        toast.info('用户取消支付');
+        // 4. 取消支付
+        // 原文：用户取消支付
+        toast.info('Payment cancelled.');
       } else {
         toast.error($i18n.t('Pay Failed'));
       }
@@ -870,21 +875,7 @@
 
   const generateDeChatTitle = async (userPrompt) => {
     if ($settings?.title?.auto ?? true) {
-      const model = $models.find((model) => model.id === selectedModels[0]);
-
-      const titleModelId =
-        model?.external ?? false
-          ? $settings?.title?.modelExternal ?? selectedModels[0]
-          : $settings?.title?.model ?? selectedModels[0];
-      const title = await generateDeTitle(
-        DEGPT_TOKEN,
-        $settings?.title?.prompt ??
-          $i18n.t(
-            "Create a concise, 3-5 word phrase as a header for the following query, strictly adhering to the 3-5 word limit and avoiding the use of the word 'title':"
-          ) + ' {{prompt}}',
-        titleModelId,
-        userPrompt
-      );
+      const title = await generateDeTitle(userPrompt);
 
       return title;
     } else {
