@@ -823,24 +823,7 @@
 
   const generateDeChatTitle = async (userPrompt) => {
     if ($settings?.title?.auto ?? true) {
-      const model = $models.find((model) => model.id === selectedModels[0]);
-
-      const titleModelId =
-        model?.external ?? false
-          ? $settings?.title?.modelExternal ?? selectedModels[0]
-          : $settings?.title?.model ?? selectedModels[0];
-      const titleModel = $models.find((model) => model.id === titleModelId);
-
-      console.log(titleModel);
-      const title = await generateDeTitle(
-        DEGPT_TOKEN,
-        $settings?.title?.prompt ??
-          $i18n.t(
-            "Create a concise, 3-5 word phrase as a header for the following query, strictly adhering to the 3-5 word limit and avoiding the use of the word 'title':"
-          ) + ' {{prompt}}',
-        titleModelId,
-        userPrompt
-      );
+      const title = await generateDeTitle(userPrompt);
 
       return title;
     } else {

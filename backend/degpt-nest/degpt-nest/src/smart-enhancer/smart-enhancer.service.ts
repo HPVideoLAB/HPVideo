@@ -339,4 +339,62 @@ export class SmartEnhancerService {
     }
     return originalUrl;
   }
+
+  // gpt5.2生成标题
+  async generateTitle(userPrompt: string) {
+    const DEFAULT_TITLE = 'new chat';
+
+    try {
+      // 1. 🔥 直接实例化你的工具类 (无需注入)
+      const openai = new UseOpenAI();
+
+      // 🔥🔥🔥 核心修改：重新设计 System Prompt 🔥🔥🔥
+      const systemPrompt = `
+        You are an AI assistant for a text-to-video generation platform.
+        Your task is to generate a short, attractive title for a video project based on the user's input prompt.
+
+        Strict Rules:
+        1. Language Consistency**: You MUST output the title in the EXACT SAME Language as the user's input. (e.g., Chinese input -> Chinese title, English input -> English title).
+        2. Style: The title should describe the visual content (e.g., "Cyberpunk City", "Cute Puppy"). Do NOT use conversational words like "Consultation", "Query", "Discussion", or "Help".
+        3. Length: Keep it concise. Max 5 words for English, Max 8 characters for Chinese/Asian languages.
+        4. Format: Output raw text only. Do not use quotes, punctuation, or prefixes like "Title:".
+      `;
+
+      // 但针对标题生成，直接用默认配置即可。
+      const content = await openai.callGPT52WithRetry(
+        systemPrompt,
+        userPrompt,
+        {
+          maxTokens: 50, // 限制输出长度
+          temperature: 0.7,
+        },
+        1, // 失败重试 1 次足够了
+      );
+
+      // 4. 数据清洗 (去掉可能存在的引号、换行、特殊符号)
+      let cleanTitle = content ? content.replace(/["'“”\n]/g, '').trim() : '';
+
+      // 5. 逻辑兜底：如果生成了个寂寞，或者太长了，就截取用户输入
+      if (!cleanTitle) {
+        cleanTitle = userPrompt.slice(0, 15);
+      }
+
+      this.logger.log(`[Generate Title] Success: ${cleanTitle}`);
+
+      return { title: cleanTitle };
+    } catch (error: any) {
+      // 6. 🔥 异常兜底：无论发生什么错误（网络、欠费、超时），都返回默认标题
+      this.logger.error(
+        `[Generate Title] Failed, using fallback. Error: ${error.message}`,
+      );
+
+      // 尝试用用户输入的前几个字作为标题，比 "新建聊天" 体验稍微好点
+      const fallback =
+        userPrompt && userPrompt.length > 0
+          ? userPrompt.slice(0, 10)
+          : DEFAULT_TITLE;
+
+      return { title: fallback };
+    }
+  }
 }

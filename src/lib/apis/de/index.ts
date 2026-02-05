@@ -1,5 +1,6 @@
 import { promptTemplate } from '$lib/utils';
 import { WEBUI_API_BASE_URL, DEGPT_API_BASE_URL } from '$lib/constants';
+import { NEST_API_BASE_URL } from '$lib/constants';
 
 // 获取De的所有模型列表
 export const getDeModels = async (token: string = '') => {
@@ -269,49 +270,89 @@ export const getX402DeOpenAIChatResult = async (token: string = '', body: Object
   return [res, controller];
 };
 
-// Add a shorthand
-export const generateDeTitle = async (token: string = '', template: string, model: string, prompt: string) => {
-  let error = null;
-  let res: any;
-  template = promptTemplate(template, prompt);
-  model = 'qwen3-235b-a22b';
+// // Add a shorthand
+// export const generateDeTitle = async (token: string = '', template: string, model: string, prompt: string) => {
+//   let error = null;
+//   let res: any;
+//   template = promptTemplate(template, prompt);
+//   model = 'qwen3-235b-a22b';
+//   try {
+//     const result = await fetch(`${DEGPT_API_BASE_URL}/chat/completion/proxy`, {
+//       method: 'POST',
+//       headers: {
+//         Accept: 'application/json',
+//         'Content-Type': 'application/json',
+//         Authorization: `Bearer ${token}`,
+//       },
+//       body: JSON.stringify({
+//         model: model,
+//         // node_id: nodeList?.[0],
+//         messages: [
+//           {
+//             role: 'user',
+//             content: template,
+//           },
+//         ],
+//         stream: false,
+//         project: 'DecentralGPT',
+//         // Restricting the max tokens to 50 to avoid long titles
+//         max_tokens: 50,
+//         enable_thinking: false,
+//         reload: false,
+//         audio: false,
+//       }),
+//     });
+//     res = await result.json();
+
+//     console.log('Title API Response:', res);
+//   } catch (err: any) {
+//     error = err;
+//     console.log('Request Error');
+//   }
+
+//   if (error) {
+//     throw error;
+//   }
+
+//   return res?.choices[0]?.message?.content.replace(/["']/g, '') ?? 'New Chat';
+// };
+
+/**
+ * 生成标题 (新版)
+ * 逻辑：直接调用 NestJS 后端接口，不再在前端处理 Prompt 模板或 Token
+ */
+export const generateDeTitle = async (
+  // 以前的 token, template, model 参数都不需要了，为了兼容调用位置可以保留占位，或者直接删掉
+  // 这里我建议直接清理掉，只留 prompt
+  prompt: string
+) => {
   try {
-    const result = await fetch(`${DEGPT_API_BASE_URL}/chat/completion/proxy`, {
+    // 1. 请求你的 NestJS 后端
+    const res = await fetch(`${NEST_API_BASE_URL}/smart-enhancer/generate-title`, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        model: model,
-        // node_id: nodeList?.[0],
-        messages: [
-          {
-            role: 'user',
-            content: template,
-          },
-        ],
-        stream: false,
-        project: 'DecentralGPT',
-        // Restricting the max tokens to 50 to avoid long titles
-        max_tokens: 50,
-        enable_thinking: false,
-        reload: false,
-        audio: false,
+        prompt: prompt, // 直接传用户的原始输入即可，后端会加 system prompt
       }),
     });
-    res = await result.json();
 
-    console.log('Title API Response:', res);
-  } catch (err: any) {
-    error = err;
-    console.log('Request Error');
+    // 2. 解析响应
+    const data = await res.json().catch(() => null);
+
+    // 3. 错误处理
+    if (!res.ok || !data?.title) {
+      console.warn('Title generation failed via backend, using fallback.');
+      return 'New Chat'; // 或者返回 '新建聊天'
+    }
+
+    // 4. 返回后端生成的标题
+    return data.title;
+  } catch (err) {
+    console.error('generateDeTitle request error:', err);
+    // 发生网络错误时，兜底返回
+    return 'New Chat';
   }
-
-  if (error) {
-    throw error;
-  }
-
-  return res?.choices[0]?.message?.content.replace(/["']/g, '') ?? 'New Chat';
 };
