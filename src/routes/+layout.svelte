@@ -9,6 +9,7 @@
   import { defaultBackendConfig } from '$lib/apis';
   import { config as wconfig, clearConnector } from '$lib/utils/wallet/bnb/index';
   import { getAccount, disconnect } from '@wagmi/core';
+  import AppDialogHost from '$lib/components/common/AppDialogHost.svelte';
 
   import '../tailwind.css';
   import '../app.css';
@@ -188,6 +189,7 @@
 
 {#if loaded}
   <slot />
+  <AppDialogHost />
 {/if}
 
 <Toaster richColors position="top-center" class="flex" />

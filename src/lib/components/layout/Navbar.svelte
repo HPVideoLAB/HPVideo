@@ -170,6 +170,9 @@
         <MyButton round size="small" type="primary" on:click={() => goto('/creator/pro')} class="ml-2"
           >{$i18n.t('Creative Mode')}</MyButton
         >
+        <MyButton round size="small" type="primary" on:click={() => goto('/creator/ai-arena')} class="ml-2"
+          >AI竞技场</MyButton
+        >
         <div class="ml-1">
           <button
             id="new-chat-button"
