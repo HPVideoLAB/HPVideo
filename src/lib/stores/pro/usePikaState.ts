@@ -14,7 +14,7 @@ type Deps = {
 
 export function usePikaState(i18n: any, deps: Deps) {
   const { pay, submitTask, loadHistory, walletAddress } = deps;
-  const t = get(i18n).t;
+  const t = i18n.t;
 
   // 1. 状态
   const form = writable({

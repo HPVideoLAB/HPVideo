@@ -4,18 +4,9 @@ import { config as wconfig, modal, getUSDTBalance, getBNBBalance, tranUsdt } fro
 import { bnbpaycheck } from '$lib/apis/pay';
 import { toast } from 'svelte-sonner';
 import { v4 as uuidv4 } from 'uuid';
-// 👇 引入 Svelte 核心方法
-import { getContext } from 'svelte';
-import { get } from 'svelte/store';
 
-export function usePayment() {
-  // 1. 获取 i18n store
-  const i18n = getContext<any>('i18n');
-
-  // 2. 定义一个辅助函数，在非 .svelte 文件中读取翻译
-  // get(i18n) 获取 store 当前值，然后调用 .t()
-  const t = (key: string) => get(i18n).t(key);
-
+export function usePayment(i18n) {
+  const t = i18n.t;
   const getToken = () => localStorage.getItem('token') || localStorage.getItem('access_token') || '';
   const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

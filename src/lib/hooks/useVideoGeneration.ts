@@ -112,7 +112,7 @@ export type HistoryItem = {
   txHash?: string;
 };
 
-export function useVideoGeneration() {
+export function useVideoGeneration(): any {
   const isGenerating = writable(false);
   const history = writable<HistoryItem[]>([]);
 

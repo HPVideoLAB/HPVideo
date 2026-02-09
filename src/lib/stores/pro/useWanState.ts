@@ -13,7 +13,7 @@ type Deps = {
 
 export function useWanState(i18n: any, deps: Deps) {
   const { pay, submitTask, loadHistory, walletAddress } = deps;
-  const t = get(i18n).t;
+  const t = i18n.t;
 
   const form = writable({
     video: null as File | null,

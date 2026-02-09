@@ -40,18 +40,18 @@
 
   const i18n: any = getContext('i18n');
   const { isGenerating, history, submitTask, loadHistory } = useVideoGeneration();
-  const { pay } = usePayment();
+  const { pay } = usePayment($i18n);
 
   // =========================================================
   // 🔥 1. 初始化模型 Hooks (依赖注入)
   // =========================================================
   const deps = { pay, submitTask, loadHistory, walletAddress };
 
-  const pika = usePikaState(i18n, deps);
-  const wan = useWanState(i18n, deps);
-  const sam = useSamState(i18n, deps);
+  const pika = usePikaState($i18n, deps);
+  const wan = useWanState($i18n, deps);
+  const sam = useSamState($i18n, deps);
   // 🔥 [新增] 初始化 Commercial
-  const commercial = useCommercialState(i18n, deps);
+  const commercial = useCommercialState($i18n, deps);
 
   // 解构出 State 方便模板使用
   const { form: pikaForm, cost: pikaCost } = pika;

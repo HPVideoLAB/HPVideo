@@ -14,7 +14,7 @@ export function useCommercialState(i18n: any, deps: Deps) {
   const { pay, submitTask, loadHistory, walletAddress } = deps;
   // 🔥 关键修改：获取 i18n Store 的实际值
   // 如果 i18n 是一个包含 t 函数的对象 store
-  const t = get(i18n).t;
+  const t = i18n.t;
   // 1. 表单状态
   const form = writable({
     image: null as File | null,
