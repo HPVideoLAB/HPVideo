@@ -414,7 +414,7 @@
       // (逻辑保持不变)
       const bnbBalanceObj = await getBalance(wconfig, { address: account.address });
       if (bnbBalanceObj.value === 0n) {
-        toast.error('BNB 余额不足，无法支付 Gas 费');
+        toast.error('BNB balance is insufficient, unable to pay the Gas fee.');
         $paystatus = false;
         return;
       }
@@ -434,7 +434,7 @@
       if (txResponse && txResponse.hash) {
         // --- 4. 轮询验证 ---
         console.log('Tx Hash:', txResponse.hash);
-        toast.info('支付请求已发送，正在链上确认...');
+        toast.info('Payment request has been sent and is being confirmed on the blockchain...');
 
         let retryCount = 0;
 
@@ -476,7 +476,9 @@
               setTimeout(checkLoop, 3000); // 3秒后再次执行 checkLoop
             } else {
               // 超过重试次数
-              toast.warning('支付已上链，后端同步稍有延迟，请稍后刷新页面查看');
+              toast.warning(
+                'Payment has been recorded on the blockchain. There may be a slight delay in the synchronization of the backend. Please refresh the page later to check.'
+              );
               $paystatus = false;
               // 注意：超时不重置为 unpaid，防止用户误以为没付款
             }
@@ -494,7 +496,7 @@
       await updatePayStatus(messageinfo, false, 'unpaid');
 
       if (e?.code === 4001 || (e?.message && e.message.includes('User rejected'))) {
-        toast.info('用户取消支付');
+        toast.info('User cancels payment');
       } else {
         toast.error($i18n.t('Pay Failed') + (e.message ? `: ${e.message}` : ''));
       }

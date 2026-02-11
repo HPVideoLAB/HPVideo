@@ -28,7 +28,7 @@ const UPSCALE_RATES = {
 };
 
 export const calculateCost = (model: string, params: any): number => {
-  // === Pika ===
+  // // === Pika ===
   if (model.includes('pika')) {
     const { resolution = '720p', duration = 0 } = params;
     // 逻辑保持不变：不足 5s 按 5s 算

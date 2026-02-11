@@ -421,7 +421,7 @@
       const preCheckResponse = await bnbpaycheck(localStorage.token, checkBody);
 
       if (preCheckResponse?.ok) {
-        toast.success('检测到该订单已完成支付，正在启动生成...');
+        toast.success('The payment for this order has been detected as completed. Generation is being initiated...');
         $paystatus = false;
         // 直接更新状态并触发生成
         await updatePayStatus(messageinfo, true, 'paying');
@@ -454,7 +454,7 @@
         // 【修改点】将最大重试次数从 5 改为 30，给予约 90秒 的等待时间
         const maxRetries = 30;
 
-        toast.info('支付已提交，正在链上确认...');
+        toast.info('Payment has been submitted and is currently being confirmed on the blockchain...');
 
         const checkLoop = async () => {
           let body = {
@@ -486,7 +486,9 @@
               setTimeout(checkLoop, 3000); // 3秒轮询一次
             } else {
               // 只有真的很久很久（90秒）没反应才报超时
-              toast.warning('链上确认较慢，请稍后刷新页面查看历史记录');
+              toast.warning(
+                'The confirmation on the blockchain is slower. Please refresh the page later to view the history records.'
+              );
               $paystatus = false;
             }
           }
@@ -505,7 +507,7 @@
       }
 
       if (e?.code === 4001 || (e?.message && e.message.includes('User rejected'))) {
-        toast.info('用户取消支付');
+        toast.info('The user cancelled the payment.');
       } else {
         toast.error($i18n.t('Pay Failed'));
       }

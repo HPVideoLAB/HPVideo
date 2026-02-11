@@ -59,7 +59,7 @@ function IsValidPikaframesTransitions(options?: ValidationOptions) {
         defaultMessage(args: ValidationArguments) {
           const dto: any = args.object;
           const n = Array.isArray(dto.images) ? dto.images.length : 0;
-          return `transitions 校验失败: 长度应为 ${Math.max(0, n - 1)}，且总时长 ≤ 25s`;
+          return `transitions error`;
         },
       },
     });

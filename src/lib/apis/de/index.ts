@@ -1,6 +1,4 @@
-import { promptTemplate } from '$lib/utils';
-import { WEBUI_API_BASE_URL, DEGPT_API_BASE_URL } from '$lib/constants';
-import { NEST_API_BASE_URL } from '$lib/constants';
+import { NEST_API_BASE_URL, WEBUI_API_BASE_URL } from '$lib/constants';
 
 // 获取De的所有模型列表
 export const getDeModels = async (token: string = '') => {
@@ -269,53 +267,6 @@ export const getX402DeOpenAIChatResult = async (token: string = '', body: Object
 
   return [res, controller];
 };
-
-// // Add a shorthand
-// export const generateDeTitle = async (token: string = '', template: string, model: string, prompt: string) => {
-//   let error = null;
-//   let res: any;
-//   template = promptTemplate(template, prompt);
-//   model = 'qwen3-235b-a22b';
-//   try {
-//     const result = await fetch(`${DEGPT_API_BASE_URL}/chat/completion/proxy`, {
-//       method: 'POST',
-//       headers: {
-//         Accept: 'application/json',
-//         'Content-Type': 'application/json',
-//         Authorization: `Bearer ${token}`,
-//       },
-//       body: JSON.stringify({
-//         model: model,
-//         // node_id: nodeList?.[0],
-//         messages: [
-//           {
-//             role: 'user',
-//             content: template,
-//           },
-//         ],
-//         stream: false,
-//         project: 'DecentralGPT',
-//         // Restricting the max tokens to 50 to avoid long titles
-//         max_tokens: 50,
-//         enable_thinking: false,
-//         reload: false,
-//         audio: false,
-//       }),
-//     });
-//     res = await result.json();
-
-//     console.log('Title API Response:', res);
-//   } catch (err: any) {
-//     error = err;
-//     console.log('Request Error');
-//   }
-
-//   if (error) {
-//     throw error;
-//   }
-
-//   return res?.choices[0]?.message?.content.replace(/["']/g, '') ?? 'New Chat';
-// };
 
 /**
  * 生成标题 (新版)
