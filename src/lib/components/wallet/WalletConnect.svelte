@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, getContext, onDestroy } from 'svelte'; // 🔥 引入 onDestroy
-  import { user, theme, threesideAccount } from '$lib/stores';
+  import { user, theme, threesideAccount, paymentMode } from '$lib/stores';
   import MyButton from '$lib/components/common/MyButton.svelte';
   import { chats } from '$lib/stores'; // 或从 apis 导入
   import { getChatList } from '$lib/apis/chats';
@@ -13,6 +13,12 @@
 
   // 复用设置组件
   import Setting from '$lib/components/layout/Navbar/Setting.svelte';
+
+  // 支付模式选择和积分余额
+  import PaymentModeSelector from '$lib/components/wallet/PaymentModeSelector.svelte';
+  import PointsBalance from '$lib/components/wallet/PointsBalance.svelte';
+
+  let showModeSelector = false;
 
   const i18n: any = getContext('i18n');
 
@@ -109,9 +115,22 @@
 
   // 打开钱包选择弹窗
   const connect = () => {
+    // 首次连接时显示模式选择
+    if (!localStorage.getItem('paymentMode')) {
+      showModeSelector = true;
+    } else {
+      doConnect();
+    }
+  };
+
+  const doConnect = () => {
     isLoading = true;
     checkModalTheme();
     modal.open();
+  };
+
+  const onModeSelected = () => {
+    doConnect();
   };
 
   const checkModalTheme = () => {
@@ -170,17 +189,43 @@
   }
 </script>
 
+<!-- Payment Mode Selector -->
+<PaymentModeSelector bind:show={showModeSelector} on:select={onModeSelected} />
+
 <div class="flex items-center">
   {#if $threesideAccount?.address}
-    <div
-      class="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full p-1 pl-3 flex items-center pr-2 transition-all"
-    >
-      <iconify-icon icon="lucide:wallet" class="text-gray-500 dark:text-gray-400 mr-2 text-base" />
+    <div class="flex flex-col items-end gap-1">
+      <div
+        class="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full p-1 pl-3 flex items-center pr-2 transition-all"
+      >
+        <!-- Payment mode indicator -->
+        {#if $paymentMode === 'points'}
+          <iconify-icon icon="mdi:star-circle" class="text-amber-500 mr-1.5 text-base" title="Points Mode" />
+        {:else}
+          <iconify-icon icon="lucide:wallet" class="text-gray-500 dark:text-gray-400 mr-1.5 text-base" title="Token Mode" />
+        {/if}
 
-      <div class="text-sm font-medium text-gray-700 dark:text-gray-200 font-mono mr-1">
-        {$threesideAccount.address.slice(0, 6)}...{$threesideAccount.address.slice(-4)}
+        <div class="text-sm font-medium text-gray-700 dark:text-gray-200 font-mono mr-1">
+          {$threesideAccount.address.slice(0, 6)}...{$threesideAccount.address.slice(-4)}
+        </div>
+
+        <!-- Mode switch button -->
+        <button
+          class="text-xs px-1.5 py-0.5 rounded-md transition
+            {$paymentMode === 'points'
+              ? 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20'
+              : 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20'}"
+          title={$i18n.t('Switch payment mode')}
+          on:click={() => { showModeSelector = true; }}
+        >
+          {$paymentMode === 'points' ? 'PTS' : 'USDT'}
+        </button>
+
+        <Setting />
       </div>
-      <Setting />
+
+      <!-- Points balance (only in points mode) -->
+      <PointsBalance />
     </div>
   {:else if isLoading}
     <MyButton type="primary" round size="small" loading disabled>Connecting...</MyButton>

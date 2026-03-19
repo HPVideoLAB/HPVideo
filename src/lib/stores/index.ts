@@ -58,6 +58,12 @@ export const downLoadUrl = writable('');
 // 用户钱包视图
 export const showWalletView = writable(false);
 
+// 支付模式: 'token' (USDT) | 'points' (DLCP积分)
+export const paymentMode = writable(localStorage.getItem('paymentMode') || 'points');
+
+// DLCP 积分余额
+export const dlcpBalance = writable('0');
+
 // 人脸认证url
 export const faceUrl = writable({ url: '' });
 
