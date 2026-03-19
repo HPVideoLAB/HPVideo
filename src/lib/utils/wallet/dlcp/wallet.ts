@@ -77,5 +77,33 @@ export function pointsToUSDT(points: string | number): string {
   return (p / 1000).toFixed(2);
 }
 
-// DeepLink buy points page URL
-export const BUY_POINTS_URL = 'https://web.deeplinkgame.com/wallet';
+const DEEPLINK_API = 'https://nodeapi.deeplink.cloud';
+
+/** Get wallet ID from DeepLink server (needed for buy points URL) */
+export async function getWalletId(walletAddress: string): Promise<string | null> {
+  try {
+    const response = await fetch(`${DEEPLINK_API}/api/point/getWalletID`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet: walletAddress }),
+    });
+    const data = await response.json();
+    if (data.success) {
+      return data.data;
+    }
+    return null;
+  } catch (error) {
+    console.error('Get Wallet ID Error:', error);
+    return null;
+  }
+}
+
+/** Get buy points URL with wallet ID */
+export async function getBuyPointsURL(walletAddress: string): Promise<string> {
+  const id = await getWalletId(walletAddress);
+  if (id) {
+    return `https://deeplinkgame.com/pricing.html?id=${id}`;
+  }
+  // Fallback
+  return 'https://deeplinkgame.com/pricing.html';
+}

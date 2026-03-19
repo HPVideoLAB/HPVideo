@@ -8,7 +8,7 @@
     getDLCPBalance,
     pointsToUSDT,
     clearPointsWallet,
-    BUY_POINTS_URL,
+    getBuyPointsURL,
   } from '$lib/utils/wallet/dlcp/wallet';
   import { toast } from 'svelte-sonner';
 
@@ -92,8 +92,16 @@
     dispatch('disconnected');
   }
 
-  function handleBuyPoints() {
-    window.open(BUY_POINTS_URL, '_blank', 'noopener,noreferrer');
+  let buyLoading = false;
+  async function handleBuyPoints() {
+    buyLoading = true;
+    try {
+      const url = await getBuyPointsURL(connectedAddress);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (e) {
+      toast.error('Failed to get payment link');
+    }
+    buyLoading = false;
   }
 
   function close() {
@@ -259,13 +267,19 @@
 
           <!-- Buy Points Button -->
           <button
-            class="w-full py-3 rounded-xl font-semibold text-white primaryButton transition hover:opacity-90 mb-2"
+            class="w-full py-3 rounded-xl font-semibold text-white primaryButton transition hover:opacity-90 mb-2 disabled:opacity-50"
             on:click={handleBuyPoints}
+            disabled={buyLoading}
           >
-            <iconify-icon icon="mdi:cart-plus" class="mr-1.5 align-middle text-lg"></iconify-icon>
-            {$i18n.t('Buy Points')}
+            {#if buyLoading}
+              <iconify-icon icon="mdi:loading" class="animate-spin mr-1.5 align-middle text-lg"></iconify-icon>
+              {$i18n.t('Loading...')}
+            {:else}
+              <iconify-icon icon="mdi:cart-plus" class="mr-1.5 align-middle text-lg"></iconify-icon>
+              {$i18n.t('Buy Points')}
+            {/if}
           </button>
-          <p class="text-xs text-center text-gray-400 mb-3">{$i18n.t('Opens DeepLink payment page (PayPal)')}</p>
+          <p class="text-xs text-center text-gray-400 mb-3">{$i18n.t('Opens DeepLink payment page (PayPal / Crypto)')}</p>
 
           <!-- Disconnect -->
           <button
