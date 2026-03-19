@@ -18,7 +18,7 @@
 {#if show}
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm" on:click|self={() => { show = false; }}>
+  <div class="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm" style="margin:0;padding:0;" on:click|self={() => { show = false; }}>
     <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-[400px] max-w-[90vw] overflow-hidden border border-gray-200 dark:border-gray-700">
       <!-- Header -->
       <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
