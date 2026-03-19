@@ -12,6 +12,7 @@
     getWalletId,
   } from '$lib/utils/wallet/dlcp/wallet';
   import { toast } from 'svelte-sonner';
+  import { refreshWalletAddress } from '$lib/stores/wallet';
 
   const dispatch = createEventDispatcher();
   const i18n: any = getContext('i18n');
@@ -48,6 +49,7 @@
       connectedAddress = address;
       step = 'connected';
       toast.success($i18n.t('Wallet created successfully'));
+      refreshWalletAddress();
       await refreshBalance();
       dispatch('connected', address);
     } catch (e: any) {
@@ -64,6 +66,7 @@
       connectedAddress = address;
       step = 'connected';
       toast.success($i18n.t('Wallet imported successfully'));
+      refreshWalletAddress();
       await refreshBalance();
       dispatch('connected', address);
     } catch (e: any) {
@@ -96,6 +99,7 @@
     dlcpBalance.set('0');
     step = 'entry';
     password = '';
+    refreshWalletAddress();
     dispatch('disconnected');
   }
 

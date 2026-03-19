@@ -1,33 +1,40 @@
 // src/lib/stores/wallet.ts
-import { derived, get } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import { readable } from 'svelte/store';
 import { watchAccount, getAccount } from '@wagmi/core';
 import { config as wconfig } from '$lib/utils/wallet/bnb/index';
-import { paymentMode } from '$lib/stores/index';
 
-// BSC wallet address (wagmi)
-const bscWalletAddress = readable<string>('', (set) => {
-  const account = getAccount(wconfig);
-  if (account?.address) set(account.address);
+// Unified wallet address store
+export const walletAddress = writable<string>('');
 
-  const unwatch = watchAccount(wconfig, {
+// Initialize: check BSC wallet or points wallet
+function initWalletAddress() {
+  const mode = typeof localStorage !== 'undefined' ? localStorage.getItem('paymentMode') : 'token';
+  if (mode === 'points') {
+    const addr = typeof localStorage !== 'undefined' ? localStorage.getItem('hpv_points_address') : '';
+    walletAddress.set(addr || '');
+  } else {
+    const account = getAccount(wconfig);
+    if (account?.address) walletAddress.set(account.address);
+  }
+}
+
+// Watch BSC wallet changes
+try {
+  watchAccount(wconfig, {
     onChange: (data) => {
-      set(data.address || '');
+      const mode = typeof localStorage !== 'undefined' ? localStorage.getItem('paymentMode') : 'token';
+      if (mode !== 'points') {
+        walletAddress.set(data.address || '');
+      }
     },
   });
+} catch (e) {}
 
-  return () => {
-    unwatch();
-  };
-});
+// Initialize on load
+try { initWalletAddress(); } catch (e) {}
 
-// Unified wallet address: returns BSC or DBC address based on payment mode
-export const walletAddress = derived(
-  [bscWalletAddress, paymentMode],
-  ([$bsc, $mode]) => {
-    if ($mode === 'points') {
-      return localStorage.getItem('hpv_points_address') || '';
-    }
-    return $bsc;
-  }
-);
+// Export a function to manually refresh (called after points wallet connect)
+export function refreshWalletAddress() {
+  initWalletAddress();
+}

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, getContext } from 'svelte';
   import { paymentMode } from '$lib/stores';
+  import { refreshWalletAddress } from '$lib/stores/wallet';
 
   const dispatch = createEventDispatcher();
   const i18n: any = getContext('i18n');
@@ -10,6 +11,7 @@
   const selectMode = (mode: 'token' | 'points') => {
     paymentMode.set(mode);
     localStorage.setItem('paymentMode', mode);
+    refreshWalletAddress();
     show = false;
     dispatch('select', mode);
   };
