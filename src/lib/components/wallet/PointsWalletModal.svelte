@@ -9,6 +9,7 @@
     pointsToUSDT,
     clearPointsWallet,
     getBuyPointsURL,
+    getWalletId,
   } from '$lib/utils/wallet/dlcp/wallet';
   import { toast } from 'svelte-sonner';
 
@@ -25,6 +26,7 @@
   let balanceLoading = false;
   let connectedAddress = '';
   let showBuyPanel = false;
+  let walletId = '';
 
   // Check if already has wallet
   $: if (show) {
@@ -75,8 +77,12 @@
     if (!connectedAddress) return;
     balanceLoading = true;
     try {
-      const bal = await getDLCPBalance(connectedAddress);
+      const [bal, id] = await Promise.all([
+        getDLCPBalance(connectedAddress),
+        walletId ? Promise.resolve(walletId) : getWalletId(connectedAddress),
+      ]);
       dlcpBalance.set(bal);
+      if (id) walletId = id;
     } catch (e) {
       console.error(e);
     }
@@ -86,6 +92,7 @@
   function handleDisconnect() {
     clearPointsWallet();
     connectedAddress = '';
+    walletId = '';
     dlcpBalance.set('0');
     step = 'entry';
     password = '';
@@ -235,10 +242,18 @@
             </button>
           </div>
 
-          <!-- Address -->
-          <div class="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 mb-3 flex items-center gap-2">
-            <iconify-icon icon="mdi:wallet" class="text-primary-500 text-lg"></iconify-icon>
-            <span class="text-sm font-mono text-gray-600 dark:text-gray-300 truncate">{connectedAddress}</span>
+          <!-- Address & ID -->
+          <div class="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 mb-3 space-y-2">
+            <div class="flex items-center gap-2">
+              <iconify-icon icon="mdi:wallet" class="text-primary-500 text-base flex-shrink-0"></iconify-icon>
+              <span class="text-xs text-gray-400 flex-shrink-0">{$i18n.t('Address')}:</span>
+              <span class="text-xs font-mono text-gray-600 dark:text-gray-300 truncate">{connectedAddress}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <iconify-icon icon="mdi:identifier" class="text-amber-500 text-base flex-shrink-0"></iconify-icon>
+              <span class="text-xs text-gray-400 flex-shrink-0">ID:</span>
+              <span class="text-sm font-bold font-mono text-gray-900 dark:text-white">{walletId || '...'}</span>
+            </div>
           </div>
 
           <!-- Balance -->
