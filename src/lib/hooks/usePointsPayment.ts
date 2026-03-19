@@ -1,5 +1,5 @@
 // Points payment hook — DLCP transfer on DBC Chain
-import { pointpaycheck } from '$lib/apis/pay';
+import { bnbpaycheck } from '$lib/apis/pay';
 import { toast } from 'svelte-sonner';
 import { v4 as uuidv4 } from 'uuid';
 import { getContext } from 'svelte';
@@ -67,7 +67,7 @@ export function usePointsPayment() {
         amount: pointsAmount,
       };
 
-      const check1 = await pointpaycheck(getToken(), body);
+      const check1 = await bnbpaycheck(getToken(), body);
       if (check1?.ok) {
         toast.dismiss();
         toast.success(t('No payment required, starting generation'));
@@ -131,7 +131,7 @@ export function usePointsPayment() {
 
       for (let i = 0; i < maxRetries; i++) {
         try {
-          const check2 = await pointpaycheck(getToken(), { ...body, hash: receipt.hash });
+          const check2 = await bnbpaycheck(getToken(), { ...body, hash: receipt.hash });
           if (check2?.ok) {
             verified = true;
             break;
