@@ -65,6 +65,7 @@ export function usePointsPayment() {
         size: resolution,
         duration,
         amount: pointsAmount,
+        pay_type: 'points',
       };
 
       const check1 = await bnbpaycheck(getToken(), body);
