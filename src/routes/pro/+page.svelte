@@ -30,6 +30,8 @@
   // Hooks
   import { useVideoGeneration } from '$lib/hooks/useVideoGeneration';
   import { usePayment } from '$lib/hooks/useProPayment';
+  import { usePointsPayment } from '$lib/hooks/usePointsPayment';
+  import { paymentMode } from '$lib/stores';
 
   // Stores (Hooks)
   import { usePikaState } from '$lib/stores/pro/usePikaState';
@@ -40,7 +42,12 @@
 
   const i18n: any = getContext('i18n');
   const { isGenerating, history, submitTask, loadHistory } = useVideoGeneration();
-  const { pay } = usePayment();
+  const { pay: payToken } = usePayment();
+  const { pay: payPoints } = usePointsPayment();
+  // Use points or token payment based on mode
+  const pay = (args: any) => {
+    return $paymentMode === 'points' ? payPoints(args) : payToken(args);
+  };
 
   // =========================================================
   // 🔥 1. 初始化模型 Hooks (依赖注入)

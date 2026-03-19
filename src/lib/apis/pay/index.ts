@@ -10,6 +10,28 @@ export const x402pay = async (address: string, model: string, size: string, dura
   return response;
 }
 
+export const pointpaycheck = async (token: string, body: object) => {
+  const res = await fetch(`${WEBUI_API_BASE_URL}/pointpay/check`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body)
+  })
+    .then(async (res) => {
+      if (!res.ok) throw await res.json();
+      return res.json();
+    })
+    .then((json) => json)
+    .catch((err) => {
+      console.log(err);
+      return null;
+    });
+  return res;
+}
+
 export const bnbpaycheck = async (token: string, body: object) => {
   let error = null;
 

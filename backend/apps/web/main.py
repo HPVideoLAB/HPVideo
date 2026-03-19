@@ -17,6 +17,7 @@ from apps.web.routers import (
     fileupload,
     x402pay,
     bnbpay,
+    pointpay,
 )
 
 from config import (
@@ -83,6 +84,7 @@ app.include_router(daily_users.router, prefix="/daily", tags=["daily_users"])
 app.include_router(fileupload.router, prefix="/upload", tags=["aliupload"])
 app.include_router(x402pay.router, prefix="/x402", tags=["x402pay"])
 app.include_router(bnbpay.router, prefix="/bnbpay", tags=["bnbpay"])
+app.include_router(pointpay.router, prefix="/pointpay", tags=["pointpay"])
 
 
 @app.get("/")
