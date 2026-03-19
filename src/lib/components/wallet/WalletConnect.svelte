@@ -14,11 +14,15 @@
   // 复用设置组件
   import Setting from '$lib/components/layout/Navbar/Setting.svelte';
 
-  // 支付模式选择和积分余额
+  // 支付模式选择和积分
   import PaymentModeSelector from '$lib/components/wallet/PaymentModeSelector.svelte';
-  import PointsBalance from '$lib/components/wallet/PointsBalance.svelte';
+  import PointsWalletModal from '$lib/components/wallet/PointsWalletModal.svelte';
+  import { hasPointsWallet, getStoredAddress, getDLCPBalance, pointsToUSDT, clearPointsWallet } from '$lib/utils/wallet/dlcp/wallet';
+  import { dlcpBalance } from '$lib/stores';
 
   let showModeSelector = false;
+  let showPointsWallet = false;
+  let pointsAddress = getStoredAddress() || '';
 
   const i18n: any = getContext('i18n');
 
@@ -124,14 +128,40 @@
   };
 
   const doConnect = () => {
-    isLoading = true;
-    checkModalTheme();
-    modal.open();
+    const mode = localStorage.getItem('paymentMode') || 'points';
+    if (mode === 'points') {
+      showPointsWallet = true;
+    } else {
+      isLoading = true;
+      checkModalTheme();
+      modal.open();
+    }
   };
 
   const onModeSelected = () => {
     doConnect();
   };
+
+  const onPointsConnected = (e: any) => {
+    pointsAddress = e.detail;
+    showPointsWallet = false;
+  };
+
+  const onPointsDisconnected = () => {
+    pointsAddress = '';
+    showPointsWallet = false;
+  };
+
+  // Refresh points balance on load if wallet exists
+  onMount(async () => {
+    if (hasPointsWallet()) {
+      pointsAddress = getStoredAddress() || '';
+      if (pointsAddress) {
+        const bal = await getDLCPBalance(pointsAddress);
+        dlcpBalance.set(bal);
+      }
+    }
+  });
 
   const checkModalTheme = () => {
     modal.setThemeMode($theme === 'light' ? 'light' : 'dark');
@@ -191,41 +221,52 @@
 
 <!-- Payment Mode Selector -->
 <PaymentModeSelector bind:show={showModeSelector} on:select={onModeSelected} />
+<!-- Points Wallet Modal -->
+<PointsWalletModal bind:show={showPointsWallet} on:connected={onPointsConnected} on:disconnected={onPointsDisconnected} />
 
 <div class="flex items-center">
-  {#if $threesideAccount?.address}
-    <div class="flex flex-col items-end gap-1">
-      <div
-        class="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full p-1 pl-3 flex items-center pr-2 transition-all"
+  {#if $paymentMode === 'points' && pointsAddress}
+    <!-- Points mode: show points wallet -->
+    <div
+      class="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full p-1 pl-3 flex items-center pr-2 transition-all cursor-pointer"
+      on:click={() => { showPointsWallet = true; }}
+      on:keydown={() => {}}
+      role="button"
+      tabindex="0"
+    >
+      <iconify-icon icon="mdi:star-circle" class="text-amber-500 mr-1.5 text-base" />
+      <span class="text-sm font-bold text-amber-600 dark:text-amber-400 font-mono mr-1">
+        {parseInt($dlcpBalance).toLocaleString()} pts
+      </span>
+      <span class="text-xs text-gray-400 mr-1">
+        ≈${pointsToUSDT($dlcpBalance)}
+      </span>
+      <button
+        class="text-xs px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 transition"
+        title={$i18n.t('Switch payment mode')}
+        on:click|stopPropagation={() => { showModeSelector = true; }}
       >
-        <!-- Payment mode indicator -->
-        {#if $paymentMode === 'points'}
-          <iconify-icon icon="mdi:star-circle" class="text-amber-500 mr-1.5 text-base" title="Points Mode" />
-        {:else}
-          <iconify-icon icon="lucide:wallet" class="text-gray-500 dark:text-gray-400 mr-1.5 text-base" title="Token Mode" />
-        {/if}
-
-        <div class="text-sm font-medium text-gray-700 dark:text-gray-200 font-mono mr-1">
-          {$threesideAccount.address.slice(0, 6)}...{$threesideAccount.address.slice(-4)}
-        </div>
-
-        <!-- Mode switch button -->
-        <button
-          class="text-xs px-1.5 py-0.5 rounded-md transition
-            {$paymentMode === 'points'
-              ? 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20'
-              : 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20'}"
-          title={$i18n.t('Switch payment mode')}
-          on:click={() => { showModeSelector = true; }}
-        >
-          {$paymentMode === 'points' ? 'PTS' : 'USDT'}
-        </button>
-
-        <Setting />
+        PTS
+      </button>
+      <Setting />
+    </div>
+  {:else if $paymentMode === 'token' && $threesideAccount?.address}
+    <!-- Token mode: show BSC wallet -->
+    <div
+      class="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full p-1 pl-3 flex items-center pr-2 transition-all"
+    >
+      <iconify-icon icon="lucide:wallet" class="text-gray-500 dark:text-gray-400 mr-1.5 text-base" />
+      <div class="text-sm font-medium text-gray-700 dark:text-gray-200 font-mono mr-1">
+        {$threesideAccount.address.slice(0, 6)}...{$threesideAccount.address.slice(-4)}
       </div>
-
-      <!-- Points balance (only in points mode) -->
-      <PointsBalance />
+      <button
+        class="text-xs px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition"
+        title={$i18n.t('Switch payment mode')}
+        on:click={() => { showModeSelector = true; }}
+      >
+        USDT
+      </button>
+      <Setting />
     </div>
   {:else if isLoading}
     <MyButton type="primary" round size="small" loading disabled>Connecting...</MyButton>
