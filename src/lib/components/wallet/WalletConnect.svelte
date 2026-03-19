@@ -243,7 +243,6 @@
       >
         PTS
       </button>
-      <Setting />
     </div>
   {:else if $paymentMode === 'token' && $threesideAccount?.address}
     <!-- Token mode: show BSC wallet -->
