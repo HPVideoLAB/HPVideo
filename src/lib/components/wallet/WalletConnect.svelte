@@ -117,14 +117,9 @@
     if (unsubscribeModal) unsubscribeModal();
   });
 
-  // 打开钱包选择弹窗
+  // 打开钱包选择弹窗 — 始终先选模式
   const connect = () => {
-    // 首次连接时显示模式选择
-    if (!localStorage.getItem('paymentMode')) {
-      showModeSelector = true;
-    } else {
-      doConnect();
-    }
+    showModeSelector = true;
   };
 
   const doConnect = () => {
