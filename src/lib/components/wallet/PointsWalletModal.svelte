@@ -255,12 +255,12 @@
             <div class="flex items-end justify-between">
               <div>
                 <span class="text-3xl font-bold text-gray-900 dark:text-white font-mono">
-                  {balanceLoading ? '...' : parseInt($dlcpBalance).toLocaleString()}
+                  {balanceLoading ? '...' : (parseInt($dlcpBalance) || 0).toLocaleString()}
                 </span>
                 <span class="text-sm text-gray-400 ml-1">pts</span>
               </div>
               <div class="text-sm text-gray-400">
-                ≈ ${pointsToUSDT($dlcpBalance)}
+                ≈ ${pointsToUSDT($dlcpBalance || '0')}
               </div>
             </div>
           </div>

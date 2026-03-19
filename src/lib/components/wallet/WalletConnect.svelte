@@ -231,10 +231,10 @@
     >
       <iconify-icon icon="mdi:star-circle" class="text-amber-500 mr-1.5 text-base" />
       <span class="text-sm font-bold text-amber-600 dark:text-amber-400 font-mono mr-1">
-        {parseInt($dlcpBalance).toLocaleString()} pts
+        {(parseInt($dlcpBalance) || 0).toLocaleString()} pts
       </span>
       <span class="text-xs text-gray-400 mr-1">
-        ≈${pointsToUSDT($dlcpBalance)}
+        ≈${pointsToUSDT($dlcpBalance || '0')}
       </span>
       <button
         class="text-xs px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 transition"
