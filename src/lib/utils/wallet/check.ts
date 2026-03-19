@@ -1,38 +1,37 @@
 // src/lib/utils/wallet/check.ts
 import { getAccount } from '@wagmi/core';
-// ⚠️ 极其重要：必须引入和你在 App.svelte 或 layout.svelte 里初始化 Web3Modal 时用到的同一个 config 对象！
 import { config, modal } from '$lib/utils/wallet/bnb/index';
+import { get } from 'svelte/store';
+import { paymentMode } from '$lib/stores';
+import { getStoredAddress } from '$lib/utils/wallet/dlcp/wallet';
 
 /**
- * 🛡️ 钱包连接检查卫士
- * @returns {Promise<string | null>} 返回地址或null
+ * Wallet connection check - supports both token (BSC) and points (DBC) modes
+ * @returns {Promise<string | null>} address or null
  */
 export const ensureWalletConnected = async (): Promise<string | null> => {
-  // 获取当前账户完整状态
-  const account: any = getAccount(config);
+  const mode = get(paymentMode);
 
-  // console.log('🔍 [Wallet Check] 当前 Wagmi 状态:', {
-  //   address: account.address,
-  //   status: account.status,
-  //   isConnected: account.isConnected,
-  // });
-
-  // 🛡️ 严格检查：
-  // 1. address 必须存在
-  // 2. status 不能是 disconnected (有些时候 Wagmi 会缓存 address 但状态是 disconnected)
-  if (!account.address || account.status === 'disconnected') {
-    console.warn('❌ [Wallet Check] 判定为未连接，尝试唤起弹窗');
-
-    // 唤起弹窗 (使用 await 确保弹窗指令发出)
-    try {
-      await modal.open();
-    } catch (e) {
-      console.error('唤起 Web3Modal 失败:', e);
-    }
-
+  if (mode === 'points') {
+    // Points mode: check local DBC wallet
+    const addr = getStoredAddress();
+    if (addr) return addr;
+    console.warn('[Wallet Check] Points wallet not found');
     return null;
   }
 
-  // ✅ 验证通过，返回地址
+  // Token mode: check BSC wallet (wagmi)
+  const account: any = getAccount(config);
+
+  if (!account.address || account.status === 'disconnected') {
+    console.warn('[Wallet Check] BSC wallet not connected');
+    try {
+      await modal.open();
+    } catch (e) {
+      console.error('Open Web3Modal failed:', e);
+    }
+    return null;
+  }
+
   return account.address;
 };
