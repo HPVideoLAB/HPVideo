@@ -71,6 +71,7 @@
       dispatch('connected', address);
     } catch (e: any) {
       toast.error(e.message || 'Failed to import wallet');
+      privateKey = '';
     }
     loading = false;
     privateKey = '';

@@ -9,20 +9,42 @@ from utils.utils import get_current_user
 router = APIRouter()
 
 BNB_RPC = os.getenv("BNB_RPC")
-USDT_TRAN_ADDRESS = "0x3011aef25585d026BfA3d3c3Fb4323f4b0eF3Eaa"
+USDT_TRAN_ADDRESS = "0x3011aef25585d026BfA3d3c3Fb4323f4b7eF3Eaa"
+
+# USDT contract address on BSC (18 decimals)
+USDT_CONTRACT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955"
 
 # DBC Chain config for DLCP points payment
 DBC_RPC = "https://rpc1.dbcwallet.io"
 DLCP_RECEIVE_ADDRESS = os.getenv("DLCP_RECEIVE_ADDRESS", "0xeAc67D1B54730FF65D322aA21F2C3c8A8202Be0C")
 
+# DLCP contract address on DBC Chain (18 decimals)
+DLCP_CONTRACT_ADDRESS = "0x9b09b4B7a748079DAd5c280dCf66428e48E38Cd6"
+
 w3 = Web3(Web3.HTTPProvider(BNB_RPC))
 w3_dbc = Web3(Web3.HTTPProvider(DBC_RPC))
 
+TOKEN_DECIMALS = 18
 
-def verify_transfer_log(w3_instance, tx_receipt, sender_address, receive_address):
-    """Verify ERC20 Transfer event in transaction receipt"""
+
+def verify_transfer_log(w3_instance, tx_receipt, sender_address, receive_address,
+                        expected_contract, expected_amount_str):
+    """Verify ERC20 Transfer event in transaction receipt.
+
+    Also verifies:
+    - The emitting contract matches the expected token contract address.
+    - The on-chain transferred amount is >= the expected amount.
+    """
     if tx_receipt.status != 1:
         return False
+
+    # Parse expected amount to wei (18 decimals)
+    try:
+        expected_amount_float = float(expected_amount_str)
+        expected_amount_wei = int(expected_amount_float * (10 ** TOKEN_DECIMALS))
+    except (ValueError, TypeError):
+        return False
+
     for log in tx_receipt["logs"]:
         event_signature_hash = w3_instance.keccak(
             text="Transfer(address,address,uint256)"
@@ -36,20 +58,35 @@ def verify_transfer_log(w3_instance, tx_receipt, sender_address, receive_address
                 sender_address.lower() == from_address.lower()
                 and receive_address.lower() == to_address.lower()
             ):
-                return True
+                # Verify token contract address
+                log_contract = log["address"]
+                if log_contract.lower() != expected_contract.lower():
+                    continue
+
+                # Verify transferred amount from log data
+                try:
+                    actual_amount_wei = int(log["data"].hex(), 16)
+                except (ValueError, AttributeError):
+                    try:
+                        actual_amount_wei = int(log["data"], 16)
+                    except (ValueError, TypeError):
+                        continue
+
+                if actual_amount_wei >= expected_amount_wei:
+                    return True
     return False
 
 
 @router.post("/check")
 async def bnbcheck(request: Request, user=Depends(get_current_user)):
     body = await request.json()
-    hash = body["hash"]
-    address = body["address"]
-    messageid = body["messageid"]
-    model = body["model"]
-    size = body["size"]
-    duration = int(float(body["duration"]))
-    amount = body["amount"]
+    hash = body.get("hash", "")
+    address = body.get("address", "")
+    messageid = body.get("messageid", "")
+    model = body.get("model", "")
+    size = body.get("size", "")
+    duration = int(float(body.get("duration", "0")))
+    amount = body.get("amount", "0")
     pay_type = body.get("pay_type", "token")  # "token" (USDT/BSC) or "points" (DLCP/DBC)
 
     PayTableInstall.update_currpay_byaddress(address, False)
@@ -70,13 +107,19 @@ async def bnbcheck(request: Request, user=Depends(get_current_user)):
                 PayTableInstall.update_currpay_byid(payinfo.id, True)
                 return {"ok": False, "message": "pay fail"}
     else:
-        # Choose chain based on pay_type
+        # Replay attack prevention: reject tx hash already used for a successful payment
+        if PayTableInstall.is_hash_used(hash):
+            return {"ok": False, "message": "check Failed"}
+
+        # Choose chain and contract based on pay_type
         if pay_type == "points":
             w3_chain = w3_dbc
             receive_addr = DLCP_RECEIVE_ADDRESS
+            expected_contract = DLCP_CONTRACT_ADDRESS
         else:
             w3_chain = w3
             receive_addr = USDT_TRAN_ADDRESS
+            expected_contract = USDT_CONTRACT_ADDRESS
 
         try:
             tx_receipt = await asyncio.to_thread(
@@ -86,7 +129,8 @@ async def bnbcheck(request: Request, user=Depends(get_current_user)):
             print(f"wait_for_transaction_receipt error: {e}")
             return {"ok": False, "message": "check Failed"}
 
-        if verify_transfer_log(w3_chain, tx_receipt, address, receive_addr):
+        if verify_transfer_log(w3_chain, tx_receipt, address, receive_addr,
+                               expected_contract, amount):
             try:
                 if payinfo is None:
                     PayTableInstall.insert_pay(

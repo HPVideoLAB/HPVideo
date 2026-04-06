@@ -29,10 +29,10 @@ try {
       }
     },
   });
-} catch (e) {}
+} catch (e) { console.error('Failed to watch BSC account:', e); }
 
 // Initialize on load
-try { initWalletAddress(); } catch (e) {}
+try { initWalletAddress(); } catch (e) { console.error('Failed to initialize wallet address:', e); }
 
 // Export a function to manually refresh (called after points wallet connect)
 export function refreshWalletAddress() {

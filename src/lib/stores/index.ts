@@ -59,7 +59,7 @@ export const downLoadUrl = writable('');
 export const showWalletView = writable(false);
 
 // 支付模式: 'token' (USDT) | 'points' (DLCP积分)
-export const paymentMode = writable(localStorage.getItem('paymentMode') || 'points');
+export const paymentMode = writable(typeof localStorage !== 'undefined' ? localStorage.getItem('paymentMode') || 'points' : 'points');
 
 // DLCP 积分余额
 export const dlcpBalance = writable('0');

@@ -86,7 +86,7 @@ class PayTable:
     # update pay address
     def update_pay_address(self, id: str, address: str):
         try:
-            query = Pay.update(address=address).where(Pay.id == id)
+            query = Pay.update(wallet_addr=address).where(Pay.id == id)
             res = query.execute()
             return res > 0
         except Exception as e:
@@ -148,7 +148,7 @@ class PayTable:
             pay_dict = model_to_dict(pay)
             pay_model = PayModel(**pay_dict)
             return pay_model
-        except:
+        except Exception:
             return None
         
 	# get payinfo by id
@@ -158,8 +158,18 @@ class PayTable:
             pay_dict = model_to_dict(pay)
             pay_model = PayModel(**pay_dict)
             return pay_model
-        except:
+        except Exception:
             return None
+
+    # check if a tx hash already exists with status=True (to prevent replay attacks)
+    def is_hash_used(self, hash: str) -> bool:
+        try:
+            if not hash:
+                return False
+            Pay.get((Pay.hash == hash) & (Pay.status == True))
+            return True
+        except Exception:
+            return False
 
     # get currpay by address
     def get_currpay_byaddress(self, address: str):
@@ -168,6 +178,6 @@ class PayTable:
             pay_dict = model_to_dict(pay)
             pay_model = PayModel(**pay_dict)
             return pay_model
-        except:
+        except Exception:
             return None
 PayTableInstall = PayTable(DB)

@@ -2,6 +2,7 @@
   import { onMount, getContext } from 'svelte';
   import { threesideAccount, dlcpBalance, paymentMode } from '$lib/stores';
   import { getDLCPBalance, pointsToUSDT, getPointsBuyLink, POINTS_TIERS } from '$lib/utils/wallet/dlcp/index';
+  import { getStoredAddress } from '$lib/utils/wallet/dlcp/wallet';
   import { toast } from 'svelte-sonner';
 
   const i18n: any = getContext('i18n');
@@ -11,10 +12,11 @@
 
   // Refresh DLCP balance
   async function refreshBalance() {
-    if ($threesideAccount?.address) {
+    const addr = $threesideAccount?.address || getStoredAddress();
+    if (addr) {
       loading = true;
       try {
-        const balance = await getDLCPBalance($threesideAccount.address);
+        const balance = await getDLCPBalance(addr);
         dlcpBalance.set(balance);
       } catch (e) {
         console.error('Failed to fetch DLCP balance', e);
@@ -25,12 +27,13 @@
 
   // Buy points via PayPal
   async function buyPoints(tier: typeof POINTS_TIERS[0]) {
-    if (!$threesideAccount?.address) {
+    const addr = $threesideAccount?.address || getStoredAddress();
+    if (!addr) {
       toast.error($i18n.t('Please connect wallet first'));
       return;
     }
     try {
-      const url = await getPointsBuyLink($threesideAccount.address, tier.productId);
+      const url = await getPointsBuyLink(addr, tier.productId);
       if (url) {
         window.open(url, '_blank', 'noopener,noreferrer');
         toast.success($i18n.t('PayPal payment page opened'));
@@ -50,12 +53,12 @@
   });
 
   // Refresh when account changes
-  $: if ($threesideAccount?.address) {
+  $: if ($threesideAccount?.address || getStoredAddress()) {
     refreshBalance();
   }
 </script>
 
-{#if $paymentMode === 'points' && $threesideAccount?.address}
+{#if $paymentMode === 'points' && ($threesideAccount?.address || getStoredAddress())}
   <div class="mt-2">
     <!-- Balance Card -->
     <div class="bg-gradient-to-r from-amber-500/10 to-purple-500/10 border border-amber-500/20 rounded-xl p-3">
@@ -75,7 +78,7 @@
       <div class="mt-1 flex items-end justify-between">
         <div>
           <span class="text-2xl font-bold text-gray-900 dark:text-white font-mono">
-            {loading ? '...' : parseInt($dlcpBalance).toLocaleString()}
+            {loading ? '...' : (parseInt($dlcpBalance) || 0).toLocaleString()}
           </span>
           <span class="text-xs text-gray-400 ml-1">pts</span>
         </div>
