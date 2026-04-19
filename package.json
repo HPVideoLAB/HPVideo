@@ -84,7 +84,7 @@
 		"katex": "^0.16.9",
 		"linkifyjs": "^4.2.0",
 		"marked": "^9.1.0",
-		"pyodide": "^0.26.0-alpha.4",
+		"pyodide": "^0.26.2",
 		"qrcode": "^1.5.3",
 		"svelte-legos": "^0.2.5",
 		"svelte-sonner": "0.3.19",
