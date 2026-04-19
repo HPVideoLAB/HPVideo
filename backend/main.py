@@ -118,6 +118,22 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Prometheus metrics: exposes /metrics with default HTTP metrics
+# (request count by path/status, latency percentiles, in-flight requests).
+# Disable by setting DISABLE_METRICS=1 (e.g. local dev).
+if os.environ.get("DISABLE_METRICS", "0") != "1":
+    try:
+        from prometheus_fastapi_instrumentator import Instrumentator
+        Instrumentator(
+            should_group_status_codes=True,
+            should_ignore_untemplated=True,
+            should_respect_env_var=False,
+            excluded_handlers=["/metrics", "/health"],
+        ).instrument(app).expose(app, include_in_schema=False, endpoint="/metrics")
+        log.info("Prometheus metrics endpoint exposed at /metrics")
+    except ImportError:
+        log.warning("prometheus-fastapi-instrumentator not installed; /metrics disabled")
+
 app.state.config = AppConfig()
 app.state.config.ENABLE_MODEL_FILTER = ENABLE_MODEL_FILTER
 app.state.config.MODEL_FILTER_LIST = MODEL_FILTER_LIST

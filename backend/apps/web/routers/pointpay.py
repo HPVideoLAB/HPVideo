@@ -5,6 +5,9 @@ import asyncio
 
 from apps.web.models.pay import PayTableInstall
 from utils.utils import get_current_user
+import logging
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -61,7 +64,7 @@ async def pointcheck(request: Request, user=Depends(get_current_user)):
                 w3_dbc.eth.wait_for_transaction_receipt, hash, timeout=30
             )
         except Exception as e:
-            print(f"pointpay wait_for_transaction_receipt error: {e}")
+            log.info(f"pointpay wait_for_transaction_receipt error: {e}")
             return {"ok": False, "message": "check Failed"}
 
         # Parse expected amount to wei (18 decimals)
@@ -116,7 +119,7 @@ async def pointcheck(request: Request, user=Depends(get_current_user)):
                                 )
                             return {"ok": True, "message": "check success"}
                         except Exception as e:
-                            print("pointpay error:", e)
+                            log.info(f"pointpay error:{e}")
                             return {"ok": False, "message": "check Failed"}
 
         return {"ok": False, "message": "check Failed"}

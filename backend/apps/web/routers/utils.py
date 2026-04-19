@@ -17,6 +17,9 @@ from utils.misc import calculate_sha256, get_gravatar_url
 from config import ENABLE_ADMIN_EXPORT
 from constants import ERROR_MESSAGES
 from typing import List
+import logging
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 

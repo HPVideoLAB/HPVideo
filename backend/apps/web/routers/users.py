@@ -42,7 +42,6 @@ binancew3 = Web3(Web3.HTTPProvider('https://bsc-dataseed.binance.org/')) # 币�
 # from web3.auto import w3
 import asyncio
 
-
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["MODELS"])
 
@@ -56,7 +55,7 @@ router = APIRouter()
 # @router.get("/", response_model=List[UserModel])
 @router.get("/", response_model=dict)
 async def get_users(skip: int = 0, limit: int = 50, role: str = "", search: str = "", verified: str = "", channel: str = "", user=Depends(get_admin_user)):
-    print("skip", skip, "limit", limit)
+    log.info(f"skip {skip, "limit", limit}")
     return Users.get_users(skip, limit, role, search, verified, channel)
 
 ############################
@@ -69,17 +68,17 @@ async def get_users_invited(
     # print("开始111")
     
     # session_user = get_current_user()
-    print("session_user获取到啦111")
+    log.info("session_user获取到啦111")
     
     if session_user:
-        print("session_user", session_user.id)
+        log.info(f"session_user {session_user.id}")
         try:
             # 在这里添加你的业务逻辑，比如查询数据库
             users = Users.get_users_invited(session_user.id)
-            print("users", users)
+            log.info(f"users {users}")
             return users
         except Exception as e:
-            print("获取所有邀请用户时发生错误", e)
+            log.info(f"获取所有邀请用户时发生错误 {e}")
             raise HTTPException(400, detail="Error retrieving invited users")
     else:
         raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
@@ -222,12 +221,12 @@ def get_transaction_receipt(tx_hash):
     if receipt:
         status = receipt['status']
         if status == 1:
-            print("Transaction was successful")
+            log.info("Transaction was successful")
         else:
-            print("Transaction failed")
+            log.info("Transaction failed")
         return receipt
     else:
-        print("Transaction receipt not found")
+        log.info("Transaction receipt not found")
         return None
 
 
@@ -266,7 +265,7 @@ def update_user_vip(user_id, tx_hash, vip, time):
             )
             
     except Exception as e:
-        print("update vip error", e)
+        log.info(f"update vip error {e}")
         raise HTTPException(400, detail="update_user_vip error")
 
 
@@ -285,7 +284,7 @@ async def openPro(form_data: UserRoleUpdateProForm, session_user=Depends(get_cur
             else:
                 tx_receipt = await asyncio.to_thread(w3.eth.wait_for_transaction_receipt, tx_hash)
             # print("receipt", tx_receipt)
-            print("receipt", tx_receipt)
+            log.info(f"receipt {tx_receipt}")
 
             if tx_receipt.status == 1:
                 # Parse the event log
@@ -305,11 +304,11 @@ async def openPro(form_data: UserRoleUpdateProForm, session_user=Depends(get_cur
                         from_address = w3.to_checksum_address('0x' + from_address_hex)
                         to_address = w3.to_checksum_address('0x' + to_address_hex)
                             
-                        print(f"From: {from_address}")
-                        print(f"To: {to_address}")
+                        log.info(f"From: {from_address}")
+                        log.info(f"To: {to_address}")
                             
                         if to_address == tranAddress:
-                            print("run update_user_vip")
+                            log.info("run update_user_vip")
                             update_user_vip(session_user.id, tx_hash, form_data.vip, form_data.viptime)
 
                             # get vip info
@@ -319,7 +318,7 @@ async def openPro(form_data: UserRoleUpdateProForm, session_user=Depends(get_cur
                     return {"ok": False, "data": []}
 
         except Exception as e:
-            print("============upgradeVip==========", e)
+            log.info(f"============upgradeVip=========={e}")
             raise HTTPException(400, detail="Error retrieving invited users")
   
 
@@ -338,7 +337,7 @@ async def isPro(session_user=Depends(get_current_user)):
             vip_status = VIPStatuses.get_vip_status_by_user_id(user_id)
             return vip_status
         except Exception as e:
-            print("get vip status error", e)
+            log.info(f"get vip status error {e}")
             raise HTTPException(400, detail="Error is_pro")
             
 
@@ -372,7 +371,7 @@ async def get_user_info(request: Request,  user=Depends(get_current_user)):
             return response
                     
         except Exception as e:
-            print("Error occurred while retrieving user information", e)
+            log.info(f"Error occurred while retrieving user information {e}")
             raise HTTPException(400, detail="Error get_user_info")
 
 # Update the user's selected model       

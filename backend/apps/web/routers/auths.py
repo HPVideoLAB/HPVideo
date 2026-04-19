@@ -47,7 +47,6 @@ import base64
 
 from apps.web.models.daily_users import DailyUsersInstance
 
-import logging
 log = logging.getLogger(__name__)
 
 # --------钱包相关--------
@@ -78,10 +77,10 @@ async def get_session_user(user=Depends(get_current_user)):
             "address": user.address
         }
     except AttributeError as e:
-        print("AttributeError: ", e)
+        log.info(f"AttributeError: {e}")
         return {"error": "An error occurred while fetching user details"}
     except Exception as e:
-        print("Exception: ", e)
+        log.info(f"Exception: {e}")
         return {"error": "An internal server error occurred"}
 
 
@@ -144,14 +143,14 @@ async def printSignIn(request: Request, form_data: FingerprintSignInForm):
     try:
         user = Users.get_user_by_id(form_data.id)
     except Exception as e:
-        print("Error retrieving user by id:", e.message)
+        log.info(f"Error retrieving user by id:{e.message}")
 
     if user:
         DailyUsersInstance.refresh_active_today(user.last_active_at)
         Users.update_user_last_active_by_id(user.id)
-        print("User found:", user.id)
+        log.info(f"User found:{user.id}")
     else:
-        print("User not found, creating new user")
+        log.info("User not found, creating new user")
 
         hashed = get_password_hash("")
 
@@ -161,7 +160,7 @@ async def printSignIn(request: Request, form_data: FingerprintSignInForm):
         # private_key = account.key.hex()
         # private_key=w3.to_hex(account.key)
         # python -c "from web3 import Web3; w3 = Web3(); acc = w3.eth.account.create(); print(f'private key={w3.to_hex(acc.key)}, account={acc.address}')"
-        print("系统创建钱包账户:", wallet_address)
+        log.info(f"系统创建钱包账户:{wallet_address}")
 
         Auths.insert_new_auth(
             "",
@@ -175,10 +174,10 @@ async def printSignIn(request: Request, form_data: FingerprintSignInForm):
             address=wallet_address,
             channel=form_data.channel
         )
-        print("Auths.insert_new_auth executed")
+        log.info("Auths.insert_new_auth executed")
 
         user = Users.get_user_by_id(form_data.id)
-        print("New user created:", user.id)
+        log.info(f"New user created:{user.id}")
 
     token = create_token(
         data={"id": user.id},
@@ -203,7 +202,7 @@ async def printSignIn(request: Request, form_data: FingerprintSignInForm):
 @router.post("/walletSignIn")
 @limiter.limit("10/minute")
 async def walletSignIn(request: Request, form_data: WalletSigninForm):
-    print("Received Data:", form_data)
+    log.info(f"Received Data:{form_data}")
     address = form_data.address
     address_type = form_data.address_type
     message = form_data.nonce
@@ -238,8 +237,8 @@ async def walletSignIn(request: Request, form_data: WalletSigninForm):
             address_signed = w3.eth.account.recover_message(
                 encoded_message, signature=signature)
 
-            print("address_signed:", address_signed)
-            print("address:", address)
+            log.info(f"address_signed:{address_signed}")
+            log.info(f"address:{address}")
             sign_is_valid = address_signed.lower() == address.lower()
 
         if sign_is_valid:  # 忽略大小写进行比较
@@ -247,9 +246,9 @@ async def walletSignIn(request: Request, form_data: WalletSigninForm):
             user_count = None
 
             if user:
-                print("User found:", user.id)
+                log.info(f"User found:{user.id}")
             else:
-                print("User not found, creating new user")
+                log.info("User not found, creating new user")
 
                 # 添加用户信息
                 hashed = get_password_hash("")
@@ -268,9 +267,9 @@ async def walletSignIn(request: Request, form_data: WalletSigninForm):
 
                 if result:
                     user, user_count = result  # 解包返回的元组
-                    print(f"用户: {user}, 用户个数: {user_count}")
+                    log.info(f"用户: {user}, 用户个数: {user_count}")
                 else:
-                    print("用户创建失败")
+                    log.info("用户创建失败")
 
             # 记录设备ID和IP地址
             if device_id:
@@ -308,10 +307,10 @@ async def walletSignIn(request: Request, form_data: WalletSigninForm):
                 status_code=400, detail="Signature verification failed")
 
     except ValueError as e:
-        print(f"ValueError: {e}")
+        log.info(f"ValueError: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
     except Exception as e:
-        print(f"Exception: {e}")
+        log.info(f"Exception: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -320,10 +319,10 @@ async def walletSignIn(request: Request, form_data: WalletSigninForm):
 async def signin(request: Request, form_data: SigninForm):
     # 检查是否启用了基于信任头的 WebUI 认证
     if WEBUI_AUTH_TRUSTED_EMAIL_HEADER:
-        print("Checking if trusted email header authentication is enabled")
+        log.info("Checking if trusted email header authentication is enabled")
         # 检查请求头中是否包含信任头
         if WEBUI_AUTH_TRUSTED_EMAIL_HEADER not in request.headers:
-            print(1)
+            log.info(1)
             raise HTTPException(
                 400, detail=ERROR_MESSAGES.INVALID_TRUSTED_HEADER)
 
@@ -343,10 +342,10 @@ async def signin(request: Request, form_data: SigninForm):
         user = Auths.authenticate_user_by_trusted_header(trusted_email)
     # 检查是否禁用了 WebUI 认证
     elif WEBUI_AUTH == False:
-        print("Checking if WebUI authentication is disabled")
+        log.info("Checking if WebUI authentication is disabled")
         admin_email = "admin@localhost"
         admin_password = "admin"
-        print(2)
+        log.info(2)
 
         # 检查管理员账号是否存在
         if Users.get_user_by_email(admin_email.lower()):
@@ -371,7 +370,7 @@ async def signin(request: Request, form_data: SigninForm):
         # 使用表单中的邮箱和密码进行用户认证
         user = Auths.authenticate_user(
             form_data.email.lower(), form_data.password)
-        print("使用表单中的邮箱和密码进行用户认证", user)
+        log.info(f"使用表单中的邮箱和密码进行用户认证 {user}")
 
     # 如果认证成功，则生成令牌并返回用户信息
     if user:
@@ -392,7 +391,7 @@ async def signin(request: Request, form_data: SigninForm):
         }
     else:
         # 如果认证失败，则打印日志并返回错误提示
-        print(3)
+        log.info(3)
         raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
 
 
@@ -487,7 +486,7 @@ async def add_user(form_data: AddUserForm, user=Depends(get_admin_user)):
 
     try:
 
-        print(form_data)
+        log.info(form_data)
         hashed = get_password_hash(form_data.password)
         user = Auths.insert_new_auth(
             form_data.email.lower(),
@@ -643,7 +642,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
     try:
         while True:
             data = await websocket.receive_text()
-            print("socket接收到得信息", data)
+            log.info(f"socket接收到得信息 {data}")
             # if (data == "heart"):
             #    await manager.broadcast(f"{passedInfo['passed']}-{passedInfo['message']}", user_id)
             # else:
@@ -652,8 +651,8 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
             #     await manager.broadcast("heart", user_id)
             #     # await manager.broadcast(f"服务端接收到{user_id}", user_id)
     except WebSocketDisconnect:
-        print("WebSocketDisconnect了")
+        log.info("WebSocketDisconnect了")
         manager.disconnect(websocket, user_id)
     except Exception as e:
-        print(f"WebSocket connection error: {e}")
+        log.info(f"WebSocket connection error: {e}")
         await websocket.close(code=1000)  # 优雅地关闭连接

@@ -5,6 +5,9 @@ import asyncio
 
 from apps.web.models.pay import PayTableInstall
 from utils.utils import get_current_user
+import logging
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -126,7 +129,7 @@ async def bnbcheck(request: Request, user=Depends(get_current_user)):
                 w3_chain.eth.wait_for_transaction_receipt, hash, timeout=30
             )
         except Exception as e:
-            print(f"wait_for_transaction_receipt error: {e}")
+            log.info(f"wait_for_transaction_receipt error: {e}")
             return {"ok": False, "message": "check Failed"}
 
         if verify_transfer_log(w3_chain, tx_receipt, address, receive_addr,
@@ -143,7 +146,7 @@ async def bnbcheck(request: Request, user=Depends(get_current_user)):
                     )
                 return {"ok": True, "message": "check success"}
             except Exception as e:
-                print("========================", e)
+                log.info(f"========================{e}")
                 return {"ok": False, "message": "check Failed"}
 
         return {"ok": False, "message": "check Failed"}

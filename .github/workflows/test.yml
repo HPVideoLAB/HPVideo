@@ -1,0 +1,70 @@
+name: Test & Lint
+
+on:
+  pull_request:
+    branches: [main, test]
+  push:
+    branches: [main, test]
+
+jobs:
+  lint-python:
+    name: Python syntax + lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Install lint tools
+        run: pip install ruff
+      - name: Ruff check (syntax + common errors)
+        # E9/F63/F7/F82 only — fail on real bugs, not style nits.
+        run: |
+          ruff check backend/ \
+            --select E9,F63,F7,F82 \
+            --exit-non-zero-on-fix
+
+  lint-frontend:
+    name: Frontend type/syntax check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install deps
+        run: npm ci --ignore-scripts || npm install --ignore-scripts
+      - name: Svelte/TypeScript check
+        run: |
+          if grep -q '"check"' package.json; then
+            npm run check
+          else
+            echo "No check script defined; skipping."
+          fi
+
+  test-python:
+    name: Python unit tests (if any)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Install deps
+        run: |
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-asyncio
+      - name: Run pytest if tests exist
+        run: |
+          if compgen -G 'backend/tests/**/*.py' > /dev/null || \
+             compgen -G 'backend/**/test_*.py' > /dev/null; then
+            pytest backend/ -x --tb=short
+          else
+            echo "No tests found; skipping pytest."
+          fi

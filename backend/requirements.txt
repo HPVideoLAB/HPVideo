@@ -4,6 +4,7 @@ pydantic==2.10.3
 python-multipart==0.0.18
 slowapi==0.1.9
 python-json-logger==2.0.7
+prometheus-fastapi-instrumentator==7.0.0
 
 Flask==3.0.3
 Flask-Cors==4.0.0

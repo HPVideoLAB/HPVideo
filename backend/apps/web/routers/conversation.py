@@ -44,11 +44,11 @@ async def conversationRefresh(conversation_req: ConversationRequest, user=Depend
 
         # 获取用户当前可使用条数
         total = ConversationUtils.checkTotal(userrole, modelinfo.type, vipStatuss)
-        print("==========可用会话总数==========:", total)
+        log.info(f"==========可用会话总数==========:{total}")
 
         # 获取用户的聊天次数
         user_total = ConversationUtils.checkUseTotal(user.id, userrole, conversation_req.equip_id, modelinfo.type, date_time, vipStatuss, conversation)
-        print("==========已用会话总数==========:", user_total)
+        log.info(f"==========已用会话总数==========:{user_total}")
 
         # 校验用户是否超数量
         result = []
@@ -121,7 +121,7 @@ async def conversationRefresh(conversation_req: ConversationRequest, user=Depend
 
         return {"passed": True, "data": result}
     except Exception as e:
-        print("========================", e)
+        log.info(f"========================{e}")
         return {
             "passed": False,
             "message": "Failed"

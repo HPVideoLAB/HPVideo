@@ -141,7 +141,7 @@ async def get_all_user_chats_in_db(user=Depends(get_admin_user)):
 ############################
 @router.post("/new", response_model=Optional[ChatResponse])
 async def create_new_chat(form_data: ChatForm, user=Depends(get_current_user)):
-    print("create_new_chat")
+    log.info("create_new_chat")
     try:
         chat = Chats.insert_new_chat(user.id, form_data)
         return ChatResponse(**{**chat.model_dump(), "chat": json.loads(chat.chat)})
@@ -166,7 +166,7 @@ async def get_user_chat_list_by_tag_name(
     form_data: TagNameForm, user=Depends(get_current_user)
 ):
 
-    print(form_data)
+    log.info(form_data)
     chat_ids = [
         chat_id_tag.chat_id
         for chat_id_tag in Tags.get_chat_ids_by_tag_name_and_user_id(
