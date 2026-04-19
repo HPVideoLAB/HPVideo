@@ -48,7 +48,7 @@ class BNBUSDTPayListener:
                 await asyncio.sleep(2)
 
             except Exception as e:
-                asyncio.sleep(5)
+                await asyncio.sleep(5)
                 event_filter = self.contract.events.Transfer.create_filter(
                     from_block="latest"
                 )

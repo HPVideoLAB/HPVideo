@@ -455,13 +455,14 @@ ENABLE_ADMIN_EXPORT = os.environ.get("ENABLE_ADMIN_EXPORT", "True").lower() == "
 
 WEBUI_SECRET_KEY = os.environ.get(
     "WEBUI_SECRET_KEY",
-    os.environ.get(
-        "WEBUI_JWT_SECRET_KEY", "t0p-s3cr3t"
-    ),  # DEPRECATED: remove at next major version
+    os.environ.get("WEBUI_JWT_SECRET_KEY", ""),
 )
 
-if WEBUI_AUTH and WEBUI_SECRET_KEY == "":
-    raise ValueError(ERROR_MESSAGES.ENV_VAR_NOT_FOUND)
+if WEBUI_AUTH and not WEBUI_SECRET_KEY:
+    raise ValueError(
+        "WEBUI_SECRET_KEY environment variable is required when WEBUI_AUTH is enabled. "
+        "Generate a secure random value (e.g., `openssl rand -hex 32`)."
+    )
 
 ####################################
 # RAG

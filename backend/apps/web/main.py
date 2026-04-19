@@ -1,5 +1,9 @@
-from fastapi import FastAPI, Depends
+import os
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from apps.web.routers import (
     auths,
     users,
@@ -36,7 +40,19 @@ from config import (
 
 app = FastAPI()
 
-origins = ["*"]
+# CORS: whitelist specific origins from env var (comma-separated).
+# Falls back to safe localhost-only defaults if not configured.
+_cors_env = os.environ.get("CORS_ALLOWED_ORIGINS", "")
+origins = [o.strip() for o in _cors_env.split(",") if o.strip()] or [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:8080",
+]
+
+# Rate limiter: defaults to 100/min per IP, stricter limits on auth/payment endpoints
+limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.state.config = AppConfig()
 
@@ -55,8 +71,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
 )
 
 # Apply payment middleware to specific routes

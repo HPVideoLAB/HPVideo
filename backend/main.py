@@ -162,16 +162,6 @@ app.add_middleware(
 )
 
 
-@app.middleware("http")
-async def check_url(request: Request, call_next):
-    start_time = int(time.time())
-    response = await call_next(request)
-    process_time = int(time.time()) - start_time
-    response.headers["X-Process-Time"] = str(process_time)
-
-    return response
-
-
 # ====== Nest 反向代理（放在 app.mount 之前） ======
 # 必须引入 StreamingResponse 来支持流式传输
 from starlette.responses import StreamingResponse, Response
@@ -447,27 +437,17 @@ else:
 
 
 @app.middleware("http")
-async def add_process_time_header(request: Request, call_next):
-    start_time = time.time()
-    response = await call_next(request)
-    process_time = time.time() - start_time
-    response.headers["X-Process-Time"] = str(process_time)
-    print(f"Path: {request.url.path}, Process Time: {process_time:.2f}s")
-    return response
-
-
-@app.middleware("http")
 async def add_process_time_and_error_logging(request: Request, call_next):
     start_time = time.time()
     try:
         response = await call_next(request)
         process_time = time.time() - start_time
         response.headers["X-Process-Time"] = str(process_time)
-        print(f"Path: {request.url.path}, Process Time: {process_time:.2f}s")
+        log.info(f"Path: {request.url.path}, Process Time: {process_time:.2f}s")
         return response
     except Exception as e:
         process_time = time.time() - start_time
         log.error(
             f"Path: {request.url.path}, Error: {str(e)}, Process Time: {process_time:.2f}s"
         )
-        raise  # 重新抛出异常，让 FastAPI 的错误处理器处理它
+        raise

@@ -32,8 +32,13 @@ from web3 import Web3
 import logging
 from typing import List, Dict
 
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
 from fastapi import Request, WebSocket, WebSocketDisconnect
 from fastapi import Depends, HTTPException, status
+
+limiter = Limiter(key_func=get_remote_address)
 from fastapi import APIRouter
 from pydantic import BaseModel
 import re
@@ -91,20 +96,13 @@ async def update_profile(
 ):
     if session_user:
         try:
-            if form_data.name == 'admin+webui1234':
-                user = Users.update_user_by_id(
-                    session_user.id,
-                    {"profile_image_url": form_data.profile_image_url,
-                        "name": form_data.name, "role": 'admin'},
-                )
-            else:
-                user = Users.update_user_by_id(
-                    session_user.id,
-                    {"profile_image_url": form_data.profile_image_url,
-                        "name": form_data.name},
-                )
+            user = Users.update_user_by_id(
+                session_user.id,
+                {"profile_image_url": form_data.profile_image_url,
+                    "name": form_data.name},
+            )
         except Exception as e:
-            print("update_profile", e)
+            log.error(f"update_profile error: {e}")
         if user:
             return user
         else:
@@ -203,6 +201,7 @@ async def printSignIn(request: Request, form_data: FingerprintSignInForm):
 
 
 @router.post("/walletSignIn")
+@limiter.limit("10/minute")
 async def walletSignIn(request: Request, form_data: WalletSigninForm):
     print("Received Data:", form_data)
     address = form_data.address
@@ -217,34 +216,18 @@ async def walletSignIn(request: Request, form_data: WalletSigninForm):
         sign_is_valid = False
 
         if address_type == 'threeSide':
-            sign_is_valid = False
-            # if form_data.nonce == signature:
-            #     sign_is_valid = True
-            # else:
-            # 将签名解码为字节
-            # signature_bytes = Web3.to_bytes(hexstr=signature)
-            # print("message_text", message)
-
-            # 使用 web3.py 的 eth.account.recover_message 方法验证签名
-            # recovered_address = w3.eth.account.recover_message(encode_defunct(text=message), signature=signature_bytes)
-
-            # recovered_address = w3.eth.account.recover_message(message_text=message, signature=signature_bytes)
-            # print("recovered_address:", recovered_address, "address:", address)
-
-            # 比较签名者地址和恢复的地址
-            # sign_is_valid = recovered_address.lower() == address.lower()
-
-            # 先进行Base64解码
-            decoded_data = base64.b64decode(signature)
-            # 将解码后的数据转换为可处理的字符形式（假设原始数据是文本）
-            decoded_text = decoded_data.decode('utf-8')
-            # 进行与加密时相对应的处理来还原数据（这里简单通过逐个字符相减取模运算来示意，与加密时相加取模对应）
-            restored_text = ''
-            for i in range(len(decoded_text)):
-                char_code = ord(decoded_text[i])
-                vector_char_code = ord(address[i % len(address)])
-                restored_text += chr((char_code - vector_char_code) % 256)
-            sign_is_valid = restored_text == message
+            # Use standard ECDSA signature verification (same as Ethereum).
+            # Previous custom XOR-based cipher was cryptographically broken
+            # and allowed anyone to forge a signature for any address.
+            encoded_message = encode_defunct(text=message)
+            try:
+                recovered_address = w3.eth.account.recover_message(
+                    encoded_message, signature=signature
+                )
+                sign_is_valid = recovered_address.lower() == address.lower()
+            except Exception as e:
+                log.error(f"threeSide signature verification failed: {e}")
+                sign_is_valid = False
 
         else:
             # 以太坊的消息签名格式是 "\x19Ethereum Signed Message:\n" + len(message) + message
@@ -333,6 +316,7 @@ async def walletSignIn(request: Request, form_data: WalletSigninForm):
 
 
 @router.post("/signin", response_model=SigninResponse)
+@limiter.limit("5/minute")
 async def signin(request: Request, form_data: SigninForm):
     # 检查是否启用了基于信任头的 WebUI 认证
     if WEBUI_AUTH_TRUSTED_EMAIL_HEADER:
@@ -418,6 +402,7 @@ async def signin(request: Request, form_data: SigninForm):
 
 
 @router.post("/signup", response_model=SigninResponse)
+@limiter.limit("3/minute")
 async def signup(request: Request, form_data: SignupForm):
     if not request.app.state.config.ENABLE_SIGNUP and WEBUI_AUTH:
         raise HTTPException(
