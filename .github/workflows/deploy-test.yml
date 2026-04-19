@@ -16,18 +16,46 @@ jobs:
       - name: Log in to Docker Hub
         run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-      # 1) 原 Python/Svelte 一体镜像：不动
-      - name: Build and Push WebUI Docker image
+      # 1) WebUI image: build locally, scan, then push.
+      - name: Build WebUI image (local)
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: true
+          push: false
+          load: true
           tags: aihpvideo/hpvideo:test
 
-      # 2) 新增 Nest 镜像
-      - name: Build and Push Nest Docker image
+      - name: Scan WebUI image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: aihpvideo/hpvideo:test
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: os,library
+
+      - name: Push WebUI image
+        run: docker push aihpvideo/hpvideo:test
+
+      # 2) Nest image: build locally, scan, then push.
+      - name: Build Nest image (local)
         uses: docker/build-push-action@v5
         with:
           context: backend/degpt-nest/degpt-nest
-          push: true
+          push: false
+          load: true
           tags: aihpvideo/hpvideo-nest:test
+
+      - name: Scan Nest image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: aihpvideo/hpvideo-nest:test
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: os,library
+
+      - name: Push Nest image
+        run: docker push aihpvideo/hpvideo-nest:test

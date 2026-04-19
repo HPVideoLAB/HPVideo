@@ -15,16 +15,44 @@ jobs:
       - name: Log in to Docker Hub
         run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-      - name: Build & Push hpvideo (prod)
+      - name: Build hpvideo (prod, load locally for scan)
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: true
+          push: false
+          load: true
           tags: aihpvideo/hpvideo:prod
 
-      - name: Build & Push hpvideo-nest (prod)
+      - name: Scan hpvideo image with Trivy (HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: aihpvideo/hpvideo:prod
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: os,library
+
+      - name: Push hpvideo (prod) after scan passes
+        run: docker push aihpvideo/hpvideo:prod
+
+      - name: Build hpvideo-nest (prod, load locally for scan)
         uses: docker/build-push-action@v5
         with:
           context: backend/degpt-nest/degpt-nest
-          push: true
+          push: false
+          load: true
           tags: aihpvideo/hpvideo-nest:prod
+
+      - name: Scan hpvideo-nest image with Trivy (HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: aihpvideo/hpvideo-nest:prod
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: os,library
+
+      - name: Push hpvideo-nest (prod) after scan passes
+        run: docker push aihpvideo/hpvideo-nest:prod

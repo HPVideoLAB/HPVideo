@@ -103,11 +103,24 @@ app.include_router(bnbpay.router, prefix="/bnbpay", tags=["bnbpay"])
 app.include_router(pointpay.router, prefix="/pointpay", tags=["pointpay"])
 
 
+from apps.redis.redis_client import RedisClientInstance
+
+STATUS_CACHE_KEY = "webui:status"
+STATUS_CACHE_TTL = 60  # seconds
+
+
 @app.get("/")
 async def get_status():
-    return {
+    # Try Redis first; fall through on any cache miss / error.
+    cached = RedisClientInstance.get_value_by_key(STATUS_CACHE_KEY)
+    if cached is not None:
+        return cached
+
+    payload = {
         "status": True,
         "auth": WEBUI_AUTH,
         "default_models": app.state.config.DEFAULT_MODELS,
         "default_prompt_suggestions": app.state.config.DEFAULT_PROMPT_SUGGESTIONS,
     }
+    RedisClientInstance.add_key_value(STATUS_CACHE_KEY, payload, ttl=STATUS_CACHE_TTL)
+    return payload

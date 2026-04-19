@@ -48,7 +48,24 @@ from config import (
 )
 from constants import ERROR_MESSAGES
 
-logging.basicConfig(stream=sys.stdout, level=GLOBAL_LOG_LEVEL)
+# Logging: structured JSON when LOG_FORMAT=json (prod), plain text otherwise.
+_log_format = os.environ.get("LOG_FORMAT", "text").lower()
+_handler = logging.StreamHandler(sys.stdout)
+if _log_format == "json":
+    try:
+        from pythonjsonlogger import jsonlogger
+        _handler.setFormatter(jsonlogger.JsonFormatter(
+            "%(asctime)s %(name)s %(levelname)s %(message)s"
+        ))
+    except ImportError:
+        _handler.setFormatter(logging.Formatter(
+            "%(asctime)s %(name)s %(levelname)s %(message)s"
+        ))
+else:
+    _handler.setFormatter(logging.Formatter(
+        "%(asctime)s %(name)s %(levelname)s %(message)s"
+    ))
+logging.basicConfig(level=GLOBAL_LOG_LEVEL, handlers=[_handler], force=True)
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["MAIN"])
 
