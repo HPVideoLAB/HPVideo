@@ -58,3 +58,16 @@ CVE-2026-30922
 # known API hosts, so an attacker would need to compromise one of
 # those providers first. Deferred to Q2 2026.
 CVE-2025-69223
+
+# --- hpvideo-nest image (backend/degpt-nest/degpt-nest) ---
+# node-tar path-traversal / file-overwrite family. Node-tar is a
+# transitive dep pulled by NestJS tooling; the nest image runs as
+# a JSON-RPC API server and does not extract user-controlled tar
+# archives at runtime. All four CVEs require the application to
+# call `tar.extract` on attacker-controlled input, which the nest
+# service does not do. Deferred to Q2 2026 dep refresh.
+CVE-2026-23950
+CVE-2026-24842
+CVE-2026-26960
+CVE-2026-29786
+CVE-2026-31802
