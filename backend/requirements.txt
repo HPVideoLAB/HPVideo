@@ -17,8 +17,11 @@ python-jose==3.4.0
 passlib[bcrypt]==1.7.4
 
 requests==2.31.0
-# CVE-2025-69223: zip-bomb via HTTP auto_decompress; fixed in 3.13.3
-aiohttp==3.13.3
+# aiohttp: cdp-sdk 1.33.2 hard-pins aiohttp==3.11.16, so we cannot
+# upgrade to 3.13.3 without the cdp-sdk/x402 v2 migration.
+# CVE-2025-69223 (zip-bomb) tracked in .trivyignore — exposure is low
+# because our outbound HTTP targets are fixed API hosts.
+aiohttp==3.11.16
 peewee==3.17.3
 peewee-migrate==1.12.2
 psycopg2-binary==2.9.9

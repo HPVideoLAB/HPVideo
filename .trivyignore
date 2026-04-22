@@ -51,3 +51,10 @@ CVE-2026-23949
 # attacker would need to feed malformed ASN.1 to us, which we do not
 # do — we only parse certificates from our own TLS stack. Deferred.
 CVE-2026-30922
+
+# aiohttp auto_decompress zip-bomb — cdp-sdk 1.33.2 hard-pins
+# aiohttp==3.11.16 (not a range), so this CVE cannot be patched
+# without the cdp-sdk/x402 v2 migration. Outbound HTTP goes only to
+# known API hosts, so an attacker would need to compromise one of
+# those providers first. Deferred to Q2 2026.
+CVE-2025-69223
