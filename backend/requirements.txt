@@ -70,13 +70,14 @@ viapi-utils==1.0.1
 tweepy==4.14.0
 redis==5.2.1
 
-# --- Transitive-dep pins to patch CVEs flagged by Trivy ---
-# CVE-2025-66418 / 66471 / 2026-21441: urllib3 decompression bombs; fixed in 2.6.3
-# requests 2.31.0 allows urllib3 <3, so 2.6.3 satisfies the constraint.
-urllib3>=2.6.3
-# NOTE: Starlette CVE-2025-62727 is NOT pinned here because fastapi 0.115.12
-# gates starlette to <0.47. Upgrading fastapi is out of scope for this
-# point release; the CVE is tracked in .trivyignore instead.
+# --- Transitive-dep CVE notes ---
+# urllib3 CVE-2025-66418 / 66471 / 2026-21441: fixed in 2.6.3, but
+# cdp-sdk 1.33.2 gates urllib3 to <=2.3.0. Upgrading cdp-sdk couples
+# with the x402 v2 migration (same vendor, coupled API surface).
+# Tracked in .trivyignore for the Q2 2026 framework refresh.
+#
+# Starlette CVE-2025-62727: fastapi 0.115.12 gates starlette <0.47.
+# Tracked in .trivyignore for the same refresh.
 
 # x402 GHSA-qr2g-p6q7-w82m requires v2.x upgrade; v2 API differs
 # substantially (breaks create_facilitator_config / require_payment imports).

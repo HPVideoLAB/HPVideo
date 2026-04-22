@@ -29,3 +29,13 @@ CVE-2026-40192
 # Attacker needs to send crafted HTTP Range headers; we do not serve
 # user-controlled range requests so practical exposure is low.
 CVE-2025-62727
+
+# urllib3 decompression-bomb CVEs — fixed in 2.6.3 but cdp-sdk 1.33.2
+# gates urllib3 to <=2.3.0. Coinbase's cdp-sdk is coupled to the x402
+# SDK version (same team, shared breaking changes at v2), so upgrading
+# cdp-sdk is the same migration as x402. Deferred to Q2 2026.
+# Exposure: decompression bombs require attacker-controlled response
+# bodies; our outbound calls go only to known API hosts.
+CVE-2025-66418
+CVE-2025-66471
+CVE-2026-21441
