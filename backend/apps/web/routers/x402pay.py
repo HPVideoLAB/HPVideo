@@ -43,16 +43,16 @@ MODEL_REGISTRY: Dict[str, Dict[str, str]] = {
     "ltx-2.3":    {"vendor": "lightricks",  "model": "ltx-2.3/text-to-video"},
     # Minimax Hailuo 02 → 2.3
     "hailuo-2.3": {"vendor": "minimax",     "model": "hailuo-2.3/t2v-standard"},
-    # ByteDance Seedance V1 → 2.0
-    "seedance-2.0": {"vendor": "bytedance", "model": "seedance-v2.0/text-to-video"},
+    # ByteDance Seedance V1 → 2.0 (confirmed WaveSpeed path: bytedance/seedance-2.0/text-to-video)
+    "seedance-2.0": {"vendor": "bytedance", "model": "seedance-2.0/text-to-video"},
     # Kwaivgi Kling V2.0 → V3.0
     "kling-3.0":  {"vendor": "kwaivgi",     "model": "kling-v3.0-std/text-to-video"},
     # Pixverse V4.5 → V6
     "pixverse-v6": {"vendor": "pixverse",   "model": "pixverse-v6/text-to-video"},
-    # NEW: Luma Ray 2 (replaces part of Sora 2's role)
-    "luma-ray-2": {"vendor": "luma",        "model": "ray-2/text-to-video"},
-    # NEW: Vidu Q3 (newest)
-    "vidu-q3":    {"vendor": "vidu",        "model": "vidu-q3/text-to-video"},
+    # NEW: Luma Ray 2 (confirmed WaveSpeed path: luma/ray-2-t2v — uses combined slug)
+    "luma-ray-2": {"vendor": "luma",        "model": "ray-2-t2v"},
+    # NEW: Vidu Q3 (confirmed WaveSpeed path: vidu/q3/text-to-video)
+    "vidu-q3":    {"vendor": "vidu",        "model": "q3/text-to-video"},
 }
 
 _ROUTE_PREFIX = "/creator/api/v1/x402/creator/"
