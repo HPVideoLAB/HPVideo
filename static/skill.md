@@ -5,8 +5,8 @@ Use x402 protocol to pay USDC on Base Chain and generate videos autonomously.
 
 ## Available Skills
 
-### 1. WAN 2.5 (Alibaba) — Cinematic Video
-- Endpoint: `GET https://hpvideo.io/creator/api/v1/x402/creator/wan-2.5`
+### 1. WAN 2.7 (Alibaba) — Cinematic Video
+- Endpoint: `GET https://hpvideo.io/creator/api/v1/x402/creator/wan-2.7`
 - Type: Text-to-Video / Image-to-Video
 - Duration: 5-10 seconds
 - Resolution: 480p - 1080p
@@ -14,14 +14,14 @@ Use x402 protocol to pay USDC on Base Chain and generate videos autonomously.
 - Price: $2.50 - $6.00 USDC
 - Best for: Marketing, storytelling, cinematic content
 
-### 2. SORA 2 (OpenAI) — Creative Video
-- Endpoint: `GET https://hpvideo.io/creator/api/v1/x402/creator/sora-2`
+### 2. LUMA RAY 2 (Luma AI) — Cinematic Motion
+- Endpoint: `GET https://hpvideo.io/creator/api/v1/x402/creator/luma-ray-2`
 - Type: Text-to-Video / Image-to-Video
-- Duration: 4-12 seconds
-- Resolution: 720p
+- Duration: 5-10 seconds
+- Resolution: 1080p
 - Audio: Yes
-- Price: $3.00 - $7.50 USDC
-- Best for: Creative, abstract, narrative-driven content
+- Price: $1.50 - $3.00 USDC
+- Best for: Film-grade motion, VFX, creative narrative
 
 ### 3. VEO 3.1 (Google) — Photorealistic Video
 - Endpoint: `GET https://hpvideo.io/creator/api/v1/x402/creator/veo3.1`
@@ -32,13 +32,13 @@ Use x402 protocol to pay USDC on Base Chain and generate videos autonomously.
 - Price: $2.80 - $6.50 USDC
 - Best for: Photorealistic scenes, product demos
 
-### 4. KLING V2.0 (Kwai AI) — Dynamic Video
-- Endpoint: `GET https://hpvideo.io/creator/api/v1/x402/creator/kling`
+### 4. KLING V3.0 (Kwai AI) — Dynamic Video
+- Endpoint: `GET https://hpvideo.io/creator/api/v1/x402/creator/kling-3.0`
 - Type: Text-to-Video / Image-to-Video
 - Duration: 5-10 seconds
 - Resolution: Multiple
 - Audio: Yes
-- Price: $2.00 - $5.50 USDC
+- Price: $2.10 - $4.20 USDC
 - Best for: Social media, dynamic motion, character animation
 
 ### 5. OVI (Character.ai) — Character Video
@@ -50,38 +50,49 @@ Use x402 protocol to pay USDC on Base Chain and generate videos autonomously.
 - Price: $1.50 - $3.00 USDC
 - Best for: Avatar animation, conversational video
 
-### 6. LTX 2 PRO (Lightricks) — Professional Video
-- Endpoint: `GET https://hpvideo.io/creator/api/v1/x402/creator/ltx-2-pro`
+### 6. LTX 2.3 (WaveSpeed) — Synchronized Audio Video
+- Endpoint: `GET https://hpvideo.io/creator/api/v1/x402/creator/ltx-2.3`
 - Type: Text-to-Video / Image-to-Video
 - Duration: 6-10 seconds
 - Resolution: 1080p
+- Audio: Yes
 - Price: $2.00 - $5.00 USDC
 - Best for: Product showcases, tutorials, corporate content
 
-### 7. HAILUO 02 (Minimax) — Stylized Video
-- Endpoint: `GET https://hpvideo.io/creator/api/v1/x402/creator/hailuo-02`
+### 7. HAILUO 2.3 (Minimax) — Physics-Aware Video
+- Endpoint: `GET https://hpvideo.io/creator/api/v1/x402/creator/hailuo-2.3`
 - Type: Text-to-Video
 - Duration: 6-10 seconds
-- Resolution: 768p
+- Resolution: 1080p
 - Price: $1.80 - $4.50 USDC
-- Best for: Anime-style, artistic, illustration-based content
+- Best for: Physics-accurate scenes, realistic motion
 
-### 8. SEEDANCE V1 (ByteDance) — Dance/Motion Video
-- Endpoint: `GET https://hpvideo.io/creator/api/v1/x402/creator/seedance`
-- Type: Text-to-Video
+### 8. SEEDANCE 2.0 (ByteDance) — Cinematic Motion Video
+- Endpoint: `GET https://hpvideo.io/creator/api/v1/x402/creator/seedance-2.0`
+- Type: Text-to-Video / Image-to-Video
 - Duration: 6-12 seconds
 - Resolution: Multiple
+- Audio: Yes
 - Price: $2.20 - $5.80 USDC
-- Best for: Music videos, dance content, motion capture
+- Best for: Music videos, cinematic narratives, social content
 
-### 9. PIXVERSE V4.5 (Pixverse) — Versatile Video
-- Endpoint: `GET https://hpvideo.io/creator/api/v1/x402/creator/pixverse`
+### 9. PIXVERSE V6 (Pixverse) — Versatile Video with Camera Control
+- Endpoint: `GET https://hpvideo.io/creator/api/v1/x402/creator/pixverse-v6`
 - Type: Text-to-Video / Image-to-Video
 - Duration: 5-8 seconds
 - Resolution: Multiple
 - Audio: Yes
 - Price: $1.50 - $4.00 USDC
 - Best for: Rapid prototyping, A/B testing, versatile content
+
+### 10. VIDU Q3 (Vidu) — Motion-Diverse Video
+- Endpoint: `GET https://hpvideo.io/creator/api/v1/x402/creator/vidu-q3`
+- Type: Text-to-Video / Image-to-Video
+- Duration: 4-8 seconds
+- Resolution: Up to 1080p
+- Audio: Yes
+- Price: $1.60 - $3.20 USDC
+- Best for: Cinematic results with smooth motion, rich detail
 
 ## How to Use
 

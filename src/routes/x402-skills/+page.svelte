@@ -1,11 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
 
-  // Models data
+  // Models data — keep in sync with backend MODEL_REGISTRY (x402pay.py)
+  // Updated 2026-04-22: Sora 2 removed (OpenAI API shutdown 2026-09-24).
   const models = [
     {
-      id: "wan-2.5",
-      name: "WAN 2.5",
+      id: "wan-2.7",
+      name: "WAN 2.7",
       provider: "Alibaba",
       type: "Text-to-Video / Image-to-Video",
       duration: "5-10s",
@@ -17,17 +18,17 @@
       desc: "High-quality cinematic video generation with audio support. Best for marketing, storytelling, and professional content.",
     },
     {
-      id: "sora-2",
-      name: "SORA 2",
-      provider: "OpenAI",
+      id: "luma-ray-2",
+      name: "LUMA RAY 2",
+      provider: "Luma AI",
       type: "Text-to-Video / Image-to-Video",
-      duration: "4-12s",
-      resolution: "720p",
+      duration: "5-10s",
+      resolution: "1080p",
       audio: true,
-      price: "$3.00 - $7.50",
+      price: "$1.50 - $3.00",
       rank: 2,
-      category: "Creative",
-      desc: "OpenAI's frontier video model. Exceptional at creative, abstract, and narrative-driven video generation.",
+      category: "Cinematic",
+      desc: "Film-grade cinematic motion and VFX-quality rendering with prompt optimization.",
     },
     {
       id: "veo3.1",
@@ -43,14 +44,14 @@
       desc: "Google's state-of-the-art video model. Excels at photorealistic scenes, product demos, and natural motion.",
     },
     {
-      id: "kling",
-      name: "KLING V2.0",
+      id: "kling-3.0",
+      name: "KLING V3.0",
       provider: "Kwai AI",
       type: "Text-to-Video / Image-to-Video",
       duration: "5-10s",
       resolution: "Multiple",
       audio: true,
-      price: "$2.00 - $5.50",
+      price: "$2.10 - $4.20",
       rank: 4,
       category: "Dynamic",
       desc: "Dynamic motion and character animation. Ideal for social media content, memes, and short-form video.",
@@ -69,47 +70,47 @@
       desc: "Character-focused video generation. Specialized in avatar animation and conversational video.",
     },
     {
-      id: "ltx-2-pro",
-      name: "LTX 2 PRO",
-      provider: "Lightricks",
+      id: "ltx-2.3",
+      name: "LTX 2.3",
+      provider: "WaveSpeed / Lightricks",
       type: "Text-to-Video / Image-to-Video",
       duration: "6-10s",
       resolution: "1080p",
-      audio: false,
+      audio: true,
       price: "$2.00 - $5.00",
       rank: 6,
       category: "Professional",
-      desc: "Professional-grade 1080p output. Optimized for product showcases, tutorials, and corporate content.",
+      desc: "Synchronized audio-video DiT model. Optimized for product showcases, tutorials, and corporate content.",
     },
     {
-      id: "hailuo-02",
-      name: "HAILUO 02",
+      id: "hailuo-2.3",
+      name: "HAILUO 2.3",
       provider: "Minimax",
       type: "Text-to-Video",
       duration: "6-10s",
-      resolution: "768p",
+      resolution: "1080p",
       audio: false,
       price: "$1.80 - $4.50",
       rank: 7,
-      category: "Stylized",
-      desc: "Stylized and artistic video generation. Great for anime-style, illustration-based, and artistic content.",
+      category: "Physics-Aware",
+      desc: "Physics-aware rendering and realistic motion. Great for authentic scenes and natural dynamics.",
     },
     {
-      id: "seedance",
-      name: "SEEDANCE V1",
+      id: "seedance-2.0",
+      name: "SEEDANCE 2.0",
       provider: "ByteDance",
-      type: "Text-to-Video",
+      type: "Text-to-Video / Image-to-Video",
       duration: "6-12s",
       resolution: "Multiple",
-      audio: false,
+      audio: true,
       price: "$2.20 - $5.80",
       rank: 8,
-      category: "Dance/Motion",
-      desc: "Specialized in dance and human motion. Perfect for music videos, dance content, and motion capture.",
+      category: "Cinematic",
+      desc: "Hollywood-grade cinematic motion with native audio sync and director-level camera control.",
     },
     {
-      id: "pixverse",
-      name: "PIXVERSE V4.5",
+      id: "pixverse-v6",
+      name: "PIXVERSE V6",
       provider: "Pixverse",
       type: "Text-to-Video / Image-to-Video",
       duration: "5-8s",
@@ -118,12 +119,25 @@
       price: "$1.50 - $4.00",
       rank: 9,
       category: "Versatile",
-      desc: "Versatile all-purpose video generation. Fast iteration, good for rapid prototyping and A/B testing.",
+      desc: "Versatile all-purpose video with camera control, native audio, and multi-shot generation.",
+    },
+    {
+      id: "vidu-q3",
+      name: "VIDU Q3",
+      provider: "Vidu",
+      type: "Text-to-Video / Image-to-Video",
+      duration: "4-8s",
+      resolution: "Up to 1080p",
+      audio: true,
+      price: "$1.60 - $3.20",
+      rank: 10,
+      category: "Motion-Diverse",
+      desc: "High-quality motion-diverse video generation with cinematic results and rich detail.",
     },
   ];
 
   const stats = {
-    totalModels: 9,
+    totalModels: 10,
     durationRange: "4-12s",
     maxResolution: "Up to 1080p",
     priceRange: "$1.50-$7.50",
@@ -195,7 +209,7 @@
       </div>
       <pre class="terminal-code"><code><span class="code-comment"># AI Agent generates video via x402</span>
 <span class="code-keyword">curl</span> -X GET \
-  <span class="code-string">"https://hpvideo.io/creator/api/v1/x402/creator/wan-2.5"</span> \
+  <span class="code-string">"https://hpvideo.io/creator/api/v1/x402/creator/wan-2.7"</span> \
   -H <span class="code-string">"X-PAYMENT: &lt;x402_payment_header&gt;"</span> \
   -d <span class="code-string">"prompt=A cinematic drone shot over mountains"</span> \
   -d <span class="code-string">"duration=5&size=1280:720"</span>
@@ -203,7 +217,7 @@
 <span class="code-comment"># Response</span>
 {"{"}
   <span class="code-key">"success"</span>: <span class="code-bool">true</span>,
-  <span class="code-key">"model"</span>: <span class="code-string">"wan-2.5"</span>,
+  <span class="code-key">"model"</span>: <span class="code-string">"wan-2.7"</span>,
   <span class="code-key">"path"</span>: <span class="code-string">"https://hpvideo.io/creator/x402?createid=..."</span>
 {"}"}</code></pre>
     </div>
@@ -313,7 +327,7 @@
         <h3 class="step-title">Generate & Pay</h3>
         <p class="step-desc">Send GET request with x402 payment header. Video is generated and returned automatically.</p>
         <div class="step-code">
-          <code>GET /api/v1/x402/creator/wan-2.5<br/>?prompt=...&duration=5&size=1280:720<br/>Header: X-PAYMENT: &lt;x402_token&gt;</code>
+          <code>GET /api/v1/x402/creator/wan-2.7<br/>?prompt=...&duration=5&size=1280:720<br/>Header: X-PAYMENT: &lt;x402_token&gt;</code>
         </div>
       </div>
     </div>
