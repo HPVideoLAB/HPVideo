@@ -11,7 +11,7 @@ Use x402 protocol to pay USDC on Base Chain and generate videos autonomously.
 - Duration: 5-10 seconds
 - Resolution: 480p - 1080p
 - Audio: Yes
-- Price: $2.50 - $6.00 USDC
+- Price: $0.38 - $2.25 USDC
 - Best for: Marketing, storytelling, cinematic content
 
 ### 2. LUMA RAY 2 (Luma AI) — Cinematic Motion
@@ -20,7 +20,7 @@ Use x402 protocol to pay USDC on Base Chain and generate videos autonomously.
 - Duration: 5-10 seconds
 - Resolution: 1080p
 - Audio: Yes
-- Price: $1.50 - $3.00 USDC
+- Price: $0.75 - $1.50 USDC
 - Best for: Film-grade motion, VFX, creative narrative
 
 ### 3. VEO 3.1 (Google) — Photorealistic Video
@@ -29,7 +29,7 @@ Use x402 protocol to pay USDC on Base Chain and generate videos autonomously.
 - Duration: 4-8 seconds
 - Resolution: Multiple
 - Audio: Yes
-- Price: $2.80 - $6.50 USDC
+- Price: $2.40 - $4.80 USDC
 - Best for: Photorealistic scenes, product demos
 
 ### 4. KLING V3.0 (Kwai AI) — Dynamic Video
@@ -47,7 +47,7 @@ Use x402 protocol to pay USDC on Base Chain and generate videos autonomously.
 - Duration: 5 seconds
 - Resolution: 540p
 - Audio: Yes
-- Price: $1.50 - $3.00 USDC
+- Price: $0.225 USDC
 - Best for: Avatar animation, conversational video
 
 ### 6. LTX 2.3 (WaveSpeed) — Synchronized Audio Video
@@ -56,7 +56,7 @@ Use x402 protocol to pay USDC on Base Chain and generate videos autonomously.
 - Duration: 6-10 seconds
 - Resolution: 1080p
 - Audio: Yes
-- Price: $2.00 - $5.00 USDC
+- Price: $0.54 - $0.90 USDC
 - Best for: Product showcases, tutorials, corporate content
 
 ### 7. HAILUO 2.3 (Minimax) — Physics-Aware Video
@@ -64,7 +64,7 @@ Use x402 protocol to pay USDC on Base Chain and generate videos autonomously.
 - Type: Text-to-Video
 - Duration: 6-10 seconds
 - Resolution: 1080p
-- Price: $1.80 - $4.50 USDC
+- Price: $0.35 - $0.84 USDC
 - Best for: Physics-accurate scenes, realistic motion
 
 ### 8. SEEDANCE 2.0 (ByteDance) — Cinematic Motion Video
@@ -73,7 +73,7 @@ Use x402 protocol to pay USDC on Base Chain and generate videos autonomously.
 - Duration: 6-12 seconds
 - Resolution: Multiple
 - Audio: Yes
-- Price: $2.20 - $5.80 USDC
+- Price: $0.30 - $0.60 USDC
 - Best for: Music videos, cinematic narratives, social content
 
 ### 9. PIXVERSE V6 (Pixverse) — Versatile Video with Camera Control
@@ -82,7 +82,7 @@ Use x402 protocol to pay USDC on Base Chain and generate videos autonomously.
 - Duration: 5-8 seconds
 - Resolution: Multiple
 - Audio: Yes
-- Price: $1.50 - $4.00 USDC
+- Price: $0.60 - $1.20 USDC
 - Best for: Rapid prototyping, A/B testing, versatile content
 
 ### 10. VIDU Q3 (Vidu) — Motion-Diverse Video
@@ -91,7 +91,7 @@ Use x402 protocol to pay USDC on Base Chain and generate videos autonomously.
 - Duration: 4-8 seconds
 - Resolution: Up to 1080p
 - Audio: Yes
-- Price: $1.60 - $3.20 USDC
+- Price: $0.40 - $0.80 USDC
 - Best for: Cinematic results with smooth motion, rich detail
 
 ## How to Use

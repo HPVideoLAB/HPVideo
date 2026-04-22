@@ -173,9 +173,26 @@ class WaveApi:
 		amount_dict = amounts.get(model)
 		amount = "$0.02"
 		if amount_dict is not None:
-			for key in amount_dict:
-				if size.find(key) != -1:
-					amount = f"${amount_dict.get(key).get(str(duration))}"
+			# "*" acts as an explicit wildcard: it matches any `size` value.
+			# Without this branch, `size.find("*")` returns -1 for sizes like
+			# "16:9" that don't contain a literal asterisk, causing every
+			# wildcard-priced model (8/10) to silently fall back to $0.02 —
+			# a 100x+ undercharge per call. Literal keys (e.g. "480", "720")
+			# continue to match via substring.
+			matched_tier = None
+			if "*" in amount_dict:
+				matched_tier = amount_dict["*"]
+			else:
+				for key in amount_dict:
+					if size.find(key) != -1:
+						matched_tier = amount_dict[key]
+						break
+
+			if matched_tier is not None:
+				price = matched_tier.get(str(duration))
+				if price is not None:
+					amount = f"${price}"
+
 			pay = PayTableInstall.get_by_messageid(messageid)
 			if pay is None:
 				PayTableInstall.insert_pay("", model, size, duration, amount, messageid, "", False, True)
