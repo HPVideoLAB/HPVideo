@@ -55,7 +55,7 @@ router = APIRouter()
 # @router.get("/", response_model=List[UserModel])
 @router.get("/", response_model=dict)
 async def get_users(skip: int = 0, limit: int = 50, role: str = "", search: str = "", verified: str = "", channel: str = "", user=Depends(get_admin_user)):
-    log.info(f"skip {skip, "limit", limit}")
+    log.info("skip %s limit %s", skip, limit)
     return Users.get_users(skip, limit, role, search, verified, channel)
 
 ############################
