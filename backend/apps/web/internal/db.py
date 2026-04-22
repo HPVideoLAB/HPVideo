@@ -25,18 +25,23 @@ register_database(PooledSqliteDatabase, "sqlite+pool")
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Pool configuration via env vars (sane defaults)
+# Pool configuration via env vars (sane defaults). Only forwarded when the
+# URL scheme is a pooled scheme, because plain PostgresqlDatabase /
+# MySQLDatabase / SqliteDatabase forward unknown kwargs to the driver as
+# DSN options, and psycopg2 rejects `max_connections` there.
 DB_MAX_CONNECTIONS = int(os.getenv("DB_MAX_CONNECTIONS", "20"))
 DB_STALE_TIMEOUT = int(os.getenv("DB_STALE_TIMEOUT", "300"))  # 5 min
 
-DB = connect(
-    DATABASE_URL,
-    max_connections=DB_MAX_CONNECTIONS,
-    stale_timeout=DB_STALE_TIMEOUT,
+_is_pool_url = (DATABASE_URL or "").split("://", 1)[0].endswith("+pool")
+_connect_kwargs = (
+    {"max_connections": DB_MAX_CONNECTIONS, "stale_timeout": DB_STALE_TIMEOUT}
+    if _is_pool_url
+    else {}
 )
+DB = connect(DATABASE_URL, **_connect_kwargs)
 log.info(
     f"Connected to {DB.__class__.__name__} "
-    f"(max_connections={DB_MAX_CONNECTIONS}, stale_timeout={DB_STALE_TIMEOUT}s)"
+    f"(pool={'on' if _is_pool_url else 'off'})"
 )
 
 router = Router(DB, migrate_dir="apps/web/internal/migrations", logger=log)
