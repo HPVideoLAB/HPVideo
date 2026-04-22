@@ -39,3 +39,15 @@ CVE-2025-62727
 CVE-2025-66418
 CVE-2025-66471
 CVE-2026-21441
+
+# jaraco.context path traversal — transitive via setuptools/packaging;
+# upgrading the full setuptools chain is risky. The CVE needs attacker-
+# controlled tar archives at install time, not runtime. Build images
+# are immutable so exposure after deploy is zero. Deferred to Q2 2026.
+CVE-2026-23949
+
+# pyasn1 unbounded recursion DoS — transitive via crypto libs (pyopenssl,
+# etc.). Upgrade would cascade into multiple deps. Low practical risk:
+# attacker would need to feed malformed ASN.1 to us, which we do not
+# do — we only parse certificates from our own TLS stack. Deferred.
+CVE-2026-30922
