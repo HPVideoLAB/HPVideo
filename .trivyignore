@@ -60,14 +60,41 @@ CVE-2026-30922
 CVE-2025-69223
 
 # --- hpvideo-nest image (backend/degpt-nest/degpt-nest) ---
-# node-tar path-traversal / file-overwrite family. Node-tar is a
-# transitive dep pulled by NestJS tooling; the nest image runs as
-# a JSON-RPC API server and does not extract user-controlled tar
-# archives at runtime. All four CVEs require the application to
-# call `tar.extract` on attacker-controlled input, which the nest
-# service does not do. Deferred to Q2 2026 dep refresh.
+# All remaining nest-image CVEs are RegEx-DoS or file-path issues in
+# NestJS build tooling (glob/minimatch/picomatch/cross-spawn) or the
+# tar lib. None are runtime-reachable: the nest service is a JSON-RPC
+# API that doesn't process user-controlled globs, minimatch patterns,
+# or tar archives. The CVEs are flagged because Trivy scans the full
+# node_modules tree even though the runtime code path never invokes
+# these libs with attacker input.
+#
+# We DO apply pnpm.overrides to bump the transitive versions at
+# install time (visible in pnpm-lock.yaml), but Trivy still reads the
+# old manifest entries of some nested packages. Without a full
+# NestJS 11.x tooling-chain audit, the safest option is to document
+# and ignore these rather than chase a moving target mid-deployment.
+#
+# Re-evaluate in the Q2 2026 dep refresh alongside the NestJS upgrade.
+
+# node-tar path-traversal / file-overwrite family (no runtime tar extract)
 CVE-2026-23950
 CVE-2026-24842
 CVE-2026-26960
 CVE-2026-29786
 CVE-2026-31802
+CVE-2026-23745
+
+# cross-spawn RegEx DoS — only runs at shell-spawn time with known args
+CVE-2024-21538
+
+# glob command injection via malicious pattern — our code does not
+# expose glob patterns to user input
+CVE-2025-64756
+
+# minimatch RegEx DoS family — only used for build-time pattern matching
+CVE-2026-26996
+CVE-2026-27903
+CVE-2026-27904
+
+# picomatch RegEx DoS — same build-time-only exposure as minimatch
+CVE-2026-33671
