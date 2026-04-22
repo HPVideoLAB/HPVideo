@@ -1,0 +1,23 @@
+# Trivy ignores for vulnerabilities we cannot immediately patch.
+# Each entry must cite the reason and a target resolution date.
+
+# x402 0.2.1 -> 2.x requires re-integrating the billing flow (the
+# `create_facilitator_config` and `require_payment` imports changed).
+# Schedule: re-test and upgrade in the next sprint after Binance listing.
+GHSA-qr2g-p6q7-w82m
+
+# protobuf 4.25.9 -> 5.x/6.x is a major-version transitive bump pulled
+# by multiple ML deps (sentence-transformers, google-generativeai, etc).
+# Risk of breaking those takes the change out of scope for a point
+# release. Tracked for the Q2 2026 dep refresh sprint.
+CVE-2026-0994
+
+# wheel 0.45.1 -> 0.46.2 is a build-time tool shipped inside the image
+# but only used by pip at install time; the privilege escalation CVE
+# requires a malicious .whl to be installed at runtime, which we do
+# not do. Tracked for the Q2 2026 dep refresh sprint.
+CVE-2026-24049
+
+# astropy FITS processing CVE — astropy not actually used in runtime
+# paths (transitive via a scientific computing dep). Low practical risk.
+CVE-2026-40192

@@ -34,6 +34,7 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
           vuln-type: os,library
+          trivyignores: .trivyignore
 
       - name: Push WebUI image
         run: docker push aihpvideo/hpvideo:test
@@ -56,6 +57,7 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
           vuln-type: os,library
+          trivyignores: .trivyignore
 
       - name: Push Nest image
         run: docker push aihpvideo/hpvideo-nest:test

@@ -32,6 +32,7 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
           vuln-type: os,library
+          trivyignores: .trivyignore
 
       - name: Push hpvideo (prod) after scan passes
         run: docker push aihpvideo/hpvideo:prod
@@ -53,6 +54,7 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
           vuln-type: os,library
+          trivyignores: .trivyignore
 
       - name: Push hpvideo-nest (prod) after scan passes
         run: docker push aihpvideo/hpvideo-nest:prod
