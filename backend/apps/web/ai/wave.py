@@ -7,35 +7,42 @@ from apps.web.models.pay import PayTableInstall
 wave_url = os.getenv("WAVESPEED_URL")
 wave_key = os.getenv("WAVESPEED_KEY")
 
+# Pricing tiers per model slug. Slugs must match MODEL_REGISTRY in x402pay.py.
+# Updated 2026-04-22: Sora 2 removed (OpenAI API shutting down 2026-09-24),
+# replaced by Luma Ray 2 + Vidu Q3. All models upgraded to latest WaveSpeed versions.
 amounts = {
-  "wan-2.5": {
+  "wan-2.7": {
     "480": {"5": 0.375, "10": 0.75},
-    "720": {"5": 0.75, "10": 1.5}, 
+    "720": {"5": 0.75, "10": 1.5},
     "1080": {"5": 1.125, "10": 2.25}
-  },
-  "sora-2": {
-    "720": {"4": 0.45, "8": 1.35, "12": 2.7}
   },
   "ovi": {
     "540": {"5": 0.225}
   },
-  "veo3.1": {
+  "veo-3.1": {
     "*": {"4": 2.4, "6": 3.6, "8": 4.8}
   },
-  "ltx-2-pro": {
+  "ltx-2.3": {
     "*": {"6": 0.54, "8": 0.72, "10": 0.9}
   },
-  "hailuo-02": {
+  "hailuo-2.3": {
     "*": {"6": 0.345, "10": 0.84}
   },
-  "seedance": {
-    "*": {"6": 0.27, "9": 0.405, "12": 0.54}
+  "seedance-2.0": {
+    "*": {"6": 0.30, "9": 0.45, "12": 0.60}
   },
-  "kling": {
-    "*": {"5": 1.95, "10": 3.9}
+  "kling-3.0": {
+    "*": {"5": 2.10, "10": 4.20}
   },
-  "pixverse": {
-    "*": {"5": 0.525, "8": 1.05}
+  "pixverse-v6": {
+    "*": {"5": 0.60, "8": 1.20}
+  },
+  # New models replacing Sora 2's tier
+  "luma-ray-2": {
+    "*": {"5": 0.75, "10": 1.50}
+  },
+  "vidu-q3": {
+    "*": {"4": 0.40, "8": 0.80}
   }
 }
 
@@ -43,7 +50,19 @@ amounts = {
 class WaveApi:
     
 	def check_model(self, model: str):
-		models = ["wan-2.5"]
+		# Keep in sync with MODEL_REGISTRY in x402pay.py and `amounts` above.
+		models = [
+			"wan-2.7",
+			"ovi",
+			"veo-3.1",
+			"ltx-2.3",
+			"hailuo-2.3",
+			"seedance-2.0",
+			"kling-3.0",
+			"pixverse-v6",
+			"luma-ray-2",
+			"vidu-q3",
+		]
 		return model in models
 
 	# Create Video ID      

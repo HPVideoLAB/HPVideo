@@ -25,16 +25,34 @@ facilitator_config = create_facilitator_config(
 # Single source of truth for all x402 creator models.
 # key = model slug (used in URL path and pricing lookup)
 # value = (vendor, full model name passed to WaveApi.x402create)
+#
+# Sora 2 was removed on 2026-04-22 after OpenAI announced discontinuation:
+#   - Sora app shuts down 2026-04-26
+#   - Sora API shuts down 2026-09-24
+# Replaced by Luma Ray 2 and Vidu Q3, both available on WaveSpeed.
+# All other models upgraded to latest versions supported by WaveSpeed docs
+# (wavespeed.ai/docs) as of 2026-04-22.
 MODEL_REGISTRY: Dict[str, Dict[str, str]] = {
-    "wan-2.5":    {"vendor": "alibaba",     "model": "wan-2.5/text-to-video"},
-    "sora-2":     {"vendor": "openai",      "model": "sora-2/text-to-video"},
+    # Alibaba WAN 2.5 → 2.7 (latest; 2.5/2.6 still on WaveSpeed)
+    "wan-2.7":    {"vendor": "alibaba",     "model": "wan-2.7/text-to-video"},
+    # Character.ai OVI (still current)
     "ovi":        {"vendor": "character-ai", "model": "ovi/text-to-video"},
-    "veo3.1":     {"vendor": "google",      "model": "veo3.1/text-to-video"},
-    "ltx-2-pro":  {"vendor": "lightricks",  "model": "ltx-2-pro/text-to-video"},
-    "hailuo-02":  {"vendor": "minimax",     "model": "hailuo-02/t2v-standard"},
-    "seedance":   {"vendor": "bytedance",   "model": "seedance-v1-pro-t2v-480p"},
-    "kling":      {"vendor": "kwaivgi",     "model": "kling-v2.0-t2v-master"},
-    "pixverse":   {"vendor": "pixverse",    "model": "pixverse-v4.5-t2v"},
+    # Google Veo 3.1 (still current; slug normalized from veo3.1)
+    "veo-3.1":    {"vendor": "google",      "model": "veo-3.1/text-to-video"},
+    # Lightricks LTX 2 Pro → 2.3
+    "ltx-2.3":    {"vendor": "lightricks",  "model": "ltx-2.3/text-to-video"},
+    # Minimax Hailuo 02 → 2.3
+    "hailuo-2.3": {"vendor": "minimax",     "model": "hailuo-2.3/t2v-standard"},
+    # ByteDance Seedance V1 → 2.0
+    "seedance-2.0": {"vendor": "bytedance", "model": "seedance-v2.0/text-to-video"},
+    # Kwaivgi Kling V2.0 → V3.0
+    "kling-3.0":  {"vendor": "kwaivgi",     "model": "kling-v3.0-std/text-to-video"},
+    # Pixverse V4.5 → V6
+    "pixverse-v6": {"vendor": "pixverse",   "model": "pixverse-v6/text-to-video"},
+    # NEW: Luma Ray 2 (replaces part of Sora 2's role)
+    "luma-ray-2": {"vendor": "luma",        "model": "ray-2/text-to-video"},
+    # NEW: Vidu Q3 (newest)
+    "vidu-q3":    {"vendor": "vidu",        "model": "vidu-q3/text-to-video"},
 }
 
 _ROUTE_PREFIX = "/creator/api/v1/x402/creator/"

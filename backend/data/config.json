@@ -53,7 +53,7 @@
 				"content": "Check the following sentence for grammar and clarity: '[sentence]'. Rewrite it for better readability while maintaining its original meaning."
 			}
 		],
-		"default_models": "wan-2.5"
+		"default_models": "wan-2.7"
 	},
 	"openai": {
 		"api_base_urls": [
