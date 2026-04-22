@@ -21,3 +21,11 @@ CVE-2026-24049
 # astropy FITS processing CVE — astropy not actually used in runtime
 # paths (transitive via a scientific computing dep). Low practical risk.
 CVE-2026-40192
+
+# starlette Range header DoS — fastapi 0.115.12 gates starlette to
+# <0.47 so the fixed version (0.49.1) cannot be installed without
+# upgrading fastapi, which carries breaking-change risk right before
+# a Binance listing. Tracked for the same Q2 2026 refresh as x402.
+# Attacker needs to send crafted HTTP Range headers; we do not serve
+# user-controlled range requests so practical exposure is low.
+CVE-2025-62727
