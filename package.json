@@ -1,6 +1,6 @@
 {
-	"name": "open-webui",
-	"version": "0.1.125",
+	"name": "hpvideo-webui",
+	"version": "1.0.0",
 	"private": true,
 	"scripts": {
 		"dev-old": "concurrently \" vite dev --host\" \"cd backend && ./start.sh\"",
