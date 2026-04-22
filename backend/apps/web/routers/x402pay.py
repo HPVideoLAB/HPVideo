@@ -37,12 +37,12 @@ MODEL_REGISTRY: Dict[str, Dict[str, str]] = {
     "wan-2.7":    {"vendor": "alibaba",     "model": "wan-2.7/text-to-video"},
     # Character.ai OVI (still current)
     "ovi":        {"vendor": "character-ai", "model": "ovi/text-to-video"},
-    # Google Veo 3.1 (still current; slug normalized from veo3.1)
-    "veo-3.1":    {"vendor": "google",      "model": "veo-3.1/text-to-video"},
-    # Lightricks LTX 2 Pro → 2.3
-    "ltx-2.3":    {"vendor": "lightricks",  "model": "ltx-2.3/text-to-video"},
-    # Minimax Hailuo 02 → 2.3
-    "hailuo-2.3": {"vendor": "minimax",     "model": "hailuo-2.3/t2v-standard"},
+    # Google Veo 3.1 (confirmed WaveSpeed path: google/veo3.1/text-to-video — no dash)
+    "veo3.1":     {"vendor": "google",      "model": "veo3.1/text-to-video"},
+    # Lightricks LTX 2 Pro → 2.3 (hosted under wavespeed-ai vendor namespace on WaveSpeed)
+    "ltx-2.3":    {"vendor": "wavespeed-ai", "model": "ltx-2.3/text-to-video"},
+    # Minimax Hailuo 02 → 2.3 (t2v-pro is the text-to-video variant; i2v-standard is image-to-video)
+    "hailuo-2.3": {"vendor": "minimax",     "model": "hailuo-2.3/t2v-pro"},
     # ByteDance Seedance V1 → 2.0 (confirmed WaveSpeed path: bytedance/seedance-2.0/text-to-video)
     "seedance-2.0": {"vendor": "bytedance", "model": "seedance-2.0/text-to-video"},
     # Kwaivgi Kling V2.0 → V3.0
