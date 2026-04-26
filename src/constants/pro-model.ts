@@ -15,6 +15,15 @@ export type ProModelEntry = {
 // src/lib/i18n/locales/<locale>/translation.json under the same key.
 export const proModel: ProModelEntry[] = [
   {
+    name: 'Text to Video',
+    model: 'text-to-video',
+    modelicon: '/creator/static/icon/qwen.png',
+    audio: true,
+    desc: '10 frontier T2V models in one place: WAN 2.7, Veo 3.1, Kling 3.0, Hailuo, Seedance, LTX, Pixverse, Luma Ray 2, Vidu Q3, OVI.',
+    badges: ['10 models', 'T2V', 'I2V'],
+    bestFor: 'best_for_t2v',
+  },
+  {
     name: 'Make an Ad',
     model: 'commercial-pipeline',
     modelicon: '/creator/icon/wan.png',

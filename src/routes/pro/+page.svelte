@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getContext, onMount, tick } from 'svelte';
   import { get } from 'svelte/store';
+  import { goto } from '$app/navigation';
   import WalletConnect from '$lib/components/wallet/WalletConnect.svelte';
   import { walletAddress } from '$lib/stores/wallet';
   import { initPageFlag } from '$lib/stores';
@@ -74,11 +75,16 @@
   const { form: commForm, cost: commCost } = commercial;
 
   // --- Tab 切换 ---
-  // Localize the visible model name (only commercial-pipeline currently
-  // translates — the others are brand names that stay English).
+  // Localize the visible model name. commercial-pipeline + text-to-video
+  // have generic names that translate; the others are brand names that
+  // stay English.
+  const localizedNameKeyByModel: Record<string, string> = {
+    'commercial-pipeline': 'Make an Ad',
+    'text-to-video': 'Text to Video',
+  };
   $: modelOptions = proModel.map((m) => ({
     value: m.model,
-    label: m.model === 'commercial-pipeline' ? $i18n.t('Make an Ad') : m.name,
+    label: localizedNameKeyByModel[m.model] ? $i18n.t(localizedNameKeyByModel[m.model]) : m.name,
     icon: m.modelicon,
     hasAudio: m.audio,
     desc: $i18n.t(`model_desc_${m.model}`),
@@ -87,8 +93,17 @@
     previewUrl: previewByModel[m.model] ?? '',
   }));
 
-  // 默认选中第一个或指定的模型
-  let currentModelValue = proModel[0]?.model || '';
+  // Default to the first PRO flow that actually has an inline form
+  // (text-to-video routes to /chat, so we don't want it as the default
+  // landing — the user would get redirected away on first paint).
+  let currentModelValue = proModel.find((m) => m.model !== 'text-to-video')?.model || '';
+
+  // The 'text-to-video' tab is a hand-off — it forwards the user to the
+  // existing 10-model T2V flow at /creator/chat. Reactive block so a
+  // mid-session switch also triggers the redirect.
+  $: if (currentModelValue === 'text-to-video' && typeof window !== 'undefined') {
+    goto('/creator/chat');
+  }
 
   // =========================================================
   // ⚡️ 2. 历史回填逻辑

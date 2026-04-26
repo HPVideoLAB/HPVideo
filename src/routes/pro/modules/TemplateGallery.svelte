@@ -27,12 +27,21 @@
       })),
   );
 
+  const localizedFilterLabels: Record<string, string> = {
+    'commercial-pipeline': 'Make an Ad',
+    'text-to-video': 'Text to Video',
+  };
   $: filters = [
     { key: 'all', label: $i18n.t('All') },
-    ...proModel.map((m) => ({
-      key: m.model,
-      label: m.model === 'commercial-pipeline' ? $i18n.t('Make an Ad') : m.name,
-    })),
+    // Skip the text-to-video flow here — it has no example templates of
+    // its own (the 10 T2V models live in /chat). Including it would
+    // produce an empty filter that confuses users.
+    ...proModel
+      .filter((m) => m.model !== 'text-to-video')
+      .map((m) => ({
+        key: m.model,
+        label: localizedFilterLabels[m.model] ? $i18n.t(localizedFilterLabels[m.model]) : m.name,
+      })),
   ];
 
   let activeFilter = 'all';
