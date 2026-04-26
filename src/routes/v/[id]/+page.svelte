@@ -39,10 +39,18 @@
     try {
       const res = await fetch(`${NEST_API_BASE_URL}/large-language-model/${id}`);
       if (!res.ok) {
-        errorMsg = res.status === 404 ? $i18n.t('Video not found') : `HTTP ${res.status}`;
+        // Treat any 4xx as 'not found' for the public viewer — the
+        // detailed status code is for ops, not for end users.
+        errorMsg = res.status >= 400 && res.status < 500
+          ? $i18n.t('Video not found')
+          : $i18n.t('Could not load video. Please try again later.');
         return;
       }
       task = await res.json();
+      if (!task || !task.requestId) {
+        errorMsg = $i18n.t('Video not found');
+        task = null;
+      }
     } catch (e: any) {
       errorMsg = e?.message ?? 'Failed to load';
     } finally {

@@ -1165,6 +1165,7 @@
   "Copy public share link": "공개 공유 링크 복사",
   "Share link copied": "공유 링크가 복사되었습니다",
   "Video not found": "영상을 찾을 수 없습니다",
+  "Could not load video. Please try again later.": "영상을 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.",
   "Still rendering...": "생성 중…",
   "Generation failed": "생성 실패",
   "Create your own": "나도 만들기",

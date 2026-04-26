@@ -1011,6 +1011,7 @@
   "Copy public share link": "公開シェアリンクをコピー",
   "Share link copied": "シェアリンクをコピーしました",
   "Video not found": "動画が見つかりません",
+  "Could not load video. Please try again later.": "動画を読み込めませんでした。しばらくしてからもう一度お試しください。",
   "Still rendering...": "生成中…",
   "Generation failed": "生成に失敗しました",
   "Create your own": "同じものを作る",

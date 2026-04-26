@@ -1164,6 +1164,7 @@
   "Copy public share link": "复制公开分享链接",
   "Share link copied": "分享链接已复制",
   "Video not found": "视频不存在或已被删除",
+  "Could not load video. Please try again later.": "视频暂时无法加载，请稍后重试。",
   "Still rendering...": "正在生成中…",
   "Generation failed": "生成失败",
   "Create your own": "立即创作同款",
