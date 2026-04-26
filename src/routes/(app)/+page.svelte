@@ -84,12 +84,36 @@
           {$i18n.t('Open Studio')}
         </a>
         <a
+          href="/creator/chat"
+          class="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-primary-500/40 text-primary-600 dark:text-primary-300 text-sm md:text-base font-medium hover:bg-primary-500/5 transition"
+        >
+          <iconify-icon icon="mdi:lightning-bolt" class="text-xl" />
+          {$i18n.t('Quick Generate')}
+        </a>
+        <a
           href="#templates"
           class="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-border-light dark:border-border-dark text-sm md:text-base font-medium hover:bg-gray-50 dark:hover:bg-white/5 transition"
         >
           <iconify-icon icon="mdi:image-multiple" class="text-xl" />
           {$i18n.t('Browse templates')}
         </a>
+      </div>
+
+      <!-- 12-model strip — surfaces the depth that 'Open Studio' alone hides -->
+      <div class="mt-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-gray-500 dark:text-gray-400">
+        <span class="font-semibold uppercase tracking-wider">{$i18n.t('12 models powering it')}</span>
+        <span>WAN 2.7</span><span>·</span>
+        <span>Veo 3.1</span><span>·</span>
+        <span>Kling 3.0</span><span>·</span>
+        <span>Hailuo 2.3</span><span>·</span>
+        <span>Seedance 2.0</span><span>·</span>
+        <span>LTX 2.3</span><span>·</span>
+        <span>Pixverse V6</span><span>·</span>
+        <span>Luma Ray 2</span><span>·</span>
+        <span>Vidu Q3</span><span>·</span>
+        <span>OVI</span><span>·</span>
+        <span>Pika V2.2</span><span>·</span>
+        <span>SAM3</span>
       </div>
     </div>
   </section>
