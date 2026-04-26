@@ -6,9 +6,10 @@ export const getDeModels = async (token: string = '') => {
     models: [
       // Model catalog — keep slugs in sync with
       // backend/apps/web/routers/x402pay.py MODEL_REGISTRY.
-      // Updated 2026-04-22: Sora 2 removed (OpenAI API shutting down
-      // 2026-09-24); replaced by Luma Ray 2 + Vidu Q3. All other models
-      // upgraded to latest WaveSpeed versions.
+      // 2026-04-22: Sora 2 removed (OpenAI API shutting down 2026-09-24);
+      //             replaced by Luma Ray 2 + Vidu Q3.
+      // 2026-04-26: Descriptions rewritten as strength pitches; verified
+      //             every slug is the latest WaveSpeed version (Apr 2026).
       {
         name: 'WAN 2.7',
         source: 'alibaba',
@@ -22,7 +23,7 @@ export const getDeModels = async (token: string = '') => {
         tip: 'WAN 2.7',
         support: 'image',
         type: 1,
-        desc: 'Multi-resolution with synchronized audio and video generation',
+        desc: 'First & last frame control, Thinking-Mode prompt planning, up to 5 reference videos. Native audio at 1080p.',
         modelicon: '/creator/static/icon/qwen.png',
         modelinfo: '',
       },
@@ -39,7 +40,7 @@ export const getDeModels = async (token: string = '') => {
         tip: 'LUMA RAY 2',
         support: 'image',
         type: 1,
-        desc: 'Cinematic motion and high-fidelity rendering',
+        desc: 'Cinematic motion + reasoning-driven keyframes. HDR pipeline, the smoothest camera moves on the market.',
         modelicon: '/creator/static/icon/gpt3.png',
         modelinfo: '',
       },
@@ -56,7 +57,7 @@ export const getDeModels = async (token: string = '') => {
         tip: 'OVI',
         support: 'image',
         type: 1,
-        desc: 'Strong comprehension, generates precise videos',
+        desc: 'Open-source video + audio in a single pass. Cheapest in the catalog — perfect for fast experiments.',
         modelicon: '/creator/static/icon/gemini.png',
         modelinfo: '',
       },
@@ -73,7 +74,7 @@ export const getDeModels = async (token: string = '') => {
         tip: 'VEO 3.1',
         support: 'image',
         type: 1,
-        desc: 'High-quality long videos with smooth visual coherence',
+        desc: 'Best-in-class prompt adherence + cinematic realism. Native dialogue and SFX, scene-extend up to 60s.',
         modelicon: '/creator/static/icon/gemini.png',
         modelinfo: '',
       },
@@ -90,7 +91,7 @@ export const getDeModels = async (token: string = '') => {
         tip: 'LTX 2.3',
         support: 'image',
         type: 1,
-        desc: 'Realistic details with synchronized audio',
+        desc: 'Native 4K + 50fps with synced audio. Open-weights, the best fps-to-cost ratio for hi-res content.',
         modelicon: '/creator/static/icon/ltx.png',
         modelinfo: '',
       },
@@ -107,7 +108,7 @@ export const getDeModels = async (token: string = '') => {
         tip: 'HAILUO 2.3',
         support: 'image',
         type: 1,
-        desc: 'Realistic rendering with physics-aware motion',
+        desc: 'Physics-accurate motion. #2 on the Artificial Analysis benchmark — the realism leader at this price point.',
         modelicon: '/creator/static/icon/hailuo.png',
         modelinfo: '',
       },
@@ -124,7 +125,7 @@ export const getDeModels = async (token: string = '') => {
         tip: 'SEEDANCE 2.0',
         support: 'image',
         type: 1,
-        desc: 'Hollywood-grade cinematic motion and native audio sync',
+        desc: 'Hollywood-grade cinematic look + multilingual phoneme-accurate lip-sync. Best for talking-head and ad creative.',
         modelicon: '/creator/static/icon/doubao.png',
         modelinfo: '',
       },
@@ -141,7 +142,7 @@ export const getDeModels = async (token: string = '') => {
         tip: 'KLING V3.0',
         support: 'image',
         type: 1,
-        desc: 'Accurate physical motion simulation',
+        desc: 'Up to 6-shot multi-scene generation in one clip with character consistency. Native multilingual audio.',
         modelicon: '/creator/static/icon/kling.png',
         modelinfo: '',
       },
@@ -158,7 +159,7 @@ export const getDeModels = async (token: string = '') => {
         tip: 'PIXVERSE V6',
         support: 'image',
         type: 1,
-        desc: 'Camera control, native audio, multi-shot generation',
+        desc: '20+ cinematic lens controls — focal length, aperture, depth-of-field, vignette. The only model with real camera language.',
         modelicon: '/creator/static/icon/pixverse.png',
         modelinfo: '',
       },
@@ -175,7 +176,7 @@ export const getDeModels = async (token: string = '') => {
         tip: 'VIDU Q3',
         support: 'image',
         type: 1,
-        desc: 'High-quality motion-diverse video generation',
+        desc: 'Up to 16s single-pass continuous shot with reference-subject consistency + native dialogue/SFX/music.',
         modelicon: '/creator/static/icon/gpt3.png',
         modelinfo: '',
       },

@@ -1175,5 +1175,9 @@
   "Copy link": "링크 복사",
   "Copied!": "복사되었습니다!",
   "Made with": "Powered by",
-  "AI video on BNB Chain": "BNB 체인의 AI 비디오"
+  "AI video on BNB Chain": "BNB 체인의 AI 비디오",
+  "model_desc_pika-v2.2-pikaframes": "Pika 독점 멀티 키프레임 스토리보드. 최대 5장 참조 이미지 + 커스텀 트랜지션으로 제품샷, 애니 변신, 시네마틱 연출에 최적.",
+  "model_desc_sam3-video": "텍스트로 오브젝트 누끼/치환. Meta SAM 3.1 탑재 — 지우고 싶은 것을 말하면 프레임별 추적과 인페인팅 자동 처리.",
+  "model_desc_wan-2.1-v2v": "원본 모션을 유지한 영상 스타일 전환. 영상을 업로드하고 새 스타일(애니/사이버펑크/유화)을 지시. 사운드와 립싱크도 보존.",
+  "model_desc_commercial-pipeline": "원클릭 광고 풀 파이프라인. AI 디렉터가 컷을 설계하고, 스마트 인핸스 + 음소 정확 립싱크 + 4K 업스케일. 제품 사진 한 장으로 방송용 30초 광고 완성."
 }

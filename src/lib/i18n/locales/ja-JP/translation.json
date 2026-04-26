@@ -1021,5 +1021,9 @@
   "Copy link": "リンクをコピー",
   "Copied!": "コピーしました！",
   "Made with": "Powered by",
-  "AI video on BNB Chain": "BNB ChainのAIビデオ"
+  "AI video on BNB Chain": "BNB ChainのAIビデオ",
+  "model_desc_pika-v2.2-pikaframes": "Pikaのマルチキーフレーム・ストーリーボード。最大5枚の参考画像＋カスタム遷移で、商品ショットやアニメ変身、シネマティックな演出に最適。",
+  "model_desc_sam3-video": "テキストで対象を切り抜き／置き換え。Meta SAM 3.1搭載──消したいものを言葉で指定するだけで、フレームごとに追跡＆インペイント。",
+  "model_desc_wan-2.1-v2v": "元の動きを保ったまま映像スタイル変換。動画をアップして新しいスタイル（アニメ／サイバーパンク／油絵）を指示するだけ。音声とリップシンクも維持。",
+  "model_desc_commercial-pipeline": "ワンクリックで広告完成パイプライン。AIディレクターが構図設計＋スマートエンハンス＋音素レベルのリップシンク＋4Kアップスケール。商品写真1枚から放送品質の30秒広告まで。"
 }
