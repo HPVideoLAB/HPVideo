@@ -29,7 +29,10 @@
 
   $: filters = [
     { key: 'all', label: $i18n.t('All') },
-    ...proModel.map((m) => ({ key: m.model, label: m.name })),
+    ...proModel.map((m) => ({
+      key: m.model,
+      label: m.model === 'commercial-pipeline' ? $i18n.t('Make an Ad') : m.name,
+    })),
   ];
 
   let activeFilter = 'all';
