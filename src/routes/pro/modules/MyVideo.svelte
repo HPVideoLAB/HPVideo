@@ -60,7 +60,7 @@
     {/if}
   </div>
 
-  <aside class="w-full xl:w-[170px] shrink-0 md:h-full overflow-hidden">
+  <aside class="w-full xl:w-[280px] shrink-0 md:h-full overflow-hidden">
     <History {items} selectedId={activeItem?.id} on:select={handleHistorySelect} />
   </aside>
 </div>

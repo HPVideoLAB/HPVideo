@@ -8,6 +8,7 @@
   import { page } from '$app/stores';
   import { NEST_API_BASE_URL } from '$lib/constants';
   import { initPageFlag } from '$lib/stores';
+  import TemplateGallery from '../../pro/modules/TemplateGallery.svelte';
 
   const i18n: any = getContext('i18n');
 
@@ -102,6 +103,19 @@
         'hpv:remix-params',
         JSON.stringify({ params: task.params, sourceId: task.requestId }),
       );
+    } catch {
+      /* sessionStorage unavailable */
+    }
+    goto('/creator/pro');
+  }
+
+  // Forward a template-gallery click into the same remix flow so a
+  // dead share-link still produces a generation.
+  function onTemplateSelect(e: CustomEvent) {
+    const { params } = e.detail || {};
+    if (!params) return;
+    try {
+      sessionStorage.setItem('hpv:remix-params', JSON.stringify({ params }));
     } catch {
       /* sessionStorage unavailable */
     }
@@ -275,6 +289,22 @@
         ·
         {$i18n.t('AI video on BNB Chain')}
       </footer>
+    {/if}
+
+    {#if errorMsg}
+      <!-- Don't waste the click: surface the template wall so a dead share
+           link still has a chance to convert into a real session. -->
+      <section class="mt-10 pt-8 border-t border-border-light dark:border-border-dark">
+        <h3 class="text-base font-semibold text-text-light dark:text-text-dark mb-1">
+          {$i18n.t('While you're here, try one of these')}
+        </h3>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
+          {$i18n.t('Click any template to load its prompt, reference, and parameters. Edit then generate.')}
+        </p>
+        <div class="-mx-4 md:-mx-6 rounded-2xl overflow-hidden border border-border-light dark:border-border-dark">
+          <TemplateGallery on:select={onTemplateSelect} />
+        </div>
+      </section>
     {/if}
   </main>
 </div>

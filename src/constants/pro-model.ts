@@ -10,13 +10,16 @@ export type ProModelEntry = {
   bestFor?: string;
 };
 
+// `desc` is a fallback for when the i18n key model_desc_<model> is not
+// loaded yet. Keep this English; the localized version lives in
+// src/lib/i18n/locales/<locale>/translation.json under the same key.
 export const proModel: ProModelEntry[] = [
   {
-    name: 'Commercial Video',
+    name: 'Make an Ad',
     model: 'commercial-pipeline',
     modelicon: '/creator/icon/wan.png',
     audio: true,
-    desc: 'AI 导演生成的商业级短视频，支持智能运镜与口型同步。',
+    desc: 'AI-directed commercial: smart shots + lip-sync voiceover + 4K upscale, in one click.',
     badges: ['Audio', '4K', 'Lip-sync'],
     bestFor: 'best_for_commercial',
   },
@@ -25,7 +28,7 @@ export const proModel: ProModelEntry[] = [
     model: 'pika-v2.2-pikaframes',
     modelicon: '/creator/icon/pika.png',
     audio: false,
-    desc: '多关键帧图生视频：支持自定义转场，生成连贯流畅的动画。',
+    desc: 'Multi-keyframe image-to-video with custom transitions for smooth, continuous animation.',
     badges: ['Multi-keyframe', 'I2V'],
     bestFor: 'best_for_pika',
   },
@@ -34,7 +37,7 @@ export const proModel: ProModelEntry[] = [
     model: 'sam3-video',
     modelicon: '/creator/icon/sam.png',
     audio: false,
-    desc: '视频智能编辑：精准分割、移除或替换画面中的特定对象。',
+    desc: 'Smart video editing: precisely segment, remove, or replace specific objects in a clip.',
     badges: ['Edit', 'Open-source'],
     bestFor: 'best_for_sam',
   },
@@ -43,7 +46,7 @@ export const proModel: ProModelEntry[] = [
     model: 'wan-2.1-v2v',
     modelicon: '/creator/static/icon/qwen.png',
     audio: false,
-    desc: '视频风格迁移：保持原动作节奏，重绘画面风格与光影',
+    desc: 'Video style transfer: keep the original motion rhythm while restyling the look and lighting.',
     badges: ['Style transfer', 'V2V'],
     bestFor: 'best_for_wan_v2v',
   },

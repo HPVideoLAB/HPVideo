@@ -74,9 +74,11 @@
   const { form: commForm, cost: commCost } = commercial;
 
   // --- Tab 切换 ---
+  // Localize the visible model name (only commercial-pipeline currently
+  // translates — the others are brand names that stay English).
   $: modelOptions = proModel.map((m) => ({
     value: m.model,
-    label: m.name,
+    label: m.model === 'commercial-pipeline' ? $i18n.t('Make an Ad') : m.name,
     icon: m.modelicon,
     hasAudio: m.audio,
     desc: $i18n.t(`model_desc_${m.model}`),

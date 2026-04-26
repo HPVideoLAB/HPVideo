@@ -226,7 +226,9 @@
 
 <div class="flex items-center">
   {#if $paymentMode === 'points' && pointsAddress}
-    <!-- Points mode: show points wallet -->
+    <!-- Points mode (default): show only the credit balance + address.
+         Mode-switching toggle removed from the nav per founder direction —
+         power users can still flip via Settings. -->
     <div
       class="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full p-1 pl-3 flex items-center pr-2 transition-all cursor-pointer"
       on:click={() => { showPointsWallet = true; }}
@@ -238,33 +240,19 @@
       <span class="text-xs text-gray-400 font-mono mr-1 hidden md:inline">
         {pointsAddress.slice(0, 6)}...{pointsAddress.slice(-4)}
       </span>
-      <span class="text-sm font-bold text-amber-600 dark:text-amber-400 font-mono mr-1">
-        {(parseInt($dlcpBalance) || 0).toLocaleString()} pts
+      <span class="text-sm font-bold text-amber-600 dark:text-amber-400 font-mono">
+        {(parseInt($dlcpBalance) || 0).toLocaleString()} {$i18n.t('credits')}
       </span>
-      <button
-        class="text-xs px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 transition"
-        title={$i18n.t('Switch payment mode')}
-        on:click|stopPropagation={() => { showModeSelector = true; }}
-      >
-        PTS
-      </button>
     </div>
   {:else if $paymentMode === 'token' && $threesideAccount?.address}
-    <!-- Token mode: show BSC wallet -->
+    <!-- Token mode (legacy): only reachable for users who explicitly opted in. -->
     <div
       class="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full p-1 pl-3 flex items-center pr-2 transition-all"
     >
       <iconify-icon icon="lucide:wallet" class="text-gray-500 dark:text-gray-400 mr-1.5 text-base" />
-      <div class="text-sm font-medium text-gray-700 dark:text-gray-200 font-mono mr-1">
+      <div class="text-sm font-medium text-gray-700 dark:text-gray-200 font-mono">
         {$threesideAccount.address.slice(0, 6)}...{$threesideAccount.address.slice(-4)}
       </div>
-      <button
-        class="text-xs px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition"
-        title={$i18n.t('Switch payment mode')}
-        on:click={() => { showModeSelector = true; }}
-      >
-        USDT
-      </button>
       <Setting />
     </div>
   {:else if isLoading}

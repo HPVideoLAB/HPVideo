@@ -165,54 +165,6 @@ export const exampleData: Record<string, ExampleItem[]> = {
         seed: -1,
       },
     },
-    // {
-    //   id: 'wan-3',
-    //   title: 'Claymation Style',
-    //   model: 'wan-2.1',
-    //   coverUrl:
-    //     'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/404b7026-a407-4a3f-bfe6-918020dafc3e.png',
-    //   videoUrl:
-    //     'https://d2p7pge43lyniu.cloudfront.net/output/f10acecc-ea5f-44b7-b2c9-a239e06a911e-u2_0076be01-8af1-451e-9a91-de4712e27005.mp4',
-    //   params: {
-    //     model: 'wan-2.1',
-    //     video:
-    //       'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/f5f563bd-0086-4a17-b2db-a740bb5dbe97.mp4',
-    //     prompt:
-    //       'Keep the original motion and timing. Restyle into claymation stop-motion look, plasticine texture, soft studio lighting, slightly choppy handmade feel but stable composition, no flicker.',
-    //     negative_prompt: 'flicker, jitter, warping, noisy artifacts, text, watermark',
-    //     loras: [],
-    //     strength: 0.85,
-    //     num_inference_steps: 30,
-    //     duration: 5,
-    //     guidance_scale: 6,
-    //     flow_shift: 4,
-    //     seed: -1,
-    //   },
-    // },
-    // {
-    //   id: 'wan-4',
-    //   title: 'Vintage Black & White Film',
-    //   model: 'wan-2.1',
-    //   coverUrl:
-    //     'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/99050830-c420-41fe-b26d-77d74f905528.png',
-    //   videoUrl:
-    //     'https://d2p7pge43lyniu.cloudfront.net/output/0523df68-b228-4073-baee-7ff518b7e268-u2_4ebb44e9-aef9-48a6-bd95-171f1ace2780.mp4',
-    //   params: {
-    //     model: 'wan-2.1',
-    //     video:
-    //       'https://degptwav.oss-cn-hongkong.aliyuncs.com/uploads/2026/01/07/91265960-2138-4a3f-ba88-6bd8adb231e4.mp4',
-    //     prompt:
-    //       'Keep the same motion and timing. Convert to 1920s vintage silent film: black and white, soft contrast, subtle grain, occasional light scratches, stable composition, no flicker.',
-    //     negative_prompt: 'color, modern look, heavy flicker, warping, face distortion, text, watermark',
-    //     loras: [],
-    //     strength: 0.7,
-    //     num_inference_steps: 28,
-    //     duration: 5,
-    //     guidance_scale: 6,
-    //     flow_shift: 4,
-    //     seed: -1,
-    //   },
-    // },
   ],
 
   // ====================================================
