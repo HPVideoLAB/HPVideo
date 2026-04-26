@@ -161,7 +161,26 @@
   };
 
   $: loadHistory($walletAddress);
-  onMount(() => initPageFlag.set(true));
+
+  // Pick up params left by the share page's "Remix this" button.
+  function consumeRemixParams() {
+    if (typeof sessionStorage === 'undefined') return;
+    const raw = sessionStorage.getItem('hpv:remix-params');
+    if (!raw) return;
+    sessionStorage.removeItem('hpv:remix-params');
+    try {
+      const { params } = JSON.parse(raw);
+      if (!params) return;
+      handleHistorySelect(new CustomEvent('select', { detail: { params } }));
+    } catch (e) {
+      console.warn('remix params decode failed', e);
+    }
+  }
+
+  onMount(() => {
+    initPageFlag.set(true);
+    consumeRemixParams();
+  });
 </script>
 
 <div class="flex flex-col min-h-screen bg-bg-light dark:bg-bg-dark text-text-light dark:text-text-dark">

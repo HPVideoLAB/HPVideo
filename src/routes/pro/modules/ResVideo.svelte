@@ -56,7 +56,6 @@
   }
 
   function downloadVideo(url?: string) {
-    console.log('8888888', item, url);
     if (!url) return;
     const a = document.createElement('a');
     a.href = url;
@@ -66,6 +65,14 @@
     document.body.appendChild(a);
     a.click();
     a.remove();
+  }
+
+  function shareVideo(itm: ResVideoItem) {
+    if (!itm?.id) return;
+    const url = `${window.location.origin}/creator/v/${itm.id}`;
+    copyText(url, $i18n.t('Share link copied'));
+    // Also offer a one-click open in case the user wants to preview the share page.
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 
   //按钮 (注意：为了让语言切换时按钮文案也能变，建议这里用 reactive $:)
@@ -83,6 +90,13 @@
       action: (item: any) => downloadVideo(item.outputUrl),
       tooltip: $i18n.t('Download'),
       disabled: false,
+    },
+    {
+      label: $i18n.t('Share'),
+      icon: 'mdi:share-variant',
+      action: (item: any) => shareVideo(item),
+      tooltip: $i18n.t('Copy public share link'),
+      disabled: !item || item.status !== 'completed',
     },
     {
       label: $i18n.t('Good'),
