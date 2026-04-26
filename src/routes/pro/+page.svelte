@@ -25,7 +25,13 @@
 
   // Constants & Utils
   import { proModel } from '../../constants/pro-model';
+  import { exampleData } from '../../constants/example-data';
   import { restoreProParams } from '$lib/utils/pro/history-restore';
+
+  // First example per model becomes the dropdown's hover-preview clip.
+  const previewByModel: Record<string, string> = Object.fromEntries(
+    Object.entries(exampleData).map(([k, v]) => [k, v?.[0]?.videoUrl ?? '']),
+  );
 
   // Hooks
   import { useVideoGeneration } from '$lib/hooks/useVideoGeneration';
@@ -74,6 +80,9 @@
     icon: m.modelicon,
     hasAudio: m.audio,
     desc: $i18n.t(`model_desc_${m.model}`),
+    badges: m.badges ?? [],
+    bestFor: m.bestFor ? $i18n.t(m.bestFor) : '',
+    previewUrl: previewByModel[m.model] ?? '',
   }));
 
   // 默认选中第一个或指定的模型

@@ -4,6 +4,8 @@
   import { ASIAN_MARKET_VOICES } from '../../../../constants/commercial-voices';
   import MyButton from '$lib/components/common/MyButton.svelte';
   import { mediaQuery } from 'svelte-legos';
+  import PromptChips from '$lib/components/common/PromptChips.svelte';
+  import { costToCredits, formatCredits } from '$lib/utils/credits';
 
   export let globalPrompt = '';
   export let voiceId = 'fresh_youth';
@@ -139,6 +141,9 @@
             )}
             class="w-full resize-none bg-transparent px-4 py-3 text-sm text-text-light dark:text-text-dark outline-none placeholder:text-gray-400 dark:placeholder:text-gray-600"
           />
+          <div class="px-4 pb-2">
+            <PromptChips bind:prompt={globalPrompt} />
+          </div>
           <!-- 按钮 -->
           <div class="flex items-center justify-end px-2 pb-1.5 mt-[-4px]">
             <div class="flex items-center gap-3">
@@ -175,7 +180,9 @@
                     {#if costUsd !== null}
                       <span class="w-[1px] h-3 bg-white/30 mx-0.5" />
                       <span class="text-sm font-bold font-mono">
-                        {costUsd === 0 ? $i18n.t('FREE') : `$${costUsd.toFixed(3)}`}
+                        {costUsd === 0
+                          ? $i18n.t('FREE')
+                          : `${formatCredits(costToCredits(costUsd))} ${$i18n.t('credits')}`}
                       </span>
                     {/if}
                   {/if}

@@ -4,6 +4,8 @@
   // 1. 引入通用组件
   import MySelect from '$lib/components/common/MySelect.svelte';
   import MyButton from '$lib/components/common/MyButton.svelte';
+  import PromptChips from '$lib/components/common/PromptChips.svelte';
+  import { costToCredits, formatCredits } from '$lib/utils/credits';
 
   // Props
   export let globalPrompt = '';
@@ -235,6 +237,10 @@
           class="w-full resize-none bg-transparent px-4 py-3 text-sm text-text-light dark:text-text-dark outline-none placeholder:text-gray-400 dark:placeholder:text-gray-600"
         />
 
+        <div class="px-4 pb-2">
+          <PromptChips bind:prompt={globalPrompt} />
+        </div>
+
         <div class="flex items-center justify-between px-2 pb-1.5 mt-[-4px]">
           <div class="flex items-center gap-2 pl-2">
             {#if currentStyle.triggerWord}
@@ -269,7 +275,9 @@
                 {#if costUsd !== null}
                   <span class="w-[1px] h-3 bg-white/30 mx-0.5" />
                   <span class="text-sm font-bold font-mono">
-                    {costUsd === 0 ? $i18n.t('FREE') : `$${costUsd.toFixed(3)}`}
+                    {costUsd === 0
+                      ? $i18n.t('FREE')
+                      : `${formatCredits(costToCredits(costUsd))} ${$i18n.t('credits')}`}
                   </span>
                 {/if}
               {/if}

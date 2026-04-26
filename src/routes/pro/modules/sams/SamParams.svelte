@@ -2,6 +2,7 @@
   import { createEventDispatcher, getContext } from 'svelte';
   // 引入统一的 Button 组件 (假设路径一致)
   import MyButton from '$lib/components/common/MyButton.svelte';
+  import { costToCredits, formatCredits } from '$lib/utils/credits';
 
   export let globalPrompt = '';
   export let applyMask = true; // 这个对应 "AI导演" 的位置，改为 Mask 开关
@@ -71,7 +72,9 @@
                   {#if costUsd !== null}
                     <span class="w-[1px] h-3 bg-white/30 mx-0.5" />
                     <span class="text-sm font-bold font-mono">
-                      {costUsd === 0 ? $i18n.t('FREE') : `$${costUsd.toFixed(3)}`}
+                      {costUsd === 0
+                        ? $i18n.t('FREE')
+                        : `${formatCredits(costToCredits(costUsd))} ${$i18n.t('credits')}`}
                     </span>
                   {/if}
                 {/if}

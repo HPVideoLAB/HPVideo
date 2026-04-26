@@ -141,12 +141,31 @@
               class="absolute left-0 top-3 bottom-3 w-1 bg-primary-500 rounded-r-full opacity-0 data-[state=checked]:opacity-100 transition-opacity"
             />
 
-            {#if option.icon || option.gender}
+            {#if option.previewUrl || option.icon || option.gender}
               <div
-                class="shrink-0 w-10 h-10 rounded-lg bg-white dark:bg-white/5 border border-gray-100 dark:border-white/5 flex items-center justify-center p-0.5 shadow-sm
+                class="shrink-0 w-12 h-12 rounded-lg bg-white dark:bg-white/5 border border-gray-100 dark:border-white/5 flex items-center justify-center p-0.5 shadow-sm overflow-hidden
                      group-data-[state=checked]:ring-2 group-data-[state=checked]:ring-primary-500/20"
               >
-                {#if option.icon}
+                {#if option.previewUrl}
+                  <video
+                    src={option.previewUrl}
+                    poster={option.icon}
+                    class="w-full h-full object-cover rounded-md"
+                    muted
+                    loop
+                    playsinline
+                    preload="none"
+                    on:mouseenter={(e) => {
+                      const v = e.currentTarget;
+                      if (v.paused) v.play().catch(() => {});
+                    }}
+                    on:mouseleave={(e) => {
+                      const v = e.currentTarget;
+                      v.pause();
+                      v.currentTime = 0;
+                    }}
+                  />
+                {:else if option.icon}
                   <img src={option.icon} alt="" class="w-full h-full object-contain rounded-md" />
                 {:else if option.gender}
                   <div
@@ -199,6 +218,26 @@
                 >
                   {option.desc}
                 </p>
+              {/if}
+
+              {#if option.bestFor}
+                <p class="mt-0.5 text-[10px] font-semibold text-primary-600 dark:text-primary-300 truncate">
+                  ★ {option.bestFor}
+                </p>
+              {/if}
+
+              {#if option.badges && option.badges.length}
+                <div class="mt-1 flex flex-wrap gap-1">
+                  {#each option.badges as b (b)}
+                    <span
+                      class="inline-flex items-center px-1.5 py-[1px] rounded-md text-[9px] font-medium uppercase tracking-wide
+                             bg-gray-100 text-gray-600
+                             dark:bg-white/5 dark:text-gray-300"
+                    >
+                      {b}
+                    </span>
+                  {/each}
+                </div>
               {/if}
             </div>
 
