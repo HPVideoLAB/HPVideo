@@ -7,6 +7,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { NEST_API_BASE_URL } from '$lib/constants';
+  import { initPageFlag } from '$lib/stores';
 
   const i18n: any = getContext('i18n');
 
@@ -84,7 +85,11 @@
     goto('/creator/pro');
   }
 
-  onMount(fetchTask);
+  onMount(() => {
+    // Drop the root splash so the page actually renders.
+    initPageFlag.set(true);
+    fetchTask();
+  });
 </script>
 
 <svelte:head>
