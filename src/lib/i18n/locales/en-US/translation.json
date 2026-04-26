@@ -1155,7 +1155,10 @@
   "Articulate, crisp, professional news anchor.": "Articulate, crisp, professional news anchor.",
   "Passionate Host": "Passionate Host",
   "Fast-paced, high-volume, livestream shopping host.": "Fast-paced, high-volume, livestream shopping host.",
-  "HPVideo Pro": "HPVideo Pro",
+  "HPVideo Pro": "HPVideo Studio",
   "HPVideo AI": "HPVideo AI",
+  "Pick a template to get started": "Pick a template to get started",
+  "Click any template to load its prompt, reference, and parameters. Edit then generate.": "Click any template to load its prompt, reference, and parameters. Edit then generate.",
+  "All": "All",
   "FREE": "FREE"
 }

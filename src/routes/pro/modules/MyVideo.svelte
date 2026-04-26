@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { createEventDispatcher, getContext } from 'svelte';
+  import { createEventDispatcher } from 'svelte';
   import ResVideo from './ResVideo.svelte';
   import History from './History.svelte';
+  import TemplateGallery from './TemplateGallery.svelte';
 
   type Status = 'processing' | 'completed' | 'failed';
   type HistoryItem = {
@@ -17,7 +18,6 @@
   export let items: HistoryItem[] = [];
 
   const dispatch = createEventDispatcher();
-  const i18n: any = getContext('i18n');
 
   let manualSelection: HistoryItem | null = null;
 
@@ -52,27 +52,10 @@
         <ResVideo on:retry item={activeItem} />
       {/key}
     {:else}
-      <div
-        class="flex-1 flex flex-col items-center justify-center text-center p-10 md:p-3 border rounded-3xl border-border-light
-dark:border-border-dark"
-      >
-        <div class="relative mb-2">
-          <div
-            class="pointer-events-none absolute inset-0 -z-10 h-16 w-16 rounded-full blur-2xl opacity-30
-                 bg-primary-500/30 dark:bg-primary-500/20"
-          />
-          <iconify-icon icon="mdi:creation-outline" class="text-7xl text-primary-500/70 dark:text-primary-400/70" />
-        </div>
-
-        <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
-          {$i18n.t('Unleash your creative potential, experience')}
-          <span class="text-primary-500/90 dark:text-primary-400">{$i18n.t('HPVideo AI')}</span>
-          {$i18n.t("'s magic.")}
-        </p>
-
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">
-          {$i18n.t('Select a model and upload assets to start generating.')}
-        </p>
+      <!-- Empty stage: surface the template wall instead of a placeholder so first-time
+           users see what HPVideo can do and can one-click-load any example's params. -->
+      <div class="flex-1 border rounded-3xl border-border-light dark:border-border-dark overflow-hidden">
+        <TemplateGallery on:select={(e) => dispatch('select', e.detail)} />
       </div>
     {/if}
   </div>

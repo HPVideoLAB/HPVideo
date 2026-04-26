@@ -95,11 +95,8 @@
       });
     }
     localStorage.setItem('settings', JSON.stringify($settings));
-    goto('/creator/');
-    const newChatButton = document.getElementById('new-chat-button');
-    setTimeout(() => {
-      newChatButton?.click();
-    }, 0);
+    // Studio is the default; legacy chat is reachable via /creator/chat.
+    goto('/creator/pro');
   };
 
   // 更新用户语言
