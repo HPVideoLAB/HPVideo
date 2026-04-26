@@ -47,7 +47,7 @@
 </script>
 
 <div class="w-full h-full overflow-y-auto px-4 md:px-8 py-6 md:py-10">
-  <div class="max-w-6xl mx-auto">
+  <div class="max-w-[1320px] mx-auto">
     <header class="mb-5 md:mb-8">
       <h1
         class="text-xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-primary-400 via-primary-500 to-violet-400 bg-clip-text text-transparent"
@@ -77,7 +77,7 @@
 
     <!-- Grid -->
     {#key activeFilter}
-      <div in:fade={{ duration: 180 }} class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+      <div in:fade={{ duration: 180 }} class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 md:gap-4">
         {#each visible as item (item.id)}
           <div class="space-y-1.5">
             <VideoPreview

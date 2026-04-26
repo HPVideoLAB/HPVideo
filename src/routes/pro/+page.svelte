@@ -261,8 +261,10 @@
 
       <ExampleCard {currentModelValue} on:select={handleHistorySelect} />
 
+      <!-- Sticky on every viewport so the Generate CTA never scrolls off screen.
+           Was md:sticky only — mobile users were losing the button after scroll. -->
       <div
-        class="bg-bg-light dark:bg-bg-dark rounded-2xl md:sticky md:bottom-0 md:left-0 z-[99] border-t border-border-light dark:border-border-dark shadow-[0_-10px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-10px_20px_rgba(0,0,0,0.7)]"
+        class="bg-bg-light dark:bg-bg-dark rounded-2xl sticky bottom-0 left-0 z-[99] border-t border-border-light dark:border-border-dark shadow-[0_-10px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-10px_20px_rgba(0,0,0,0.7)]"
       >
         {#if currentModelValue === 'pika-v2.2-pikaframes'}
           <ImgToVideoParams
