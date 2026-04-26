@@ -95,8 +95,14 @@
       });
     }
     localStorage.setItem('settings', JSON.stringify($settings));
-    // Studio is the default; legacy chat is reachable via /creator/chat.
-    goto('/creator/pro');
+    // Only force-redirect to Studio when the user landed at /creator/ root
+    // (otherwise we'd hijack /creator/chat or /creator/c/<id> deep links).
+    if (typeof window !== 'undefined') {
+      const p = window.location.pathname.replace(/\/$/, '');
+      if (p === '/creator' || p === '') {
+        goto('/creator/pro');
+      }
+    }
   };
 
   // 更新用户语言
