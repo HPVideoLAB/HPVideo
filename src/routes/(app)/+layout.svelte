@@ -95,14 +95,10 @@
       });
     }
     localStorage.setItem('settings', JSON.stringify($settings));
-    // Only force-redirect to Studio when the user landed at /creator/ root
-    // (otherwise we'd hijack /creator/chat or /creator/c/<id> deep links).
-    if (typeof window !== 'undefined') {
-      const p = window.location.pathname.replace(/\/$/, '');
-      if (p === '/creator' || p === '') {
-        goto('/creator/pro');
-      }
-    }
+    // The /creator/ root is now a real landing hero (templates + value
+    // prop + Open Studio CTA). Returning users with a wallet keystore
+    // are auto-forwarded by (app)/+page.svelte itself; the layout no
+    // longer hijacks that decision.
   };
 
   // 更新用户语言
