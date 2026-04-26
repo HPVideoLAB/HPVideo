@@ -117,9 +117,14 @@
     if (unsubscribeModal) unsubscribeModal();
   });
 
-  // 打开钱包选择弹窗 — 始终先选模式
+  // Points mode is the default. Skip the mode picker on first connect —
+  // users only see it if they tap the small mode badge later.
   const connect = () => {
-    showModeSelector = true;
+    if (!localStorage.getItem('paymentMode')) {
+      localStorage.setItem('paymentMode', 'points');
+    }
+    paymentMode.set('points');
+    doConnect();
   };
 
   const doConnect = () => {
