@@ -71,31 +71,37 @@
 
 ---
 
-## 3. 积分包（与 DeepLinkGame Creem 同一阶梯）
+## 3. 积分包（直接复用 Creem 现有 10 档）
 
-DeepLinkGame 已有的 10 档 Creem 产品价格直接复用结构（HPVideo 在 Creem 上注册自己的 product_id，价格点完全镜像）：
+Creem 后台的产品是按 DeepLinkGame 配置的，**HPVideo 不能单独再加优惠**，所以所有档位都是 **flat 1000:1**，无加赠：
 
-| 档位 | 售价 | 基础积分 | 加赠 | 总积分 | 等效单价 |
+| 档位 | 售价 | 积分 | Creem product_id |
+|---|---:|---:|---|
+| Mini | $5 | 5,000 | prod_4MBe51eU6cvLcuzGHFjLZE |
+| Basic | $10 | 10,000 | prod_7D75iFxkbDWUhuCaSegMrP |
+| Plus | $15 | 15,000 | prod_4cHi1F6MB9HkHNByOp8PyX |
+| Standard | $20 | 20,000 | prod_2Qm2ApNRCwbpVWI0FIEbBl |
+| Pro | $25 | 25,000 | prod_6HoR1gM7mP5oDNVPr4aGLX |
+| Power | $30 | 30,000 | prod_1ivlJfN9KxYeBcEhleawRY |
+| Heavy | $35 | 35,000 | prod_6neOEK2SaWGzP0JQvgPNf4 |
+| Studio | $40 | 40,000 | prod_gWRqmD96hKzs41x75sAsE |
+| Whale | $50 | 50,000 | prod_5c5SdLP9TXQwVp554TtPaA |
+| Legend | $100 | 100,000 | prod_73r40YulOVpHo23N7HmnA0 |
+
+> 这 10 个 product_id 来自 DeepLinkGame `frontend/pricing.html:681` 的 `creemLinks` 表，HPVideo 直接调用 `nodeapi.deeplink.cloud/api/paypal/getBuyLink` 复用同一套，无需新建。
+
+### 毛利测算（无加赠版本）
+
+| 档位 | 收入 | 用户最大消耗（按 credit 零售）| 实际 API 成本（消耗 / 2）| Creem 手续费 5% | 净毛利 |
 |---|---:|---:|---:|---:|---:|
-| **Mini** | $5 | 5,000 | 0 | 5,000 | $0.001 |
-| **Basic** | $10 | 10,000 | 0 | 10,000 | $0.001 |
-| **Plus** | $15 | 15,000 | 0 | 15,000 | $0.001 |
-| **Standard** | $20 | 20,000 | +1,000（5%）| 21,000 | $0.000952 |
-| **Pro** | $25 | 25,000 | +1,500（6%）| 26,500 | $0.000943 |
-| **Power** | $30 | 30,000 | +2,500（8.3%）| 32,500 | $0.000923 |
-| **Heavy** | $35 | 35,000 | +3,500（10%）| 38,500 | $0.000909 |
-| **Studio** | $40 | 40,000 | +5,000（12.5%）| 45,000 | $0.000889 |
-| **Whale** | $50 | 50,000 | +7,500（15%）| 57,500 | $0.000870 |
-| **Legend** | $100 | 100,000 | +30,000（30%）| 130,000 | $0.000769 |
+| $5 | $5 | $5 | $2.50 | $0.25 | **$2.25 (45%)** |
+| $20 | $20 | $20 | $10 | $1.00 | **$9 (45%)** |
+| $50 | $50 | $50 | $25 | $2.50 | **$22.50 (45%)** |
+| $100 | $100 | $100 | $50 | $5.00 | **$45 (45%)** |
 
-**毛利兜底测试**（最大档 $100，130k 积分用满）:
-- 130,000 积分 × $0.0005（积分实际成本：消耗时 2× 兜底后的对应 API 成本）= $65 实际 API 成本
-- Creem 手续费 ~5%（$5）+ Webhook/infra ~$1
-- **净毛利 $29 (29%)** ✓ 不亏
+**所有档位毛利率统一 45%**（消耗到底的最坏情况），实际消耗率 60-70% 行业平均下，**真实毛利 55-60%**。
 
-**为什么阶梯越大加赠越多**：用户预付现金流对我们最有价值，且大额用户复购周期长 → 给折扣换 retention。
-
-**永不亏钱底线**：所有档位 effective 积分价 ≥ $0.000769，而每次消耗的实际 API 成本 ≤ 该积分零售价的 50%（兜底保证）。最坏情况毛利 23%，仍盈利。
+**永不亏钱底线**：每次扣费严格 ≥ 2× API 成本（50% 兜底），扣 Creem 5% 后仍稳定 45%+ 毛利。
 
 ---
 
@@ -194,7 +200,6 @@ HPVideo 需要做：
      user_id UUID PRIMARY KEY,
      wallet_address VARCHAR(42) UNIQUE NOT NULL,
      balance BIGINT NOT NULL DEFAULT 0,
-     bonus_balance BIGINT NOT NULL DEFAULT 0,  -- 加赠 / 邀请奖励 (30 天有效期)
      created_at TIMESTAMPTZ DEFAULT NOW(),
      updated_at TIMESTAMPTZ DEFAULT NOW()
    );
@@ -203,7 +208,7 @@ HPVideo 需要做：
      id BIGSERIAL PRIMARY KEY,
      user_id UUID NOT NULL REFERENCES user_credits(user_id),
      delta BIGINT NOT NULL,         -- 正数 = 加，负数 = 扣
-     reason VARCHAR(40) NOT NULL,   -- 'creem_purchase', 'generation', 'refund', 'bonus', ...
+     reason VARCHAR(40) NOT NULL,   -- 'creem_purchase', 'crypto_deposit', 'generation', 'refund'
      model VARCHAR(40),             -- 仅 generation 时填
      metadata JSONB,
      creem_event_id VARCHAR(80) UNIQUE,  -- 幂等保证
@@ -234,30 +239,29 @@ HPVideo 需要做：
 
 ---
 
-## 6. 加密支付通道（钱包用户专属，可选）
+## 6. 加密支付通道（可选，与 Creem 同价）
 
-钱包用户已经有 BSC 钱包，可以直接用 BNB / USDT / HPC token 充值。这是 DeepLinkGame 没有的差异化：
+钱包用户已经有 BSC 钱包，也可以直接用 BNB / USDT / HPC token 充值，**与 Creem 一致 flat 1000:1，无加赠**：
 
 ### 链上支付选项
 
-| 通道 | 加赠 | 实现 |
-|---|---:|---|
-| **BNB** | +5% | 给定我们的 receiving wallet 地址，用户直接转账，前端 watcher 监听到入账后加积分 |
-| **USDT (BSC BEP-20)** | +5% | 同上，1 USDT = 1,000 积分 |
-| **HPC token** | +10% | 1 HPC = 1,050 积分（持续推动 HPC 流通）|
+| 通道 | 汇率 | 实现 |
+|---|---|---|
+| **USDT (BSC BEP-20)** | 1 USDT = 1,000 积分 | 用户转 USDT 到 receiving wallet → watcher 加积分 |
+| **BNB** | 按链上喂价折算（CoinGecko / Chainlink）| 同上，按转账时 BNB/USD 价折算 |
+| **HPC token** | 按官方公布的兑换汇率（与生态价值同步）| 同上 |
+
+### 为什么提供这条路径
+
+- **不是给用户的优惠**（与 Creem 同价），而是给我们的：链上不付 Creem 5% 手续费 → 我们多捕获 5% 毛利
+- crypto 用户原生路径，转账更顺手，体验流畅
+- HPC token 通道是 HPC 流通的核心出口（HPC 任务奖励 → 用户兑换积分）
 
 ### 实现细节
 
-- 后端起一个 watcher 服务，监听 receiving wallet 的 incoming Transfer 事件
-- 提取 `from` 字段，根据金额匹配档位
-- 调 `add_credits()` 函数加积分
-- HPC 通道：用户在 HPC token 合约调 `transfer(receivingWallet, amount)` → watcher 捕获 → 加积分
-
-这条路径不通过 Creem，**省 5% 手续费**，所以可以给 5% 加赠还净赚 1-2 个百分点。
-
-### 钱包到 HPC 兑换
-
-钱包内 HPC 数量 → 1:1 转积分（用户在前端点 "Convert HPC to Credits"），这是 HPC 任务奖励的核心出口。
+- 后端起 watcher 服务监听 receiving wallet 的 incoming `Transfer` 事件
+- 提取 `from` 字段（即用户钱包），根据 token + amount 调 `add_credits()`
+- 入账延迟 = BSC 出块时间（≈3 秒）+ 1 confirmation
 
 ---
 
@@ -269,24 +273,18 @@ HPVideo 需要做：
 | 钱包频控 | 同 IP 24h 创建 ≥10 个新钱包 → 暂停充值通道（防机器人）|
 | Creem 风控 | Creem 自带 fraud detection，可疑卡自动拒 |
 | 退款 | API 失败 → 自动全额退积分；用户主动退订 Creem 订单 → 扣回积分（如余额不足记 negative，禁止生成直到补足）|
-| 加赠到期 | bonus_balance 30 天有效期，过期清零（防人攒大额 bonus 后退款）|
 
 ---
 
-## 8. 邀请系统（不发免费积分，但发邀请奖励）
+## 8. 增长机制（Phase 2，启动后再上）
 
-不直接给新人免费积分（防薅）；改成"绑定后第一次充值双方都奖励"：
+为保持 v1 价格体系简单（无任何额外优惠），以下增长机制延后到产品启动有数据后再启用：
 
-| 角色 | 触发 | 奖励 |
-|---|---|---|
-| 邀请人 | 被邀请人首次充值（任意金额）| **被邀请人充值额的 10% 加赠积分到邀请人余额** |
-| 被邀请人 | 用邀请链接注册并首次充值 | **当次充值 +10% 额外加赠** |
+- **邀请系统**：被邀请人首次充值后双方加赠（具体比例数据驱动确定）
+- **HPC 任务**：日签 / 邀请 / 完成首单 → 链上发 HPC，HPC 1:1 兑换积分
+- **创作者版税**：视频被 remix → 原作者钱包收链上版税
 
-举例：A 邀 B，B 买 $20 包：
-- B 拿 21,000 + 2,000 邀请加赠 = 23,000 积分
-- A 拿 2,000 加赠积分
-
-成本控制：奖励都来自 bonus_balance（30 天到期），且只在"实付"后发放，CAC 不超过 20% 充值额，可控。
+这些都不影响 v1 主流程，纯加项。
 
 ---
 
@@ -310,25 +308,21 @@ HPVideo 需要做：
 - [ ] 前端：钱包充值页（show address + QR code）
 - [ ] HPC ↔ 积分兑换接口
 
-### Sprint 4（第 4 周）：邀请系统
-- [ ] 邀请码生成 + 链接 hpvideo.io/r/<code>
-- [ ] Cookie 跟踪 + 充值时双向加赠
-- [ ] 个人邀请 dashboard
-
-### Sprint 5（第 5-6 周）：防薅 + 监控
+### Sprint 4（第 4 周）：防薅 + 监控
 - [ ] IP 频控 + 设备指纹（fingerprint.js 已经在用）
 - [ ] Creem Webhook 验签 + 幂等
 - [ ] Mixpanel 接入（充值漏斗）
 
-### Sprint 6（第 7-8 周）：体验优化
+### Sprint 5（第 5-6 周）：体验优化
 - [ ] Creem 跳转回来后 polling 余额
 - [ ] 余额不足时智能推荐档位（基于历史消耗）
 - [ ] 充值成功 toast + email 收据（可选邮箱）
 
-### Sprint 7-8（第 9-12 周）：增长 + 内容
+### Sprint 6-8（第 7-12 周）：增长 + 内容
 - [ ] 公共画廊 / Explore feed
 - [ ] Higgsfield 风特效预设 30 个
 - [ ] 移动端 PWA
+- [ ] 邀请 / HPC 任务（数据驱动确定比例后再上）
 
 ---
 
@@ -348,10 +342,10 @@ HPVideo 需要做：
 
 ## 11. 关键决策 & 待确认
 
-1. **Creem 产品创建**：需要 Creem 账号管理员在后台创建 10 个 HPVideo product（与 DeepLinkGame 分账）→ **谁负责？**
-2. **Receiving wallet 地址**：BNB/USDT 收款的钱包地址需要部署 + 配 watcher → **用 HPVideoBNB 多签里的"Liquidity"钱包还是单独建？**
-3. **HPC ↔ 积分汇率**：1 HPC = 1,050 积分是初始建议，需要根据 HPC 二级市场价动态调整 → **谁定？**
-4. **邮箱备份开不开**：用户可选填邮箱接收加密私钥备份 → 提高留存但增加合规面（GDPR）→ **法务评估**
+1. **Creem 产品复用**：直接调用 `nodeapi.deeplink.cloud/api/paypal/getBuyLink` 复用 DeepLinkGame 现成的 10 个 product_id → **会计上 Creem 收入会进 DeepLinkGame 商户账户，需要后端按 product_id + 用户钱包来源做内部分账**
+2. **Receiving wallet 地址**：USDT/BNB/HPC 收款用 → 建议用 HPVideoBNB 多签里的 "Liquidity" 钱包（`0xA4fAEF0432175813B2EfA3214e8a34C5a3AfFc25`），或新建专用钱包
+3. **HPC ↔ 积分汇率**：随 HPC 二级市场价浮动还是固定 → **数据驱动后定**
+4. **邮箱备份**：用户可选填邮箱接收加密私钥备份 → 提高留存但增加合规面（GDPR）→ **法务评估**
 
 ---
 
@@ -375,27 +369,23 @@ async def charge_for_generation(charge: CreditCharge) -> int:
 
     async with db.transaction():
         row = await db.fetch_one(
-            "SELECT balance, bonus_balance FROM user_credits WHERE user_id = $1 FOR UPDATE",
+            "SELECT balance FROM user_credits WHERE user_id = $1 FOR UPDATE",
             charge.user_id,
         )
-        total = row["balance"] + row["bonus_balance"]
-        if total < credits_needed:
-            raise InsufficientCredits(needed=credits_needed, have=total)
+        if row["balance"] < credits_needed:
+            raise InsufficientCredits(needed=credits_needed, have=row["balance"])
 
-        # 优先消耗 bonus（先到期的先扣），不够再扣主余额
-        from_bonus = min(credits_needed, row["bonus_balance"])
-        from_main = credits_needed - from_bonus
         await db.execute(
-            "UPDATE user_credits SET bonus_balance = bonus_balance - $1, "
-            "balance = balance - $2, updated_at = NOW() WHERE user_id = $3",
-            from_bonus, from_main, charge.user_id,
+            "UPDATE user_credits SET balance = balance - $1, updated_at = NOW() "
+            "WHERE user_id = $2",
+            credits_needed, charge.user_id,
         )
         await db.execute(
             "INSERT INTO credit_transactions (user_id, delta, reason, model, metadata) "
             "VALUES ($1, $2, 'generation', $3, $4)",
             charge.user_id, -credits_needed, charge.model, json.dumps(charge.metadata),
         )
-        return total - credits_needed
+        return row["balance"] - credits_needed
 ```
 
 ## 附 B：Creem Webhook 处理
@@ -407,16 +397,17 @@ import hmac, hashlib
 CREEM_WEBHOOK_SECRET = os.getenv("CREEM_WEBHOOK_SECRET")
 
 PRODUCT_TO_CREDITS = {
-    "prod_hpvideo_5usd":   {"base": 5_000,   "bonus": 0},
-    "prod_hpvideo_10usd":  {"base": 10_000,  "bonus": 0},
-    "prod_hpvideo_15usd":  {"base": 15_000,  "bonus": 0},
-    "prod_hpvideo_20usd":  {"base": 20_000,  "bonus": 1_000},
-    "prod_hpvideo_25usd":  {"base": 25_000,  "bonus": 1_500},
-    "prod_hpvideo_30usd":  {"base": 30_000,  "bonus": 2_500},
-    "prod_hpvideo_35usd":  {"base": 35_000,  "bonus": 3_500},
-    "prod_hpvideo_40usd":  {"base": 40_000,  "bonus": 5_000},
-    "prod_hpvideo_50usd":  {"base": 50_000,  "bonus": 7_500},
-    "prod_hpvideo_100usd": {"base": 100_000, "bonus": 30_000},
+    # 复用 DeepLinkGame 的 Creem 产品，flat 1000:1，无加赠
+    "prod_4MBe51eU6cvLcuzGHFjLZE": 5_000,    # $5
+    "prod_7D75iFxkbDWUhuCaSegMrP": 10_000,   # $10
+    "prod_4cHi1F6MB9HkHNByOp8PyX": 15_000,   # $15
+    "prod_2Qm2ApNRCwbpVWI0FIEbBl": 20_000,   # $20
+    "prod_6HoR1gM7mP5oDNVPr4aGLX": 25_000,   # $25
+    "prod_1ivlJfN9KxYeBcEhleawRY": 30_000,   # $30
+    "prod_6neOEK2SaWGzP0JQvgPNf4": 35_000,   # $35
+    "prod_gWRqmD96hKzs41x75sAsE": 40_000,    # $40
+    "prod_5c5SdLP9TXQwVp554TtPaA": 50_000,   # $50
+    "prod_73r40YulOVpHo23N7HmnA0": 100_000,  # $100
 }
 
 @router.post("/api/billing/creem-webhook")
@@ -435,8 +426,8 @@ async def creem_webhook(request: Request):
     product_id = payload["product_id"]
     event_id = payload["event_id"]
 
-    cfg = PRODUCT_TO_CREDITS.get(product_id)
-    if cfg is None:
+    credits = PRODUCT_TO_CREDITS.get(product_id)
+    if credits is None:
         log.warning("unknown product_id: %s", product_id)
         return {"ok": True}
 
@@ -448,13 +439,12 @@ async def creem_webhook(request: Request):
                 "(user_id, delta, reason, metadata, creem_event_id) "
                 "SELECT user_id, $1, 'creem_purchase', $2, $3 "
                 "FROM user_credits WHERE wallet_address = $4",
-                cfg["base"], json.dumps(payload), event_id, wallet,
+                credits, json.dumps(payload), event_id, wallet,
             )
             await db.execute(
-                "UPDATE user_credits "
-                "SET balance = balance + $1, bonus_balance = bonus_balance + $2 "
-                "WHERE wallet_address = $3",
-                cfg["base"], cfg["bonus"], wallet,
+                "UPDATE user_credits SET balance = balance + $1 "
+                "WHERE wallet_address = $2",
+                credits, wallet,
             )
     except UniqueViolationError:
         log.info("duplicate event %s, skipping", event_id)
