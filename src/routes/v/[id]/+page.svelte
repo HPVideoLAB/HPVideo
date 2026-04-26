@@ -27,8 +27,23 @@
   let errorMsg = '';
   let copied = false;
 
+  // Only let https/http URLs through — the share page's og:image / og:video /
+  // <video src> are otherwise reachable for arbitrary-scheme injection if
+  // upstream provider data ever returns 'javascript:' / 'data:' etc.
+  function safeUrl(u: string | undefined): string {
+    if (!u) return '';
+    try {
+      const parsed = new URL(u, 'https://hpvideo.io');
+      return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.toString() : '';
+    } catch {
+      return '';
+    }
+  }
+
   $: id = $page.params.id;
   $: shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+  $: outputUrl = safeUrl(task?.outputUrl);
+  $: thumbUrl = safeUrl(task?.thumbUrl);
   $: pageTitle = task?.prompt
     ? `${task.prompt.slice(0, 60)} | HPVideo`
     : 'AI-generated video | HPVideo';
@@ -105,11 +120,11 @@
   <meta property="og:title" content={pageTitle} />
   <meta property="og:type" content="video.other" />
   <meta property="og:url" content={shareUrl} />
-  {#if task?.thumbUrl}<meta property="og:image" content={task.thumbUrl} />{/if}
-  {#if task?.outputUrl}<meta property="og:video" content={task.outputUrl} />{/if}
-  <meta name="twitter:card" content={task?.thumbUrl ? 'summary_large_image' : 'summary'} />
+  {#if thumbUrl}<meta property="og:image" content={thumbUrl} />{/if}
+  {#if outputUrl}<meta property="og:video" content={outputUrl} />{/if}
+  <meta name="twitter:card" content={thumbUrl ? 'summary_large_image' : 'summary'} />
   <meta name="twitter:title" content={pageTitle} />
-  {#if task?.thumbUrl}<meta name="twitter:image" content={task.thumbUrl} />{/if}
+  {#if thumbUrl}<meta name="twitter:image" content={thumbUrl} />{/if}
 </svelte:head>
 
 <div class="min-h-screen bg-bg-light dark:bg-bg-dark text-text-light dark:text-text-dark">
@@ -137,18 +152,44 @@
       <div class="aspect-video w-full rounded-2xl bg-gray-100 dark:bg-gray-850 animate-pulse" />
     {:else if errorMsg}
       <div
-        class="rounded-2xl border border-border-light dark:border-border-dark p-8 text-center text-sm text-gray-500 dark:text-gray-400"
+        class="rounded-3xl border border-border-light dark:border-border-dark p-8 md:p-14 text-center"
       >
-        {errorMsg}
+        <div
+          class="mx-auto mb-5 w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-500/15 to-violet-500/15 flex items-center justify-center"
+        >
+          <iconify-icon icon="mdi:movie-off-outline" class="text-5xl text-primary-500/80" />
+        </div>
+        <h2 class="text-lg md:text-xl font-bold text-text-light dark:text-text-dark mb-2">
+          {errorMsg}
+        </h2>
+        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+          {$i18n.t('This video may be private, deleted, or never existed.')}
+        </p>
+        <div class="mt-6 flex flex-wrap justify-center gap-2">
+          <a
+            href="/creator/pro"
+            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium transition"
+          >
+            <iconify-icon icon="mdi:plus" class="text-lg" />
+            {$i18n.t('Make a video of your own')}
+          </a>
+          <a
+            href="/creator"
+            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-border-light dark:border-border-dark text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition"
+          >
+            <iconify-icon icon="mdi:image-multiple" class="text-lg" />
+            {$i18n.t('Browse templates')}
+          </a>
+        </div>
       </div>
     {:else if task}
       <!-- Video -->
       <div class="rounded-2xl overflow-hidden border border-border-light dark:border-border-dark bg-black">
-        {#if task.outputUrl}
+        {#if outputUrl}
           <video
             class="w-full max-h-[80vh] object-contain bg-black"
-            src={task.outputUrl}
-            poster={task.thumbUrl}
+            src={outputUrl}
+            poster={thumbUrl}
             controls
             autoplay
             muted

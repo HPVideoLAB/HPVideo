@@ -15,6 +15,12 @@
     icon?: string;
     hasAudio?: boolean;
     gender?: 'male' | 'female' | 'robot';
+    /** Auto-playing preview video shown next to the label. */
+    previewUrl?: string;
+    /** Capsule chips rendered under the description. */
+    badges?: string[];
+    /** "Best for ..." line — already localized when passed in. */
+    bestFor?: string;
   }[] = [];
 
   export let placeholder = 'Select';

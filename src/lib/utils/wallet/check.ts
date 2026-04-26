@@ -2,11 +2,16 @@
 import { getAccount } from '@wagmi/core';
 import { config, modal } from '$lib/utils/wallet/bnb/index';
 import { get } from 'svelte/store';
+import { toast } from 'svelte-sonner';
 import { paymentMode } from '$lib/stores';
+import i18n from '$lib/i18n';
 import { getStoredAddress } from '$lib/utils/wallet/dlcp/wallet';
 
+const tr = (key: string) => get(i18n).t(key);
+
 /**
- * Wallet connection check - supports both token (BSC) and points (DBC) modes
+ * Wallet connection check - supports both token (BSC) and points (DBC) modes.
+ * Always surfaces a toast on failure so a click never feels silent.
  * @returns {Promise<string | null>} address or null
  */
 export const ensureWalletConnected = async (): Promise<string | null> => {
@@ -16,7 +21,7 @@ export const ensureWalletConnected = async (): Promise<string | null> => {
     // Points mode: check local DBC wallet
     const addr = getStoredAddress();
     if (addr) return addr;
-    console.warn('[Wallet Check] Points wallet not found');
+    toast.warning(tr('Please connect a wallet first'));
     return null;
   }
 
@@ -24,7 +29,7 @@ export const ensureWalletConnected = async (): Promise<string | null> => {
   const account: any = getAccount(config);
 
   if (!account.address || account.status === 'disconnected') {
-    console.warn('[Wallet Check] BSC wallet not connected');
+    toast.info(tr('Please connect a wallet first'));
     try {
       await modal.open();
     } catch (e) {

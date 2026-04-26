@@ -69,6 +69,7 @@
                   {$i18n.t('Generating...')}
                 {:else}
                   <iconify-icon icon="mdi:sparkles" class="text-lg text-white" />
+                  <span class="text-sm font-semibold">{$i18n.t('Generate')}</span>
                   {#if costUsd !== null}
                     <span class="w-[1px] h-3 bg-white/30 mx-0.5" />
                     <span class="text-sm font-bold font-mono">

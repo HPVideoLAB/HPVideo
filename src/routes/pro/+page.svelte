@@ -171,6 +171,30 @@
 
   $: loadHistory($walletAddress);
 
+  // Allow-listed model slugs that the share/remix flow may pre-fill.
+  // Anything else gets rejected to limit the blast radius of a malicious
+  // same-origin script planting hpv:remix-params.
+  const ALLOWED_REMIX_MODELS = new Set(['pika', 'wan-2.1', 'sam3', 'commercial']);
+  // String fields are bounded; everything else (URLs, numeric params,
+  // booleans) is silently dropped if it doesn't match the expected type.
+  const STRING_FIELD_LIMIT = 4000;
+
+  function sanitizeRemixParams(p: any) {
+    if (!p || typeof p !== 'object' || typeof p.model !== 'string') return null;
+    if (!ALLOWED_REMIX_MODELS.has(p.model)) return null;
+    const out: any = { model: p.model };
+    if (typeof p.prompt === 'string') out.prompt = p.prompt.slice(0, STRING_FIELD_LIMIT);
+    if (typeof p.resolution === 'string' && p.resolution.length <= 16) out.resolution = p.resolution;
+    if (typeof p.seed === 'number' && Number.isFinite(p.seed)) out.seed = p.seed;
+    if (Array.isArray(p.images)) {
+      out.images = p.images
+        .filter((u: unknown) => typeof u === 'string' && /^https?:\/\//.test(u))
+        .slice(0, 8);
+    }
+    if (Array.isArray(p.transitions)) out.transitions = p.transitions.slice(0, 8);
+    return out;
+  }
+
   // Pick up params left by the share page's "Remix this" button.
   function consumeRemixParams() {
     if (typeof sessionStorage === 'undefined') return;
@@ -179,8 +203,9 @@
     sessionStorage.removeItem('hpv:remix-params');
     try {
       const { params } = JSON.parse(raw);
-      if (!params) return;
-      handleHistorySelect(new CustomEvent('select', { detail: { params } }));
+      const safe = sanitizeRemixParams(params);
+      if (!safe) return;
+      handleHistorySelect(new CustomEvent('select', { detail: { params: safe } }));
     } catch (e) {
       console.warn('remix params decode failed', e);
     }
