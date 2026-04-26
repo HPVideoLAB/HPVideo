@@ -296,7 +296,7 @@
            link still has a chance to convert into a real session. -->
       <section class="mt-10 pt-8 border-t border-border-light dark:border-border-dark">
         <h3 class="text-base font-semibold text-text-light dark:text-text-dark mb-1">
-          {$i18n.t('While you're here, try one of these')}
+          {$i18n.t('While you are here, try one of these')}
         </h3>
         <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
           {$i18n.t('Click any template to load its prompt, reference, and parameters. Edit then generate.')}
