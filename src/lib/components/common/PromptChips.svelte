@@ -50,10 +50,28 @@
 
   function appendToken(token: string) {
     const trimmed = (prompt || '').trim();
-    // Don't double-add the same token if the user already inserted it.
-    if (trimmed.endsWith(token)) return;
+    // Toggle behavior: if the token is anywhere in the prompt, remove it
+    // (with surrounding ", " separators); otherwise append it.
+    // Pattern with the leading comma-space catches the typical insertion case;
+    // the second pattern handles the very-first-token case.
+    const withSep = `, ${token}`;
+    if (trimmed.includes(withSep)) {
+      prompt = trimmed.split(withSep).join('').trim();
+      return;
+    }
+    if (trimmed.startsWith(token)) {
+      prompt = trimmed.slice(token.length).replace(/^,\s*/, '').trim();
+      return;
+    }
     prompt = trimmed ? `${trimmed}, ${token}` : token;
   }
+
+  // Chip is "selected" when the prompt currently contains its token.
+  // Lets us highlight the chip and gives the user a visible toggle affordance.
+  $: tokenInPrompt = (token: string) => {
+    const t = (prompt || '').trim();
+    return t === token || t.startsWith(`${token}`) || t.includes(`, ${token}`);
+  };
 </script>
 
 <div class="space-y-2 text-[11px]">
@@ -64,13 +82,14 @@
       </div>
       <div class="flex flex-wrap gap-1.5">
         {#each g.chips as c (c.label)}
+          {@const selected = tokenInPrompt(c.token)}
           <button
             type="button"
-            class="px-2 py-0.5 rounded-full border text-[10px]
-                   border-border-light dark:border-border-dark
-                   text-gray-600 dark:text-gray-300
-                   hover:border-primary-500/60 hover:text-primary-600 dark:hover:text-primary-300
-                   transition"
+            aria-pressed={selected}
+            class="px-2 py-0.5 rounded-full border text-[10px] transition
+              {selected
+                ? 'border-primary-500 bg-primary-500/10 text-primary-600 dark:text-primary-300'
+                : 'border-border-light dark:border-border-dark text-gray-600 dark:text-gray-300 hover:border-primary-500/60 hover:text-primary-600 dark:hover:text-primary-300'}"
             on:click={() => appendToken(c.token)}
           >
             {$i18n.t(c.label)}
