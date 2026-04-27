@@ -10,7 +10,7 @@ import { get } from 'svelte/store';
 
 export function usePayment() {
   // 1. 获取 i18n store
-  const i18n = getContext<any>('i18n');
+  const i18n: any = getContext<any>('i18n');
 
   // 2. 定义一个辅助函数，在非 .svelte 文件中读取翻译
   // get(i18n) 获取 store 当前值，然后调用 .t()

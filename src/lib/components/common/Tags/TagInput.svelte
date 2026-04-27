@@ -4,7 +4,7 @@
 	import { toast } from 'svelte-sonner';
 	const dispatch = createEventDispatcher();
 
-	const i18n = getContext('i18n');
+	const i18n: any = getContext('i18n');
 
 	export let label = '';
 	let showTagInput = false;

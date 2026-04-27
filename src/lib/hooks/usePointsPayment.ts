@@ -26,7 +26,7 @@ const ERC20_ABI = [
 ];
 
 export function usePointsPayment() {
-  const i18n = getContext<any>('i18n');
+  const i18n: any = getContext<any>('i18n');
   const t = (key: string) => get(i18n).t(key);
 
   const getToken = () => localStorage.getItem('token') || localStorage.getItem('access_token') || '';

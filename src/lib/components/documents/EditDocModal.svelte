@@ -10,7 +10,7 @@
 	import Tags from '../common/Tags.svelte';
 	import { addTagById } from '$lib/apis/chats';
 
-	const i18n = getContext('i18n');
+	const i18n: any = getContext('i18n');
 
 	export let show = false;
 	export let selectedDoc;

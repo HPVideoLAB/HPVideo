@@ -9,7 +9,7 @@
 
 	export let show;
 
-	const i18n = getContext('i18n');
+	const i18n: any = getContext('i18n');
 
 	let loading = false;
 	let content = '';

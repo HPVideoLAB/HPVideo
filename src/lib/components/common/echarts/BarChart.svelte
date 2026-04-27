@@ -3,7 +3,7 @@
   import * as echarts from "echarts";
   import { theme } from "$lib/stores";
 
-  const i18n = getContext("i18n");
+  const i18n: any = getContext("i18n");
 
   // 定义指定的颜色数组
   const specifiedColors = ["#5470C6", "#91CC75", "#FAC858"];

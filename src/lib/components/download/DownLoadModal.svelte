@@ -5,7 +5,7 @@
   import { copyToClipboard } from "$lib/utils";
   import { downLoadUrl } from "$lib/stores";
   import { toast } from "svelte-sonner";
-  const i18n = getContext("i18n");
+  const i18n: any = getContext("i18n");
 </script>
 
 <Modal bind:show size="sm">

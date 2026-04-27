@@ -3,7 +3,7 @@
 	import Modal from "../common/Modal.svelte";
 	import { models } from "$lib/stores";
 
-	const i18n = getContext("i18n");
+	const i18n: any = getContext("i18n");
 
 	export let show = false;
 </script>

@@ -12,7 +12,7 @@
   import { copyToClipboard } from '$lib/utils';
   import CompareMessages from './Messages/CompareMessages.svelte';
 
-  const i18n = getContext('i18n');
+  const i18n: any = getContext('i18n');
 
   export let chatId = '';
   export let readOnly = false;

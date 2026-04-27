@@ -8,7 +8,7 @@
 	import { user, showSettings } from "$lib/stores";
 	import { fade, slide } from "svelte/transition";
 
-	const i18n = getContext("i18n");
+	const i18n: any = getContext("i18n");
 
 	export let show = false;
 	export let role = "";

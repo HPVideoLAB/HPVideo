@@ -2,7 +2,7 @@
   import Modal from "../common/Modal.svelte";
   export let show = false;
   import { getContext } from "svelte";
-  const i18n = getContext("i18n");
+  const i18n: any = getContext("i18n");
 
   let account = "";
   let loading = false;

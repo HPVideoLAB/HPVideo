@@ -3,7 +3,7 @@
 	import { toast } from 'svelte-sonner';
 	import { updateUserPassword } from '$lib/apis/auths';
 
-	const i18n = getContext('i18n');
+	const i18n: any = getContext('i18n');
 
 	let show = false;
 	let currentPassword = '';

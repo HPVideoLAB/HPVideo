@@ -15,7 +15,7 @@
 	import { getUserById } from '$lib/apis/users';
 	import { error } from '@sveltejs/kit';
 
-	const i18n = getContext('i18n');
+	const i18n: any = getContext('i18n');
 
 	let loaded = false;
 

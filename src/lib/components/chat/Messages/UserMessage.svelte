@@ -11,7 +11,7 @@
 	import { user as _user } from '$lib/stores';
 	import Image from '$lib/components/common/Image.svelte'
 
-	const i18n = getContext('i18n');
+	const i18n: any = getContext('i18n');
 
 	const dispatch = createEventDispatcher();
 

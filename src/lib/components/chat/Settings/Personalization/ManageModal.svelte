@@ -11,7 +11,7 @@
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import { error } from '@sveltejs/kit';
 
-	const i18n = getContext('i18n');
+	const i18n: any = getContext('i18n');
 
 	export let show = false;
 

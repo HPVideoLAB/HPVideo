@@ -8,7 +8,7 @@
   import { toast } from 'svelte-sonner';
   import { generateInitialsImage, canvasPixelTest } from '$lib/utils';
 
-  const i18n = getContext('i18n');
+  const i18n: any = getContext('i18n');
 
   let loaded = false;
   let mode = 'signin';

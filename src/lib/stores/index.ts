@@ -113,14 +113,24 @@ export const binanceFlag = writable(false);
 
 type Model = OpenAIModel | OllamaModel;
 
-type OpenAIModel = {
+// Fields that HPVideo's UI reads off any model regardless of source
+// (OpenAI / Ollama / external). Marking them optional on both variants
+// stops the union-narrowing errors in components that branch on
+// `model.support` / `model.type` without type guards.
+type CommonModelExtras = {
+  support?: any;
+  type?: string;
+  model?: string;
+};
+
+type OpenAIModel = CommonModelExtras & {
   id: string;
   name: string;
   external: boolean;
   source?: string;
 };
 
-type OllamaModel = {
+type OllamaModel = CommonModelExtras & {
   id: string;
   name: string;
 
@@ -153,7 +163,12 @@ type Settings = {
   notificationEnabled?: boolean;
   title?: TitleSettings;
   splitLargeDeltas?: boolean;
-  chatDirection: 'LTR' | 'RTL';
+  // chatDirection was previously required; that made `writable({})` fail
+  // its type-narrow because the default object satisfies neither
+  // 'LTR' nor 'RTL'. The store does in fact start empty and the value
+  // is hydrated from the API later, so optional matches reality.
+  chatDirection?: 'LTR' | 'RTL';
+  chatBubble?: boolean;
 
   system?: string;
   requestFormat?: string;

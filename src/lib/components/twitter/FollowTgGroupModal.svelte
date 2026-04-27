@@ -5,7 +5,7 @@
   import {
     user
   } from "$lib/stores";
-  const i18n = getContext("i18n");
+  const i18n: any = getContext("i18n");
   
   // 显示初始化Socket
   $: if (show) {

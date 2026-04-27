@@ -6,7 +6,7 @@
 	import General from './Settings/General.svelte';
 	import Users from './Settings/Users.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n: any = getContext('i18n');
 
 	export let show = false;
 

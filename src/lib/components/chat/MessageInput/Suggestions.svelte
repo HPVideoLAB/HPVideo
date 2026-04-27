@@ -2,7 +2,7 @@
   import Bolt from '$lib/components/icons/Bolt.svelte';
   import { onMount, getContext } from 'svelte';
 
-  const i18n = getContext('i18n');
+  const i18n: any = getContext('i18n');
 
   export let submitPrompt: Function;
   export let suggestionPrompts = [];

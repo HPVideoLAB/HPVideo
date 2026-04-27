@@ -2,7 +2,7 @@
   import { getContext } from "svelte";
   import { DateInput, localeFromDateFnsLocale } from "@gregg-cbs/svelte-date-picker";
   
-  const i18n = getContext("i18n");
+  const i18n: any = getContext("i18n");
 
   export let selectedDate: Date;
 
