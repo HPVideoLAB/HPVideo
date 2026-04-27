@@ -287,15 +287,16 @@ async def openPro(form_data: UserRoleUpdateProForm, session_user=Depends(get_cur
             log.info(f"receipt {tx_receipt}")
 
             if tx_receipt.status == 1:
-                # Parse the event log
-                for log in tx_receipt['logs']:
-                    # Parse the target address in the log (assuming the contract event includes the target address).
-                    # This parsing depends on your specific contract and event definitions.
-                    # For example, if your contract event is defined as: event Transfer(address indexed from, address indexed to, uint256 value);
+                # Loop var is `evt` not `log` because shadowing the
+                # module-level `log` logger inside this function turns
+                # earlier `log.info(...)` calls into UnboundLocalError.
+                for evt in tx_receipt['logs']:
+                    # Parse the target address (Transfer event):
+                    # event Transfer(address indexed from, address indexed to, uint256 value);
                     event_signature_hash = w3.keccak(text='Transfer(address,address,uint256)').hex()
-                    if log['topics'][0].hex() == event_signature_hash:
-                        from_address_hex = log['topics'][1].hex()
-                        to_address_hex = log['topics'][2].hex()
+                    if evt['topics'][0].hex() == event_signature_hash:
+                        from_address_hex = evt['topics'][1].hex()
+                        to_address_hex = evt['topics'][2].hex()
 
                         # Process the address
                         from_address_hex = from_address_hex[26:]
@@ -303,10 +304,10 @@ async def openPro(form_data: UserRoleUpdateProForm, session_user=Depends(get_cur
 
                         from_address = w3.to_checksum_address('0x' + from_address_hex)
                         to_address = w3.to_checksum_address('0x' + to_address_hex)
-                            
+
                         log.info(f"From: {from_address}")
                         log.info(f"To: {to_address}")
-                            
+
                         if to_address == tranAddress:
                             log.info("run update_user_vip")
                             update_user_vip(session_user.id, tx_hash, form_data.vip, form_data.viptime)

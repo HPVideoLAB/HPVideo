@@ -75,13 +75,17 @@ async def pointcheck(request: Request, user=Depends(get_current_user)):
             return {"ok": False, "message": "check Failed"}
 
         if tx_receipt.status == 1:
-            for log in tx_receipt["logs"]:
+            # Loop var is `evt` not `log` because shadowing the module-level
+            # `log` logger inside this function makes the earlier
+            # `log.info(...)` calls (lines ~67, ~122) raise
+            # UnboundLocalError as soon as Python sees this rebinding.
+            for evt in tx_receipt["logs"]:
                 event_signature_hash = w3_dbc.keccak(
                     text="Transfer(address,address,uint256)"
                 ).hex()
-                if log["topics"][0].hex() == event_signature_hash:
-                    from_address_hex = log["topics"][1].hex()[24:]
-                    to_address_hex = log["topics"][2].hex()[24:]
+                if evt["topics"][0].hex() == event_signature_hash:
+                    from_address_hex = evt["topics"][1].hex()[24:]
+                    to_address_hex = evt["topics"][2].hex()[24:]
                     from_address = w3_dbc.to_checksum_address("0x" + from_address_hex)
                     to_address = w3_dbc.to_checksum_address("0x" + to_address_hex)
 
@@ -91,16 +95,16 @@ async def pointcheck(request: Request, user=Depends(get_current_user)):
                         and DLCP_RECEIVE_ADDRESS.lower() == to_address.lower()
                     ):
                         # Verify token contract address
-                        log_contract = log["address"]
-                        if log_contract.lower() != DLCP_TOKEN_ADDRESS.lower():
+                        evt_contract = evt["address"]
+                        if evt_contract.lower() != DLCP_TOKEN_ADDRESS.lower():
                             continue
 
                         # Verify transferred amount from log data
                         try:
-                            actual_amount_wei = int(log["data"].hex(), 16)
+                            actual_amount_wei = int(evt["data"].hex(), 16)
                         except (ValueError, AttributeError):
                             try:
-                                actual_amount_wei = int(log["data"], 16)
+                                actual_amount_wei = int(evt["data"], 16)
                             except (ValueError, TypeError):
                                 continue
 
