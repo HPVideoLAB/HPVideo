@@ -73,7 +73,7 @@
   let files: any[] = [];
   let fileFlag = false;
   let messages: any[] = [];
-  let history = {
+  let history: { messages: Record<string, any>; currentId: string | null } = {
     messages: {},
     currentId: null,
   };

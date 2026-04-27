@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getContext } from 'svelte';
 	import Modal from '../common/Modal.svelte';
 	import General from './Settings/General.svelte';

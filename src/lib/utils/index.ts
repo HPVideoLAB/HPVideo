@@ -59,7 +59,7 @@ export const splitStream = (splitOn) => {
 };
 
 export const convertMessagesToHistory = (messages) => {
-	const history = {
+	const history: { messages: Record<string, any>; currentId: string | null } = {
 		messages: {},
 		currentId: null
 	};
@@ -359,7 +359,7 @@ const convertOpenAIMessages = (convo) => {
 		}
 	}
 
-	let history = {};
+	let history: Record<string, any> = {};
 	messages.forEach((obj) => (history[obj.id] = obj));
 
 	const chat = {

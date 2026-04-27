@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import { goto } from '$app/navigation';
   import { userSignIn, userSignUp } from '$lib/apis/auths';
   import Spinner from '$lib/components/common/Spinner.svelte';

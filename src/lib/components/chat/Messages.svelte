@@ -28,7 +28,7 @@
   export let processing = '';
   export let bottomPadding = false;
   export let autoScroll;
-  export let history = {};
+  export let history: { messages: Record<string, any>; currentId: string | null } = { messages: {}, currentId: null };
   export let messages = [];
   export let chatInputPlaceholder = '';
 

@@ -7,7 +7,7 @@
 
 	export let chatId;
 
-	export let history;
+	export let history: { messages?: Record<string, any>; currentId?: string | null } = {};
 	export let messages = [];
 	export let messageIdx;
 

@@ -244,9 +244,29 @@ type SessionUser = {
 // 之前是 let messages = []
 export const messages = writable([]);
 
-// 导出历史记录结构 (Object)
-// 之前是 let history = { messages: {}, currentId: null }
-export const history = writable({
+// History tree of messages, addressed by id. Each entry can have parent
+// + children pointers, role, content, etc. — open shape because the
+// schema has accreted across forks. Typing as `Record<string, any>`
+// stops svelte-check from inferring `never` for every index access
+// (which triggered ~140 "Property 'X' does not exist on type 'never'"
+// errors across the chat tree).
+type HistoryEntry = {
+  id?: string;
+  role?: string;
+  content?: string;
+  name?: string;
+  title?: string;
+  tagName?: string;
+  parentId?: string | null;
+  childrenIds?: string[];
+  messages?: any[];
+  [key: string]: any;
+};
+
+export const history = writable<{
+  messages: Record<string, HistoryEntry>;
+  currentId: string | null;
+}>({
   messages: {},
   currentId: null,
 });
