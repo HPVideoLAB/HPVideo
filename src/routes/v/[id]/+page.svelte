@@ -8,6 +8,7 @@
   import { page } from '$app/stores';
   import { NEST_API_BASE_URL } from '$lib/constants';
   import { initPageFlag } from '$lib/stores';
+  import { trackShare } from '$lib/utils/analytics';
   import TemplateGallery from '../../pro/modules/TemplateGallery.svelte';
 
   const i18n: any = getContext('i18n');
@@ -78,6 +79,7 @@
     if (!shareUrl) return;
     navigator.clipboard.writeText(shareUrl).then(() => {
       copied = true;
+      trackShare('copy', id);
       setTimeout(() => (copied = false), 1800);
     });
   }
@@ -92,6 +94,7 @@
       platform === 'x'
         ? `https://twitter.com/intent/tweet?url=${u}&text=${t}`
         : `https://t.me/share/url?url=${u}&text=${t}`;
+    trackShare(platform, id);
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 

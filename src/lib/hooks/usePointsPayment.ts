@@ -7,6 +7,7 @@ import { get } from 'svelte/store';
 import { ethers } from 'ethers';
 import { dlcpBalance } from '$lib/stores';
 import { getStoredAddress, getDLCPBalance, getStoredPassword } from '$lib/utils/wallet/dlcp/wallet';
+import { trackGenerateVideo } from '$lib/utils/analytics';
 
 const DBC_RPC_URL = 'https://rpc1.dbcwallet.io';
 const DLCP_CONTRACT = '0x9b09b4B7a748079DAd5c280dCf66428e48E38Cd6';
@@ -131,6 +132,15 @@ export function usePointsPayment() {
       toast.loading(t('Sending points payment...'));
 
       const tx = await tokenContract.transfer(DLCP_RECEIVE_ADDRESS, pointsWei);
+      // Fire the GA4 'generate_video' event the moment the on-chain
+      // transfer is broadcast — before we wait for confirmation. Meta
+      // and Google use this to optimize ad delivery.
+      trackGenerateVideo({
+        model,
+        duration,
+        resolution,
+        credits: Math.ceil(amount * 1000),
+      });
       const receipt = await tx.wait();
 
       if (!receipt || receipt.status !== 1) {

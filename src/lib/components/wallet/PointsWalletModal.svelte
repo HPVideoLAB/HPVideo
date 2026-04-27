@@ -13,6 +13,7 @@
   } from '$lib/utils/wallet/dlcp/wallet';
   import { toast } from 'svelte-sonner';
   import { refreshWalletAddress } from '$lib/stores/wallet';
+  import { trackSignUp } from '$lib/utils/analytics';
 
   const dispatch = createEventDispatcher();
   const i18n: any = getContext('i18n');
@@ -59,6 +60,7 @@
       connectedAddress = address;
       revealedPrivateKey = pk;
       step = 'created';
+      trackSignUp('create');
       toast.success($i18n.t('Wallet created successfully'));
       refreshWalletAddress();
       await refreshBalance();
@@ -76,6 +78,7 @@
       const { address } = await importPointsWallet(privateKey, password.trim() || undefined);
       connectedAddress = address;
       step = 'connected';
+      trackSignUp('import');
       toast.success($i18n.t('Wallet imported successfully'));
       refreshWalletAddress();
       await refreshBalance();
