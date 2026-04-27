@@ -47,7 +47,10 @@
   }
 
   // One-click create: no password input, auto-generate everything,
-  // then show a "back up your private key" reveal step.
+  // then show a "back up your private key" reveal step. We hold the
+  // 'connected' dispatch until the user explicitly confirms they've
+  // saved the key — otherwise the parent closes the modal early and
+  // the backup screen never renders.
   async function handleQuickCreate() {
     if (loading) return;
     loading = true;
@@ -59,7 +62,6 @@
       toast.success($i18n.t('Wallet created successfully'));
       refreshWalletAddress();
       await refreshBalance();
-      dispatch('connected', address);
     } catch (e: any) {
       toast.error(e.message || 'Failed to create wallet');
     }
@@ -107,6 +109,10 @@
     pkVisible = false;
     pkCopied = false;
     step = 'connected';
+    // Now safe to tell the parent we're connected — the parent closes
+    // the modal on 'connected' so we waited until the backup step
+    // finished.
+    dispatch('connected', connectedAddress);
   }
 
   async function refreshBalance() {
