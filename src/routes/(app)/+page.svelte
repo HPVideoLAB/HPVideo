@@ -29,12 +29,16 @@
       })),
   );
 
-  // Returning users with a wallet keystore go straight to Studio so the
-  // hero never feels like a forced detour. New users see the full landing.
+  // Returning users (with a wallet keystore in localStorage) used to be
+  // auto-redirected to /pro, hiding the hero forever. PM-audit feedback
+  // was that the gallery is the re-engagement surface — don't skip it.
+  // Now we keep them on the hero but show a sticky 'Resume in Studio'
+  // banner so they're one click away.
+  let isReturningUser = false;
   onMount(() => {
     initPageFlag.set(true);
-    if (typeof window !== 'undefined' && hasPointsWallet()) {
-      goto('/creator/pro', { replaceState: true });
+    if (typeof window !== 'undefined') {
+      isReturningUser = hasPointsWallet();
     }
   });
 
@@ -57,6 +61,19 @@
 </svelte:head>
 
 <div class="w-full min-h-screen bg-bg-light dark:bg-bg-dark text-text-light dark:text-text-dark">
+  <!-- Returning-user banner: shown only when a wallet keystore is in
+       localStorage. Lets warm users jump straight back to Studio
+       without burying the hero from cold visitors. -->
+  {#if isReturningUser}
+    <a
+      href="/creator/pro"
+      class="block w-full px-4 py-3 text-center text-sm font-medium bg-gradient-to-r from-primary-500 to-violet-500 text-white hover:opacity-95 transition"
+    >
+      <iconify-icon icon="mdi:arrow-right-circle" class="text-base align-middle mr-1.5" />
+      {$i18n.t('Resume in Studio')}
+    </a>
+  {/if}
+
   <!-- Hero -->
   <section class="relative px-4 md:px-8 pt-16 md:pt-24 pb-10 md:pb-14">
     <div class="max-w-[1320px] mx-auto text-center">
