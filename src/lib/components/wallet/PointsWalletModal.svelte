@@ -158,7 +158,11 @@
 {#if show}
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div class="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm" style="margin:0;padding:0;" on:click|self={close}>
+  <!-- Anchor near the top with vertical scroll on overflow — earlier
+       'flex items-center' centering caused the modal to land partly above
+       the viewport on shorter screens, hiding the primary CTA. -->
+  <div class="fixed inset-0 z-[99999] overflow-y-auto bg-black/50 backdrop-blur-sm" style="margin:0;padding:0;" on:click|self={close}>
+    <div class="min-h-full flex items-start justify-center p-4 md:p-8" on:click|self={close}>
     <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-[420px] max-w-[92vw] overflow-hidden border border-gray-200 dark:border-gray-700">
 
       {#if step === 'entry'}
@@ -230,9 +234,13 @@
             </div>
           </div>
 
-          <div class="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-xl p-3 mb-4 text-xs text-amber-700 dark:text-amber-400">
-            <p class="font-medium mb-1">⚠️ {$i18n.t('Back up your private key now')}</p>
-            <p class="opacity-90">{$i18n.t('It is the only way to recover this wallet on another device or after clearing your browser. We will not show it again.')}</p>
+          <!-- Loud, hard-to-miss warning. Lose the private key = lose the wallet = lose any credits in it. -->
+          <div class="bg-red-50 dark:bg-red-900/15 border-2 border-red-300 dark:border-red-700/60 rounded-xl p-4 mb-4 text-sm text-red-800 dark:text-red-200">
+            <p class="font-bold flex items-center gap-1.5 mb-1.5">
+              <iconify-icon icon="mdi:alert-octagon" class="text-lg text-red-500"></iconify-icon>
+              {$i18n.t('Save your private key NOW')}
+            </p>
+            <p class="text-xs leading-relaxed">{$i18n.t('Without this key, your wallet (and any credits in it) cannot be recovered if you change browsers or clear your data. We do not store it. Save it somewhere safe right now.')}</p>
           </div>
 
           <div class="relative mb-3">
@@ -390,6 +398,7 @@
           </button>
         </div>
       {/if}
+    </div>
     </div>
   </div>
 {/if}

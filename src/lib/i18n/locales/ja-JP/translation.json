@@ -1041,6 +1041,8 @@
   "Wallet ready": "ウォレット準備完了",
   "Back up your private key now": "今すぐ秘密鍵をバックアップしてください",
   "It is the only way to recover this wallet on another device or after clearing your browser. We will not show it again.": "このウォレットを別の端末で復元したり、ブラウザを消去した後に取り戻す唯一の方法です。再度表示されません。",
+  "Save your private key NOW": "秘密鍵を今すぐ保存してください",
+  "Without this key, your wallet (and any credits in it) cannot be recovered if you change browsers or clear your data. We do not store it. Save it somewhere safe right now.": "この秘密鍵を失うと、ウォレット（および中のクレジット）はブラウザを変えたりデータを消去すると復元できなくなります。当方では保存しません。今すぐ安全な場所に保存してください。",
   "Hide": "非表示",
   "Show": "表示",
   "Copy private key": "秘密鍵をコピー",

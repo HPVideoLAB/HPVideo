@@ -1192,6 +1192,8 @@
   "Wallet ready": "지갑 준비 완료",
   "Back up your private key now": "지금 개인키를 백업하세요",
   "It is the only way to recover this wallet on another device or after clearing your browser. We will not show it again.": "다른 기기에서 복구하거나 브라우저를 지운 후 이 지갑을 되찾는 유일한 방법입니다. 다시 표시되지 않습니다.",
+  "Save your private key NOW": "지금 개인키를 저장하세요",
+  "Without this key, your wallet (and any credits in it) cannot be recovered if you change browsers or clear your data. We do not store it. Save it somewhere safe right now.": "이 키가 없으면 브라우저를 바꾸거나 데이터를 지웠을 때 지갑(과 그 안의 크레딧)을 복구할 수 없습니다. 저희는 보관하지 않습니다. 지금 바로 안전한 곳에 저장하세요.",
   "Hide": "숨기기",
   "Show": "보기",
   "Copy private key": "개인키 복사",

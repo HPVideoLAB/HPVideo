@@ -1094,6 +1094,8 @@
   "Wallet ready": "Wallet ready",
   "Back up your private key now": "Back up your private key now",
   "It is the only way to recover this wallet on another device or after clearing your browser. We will not show it again.": "This is the only way to recover the wallet on another device or after clearing your browser. We won't show it again.",
+  "Save your private key NOW": "Save your private key NOW",
+  "Without this key, your wallet (and any credits in it) cannot be recovered if you change browsers or clear your data. We do not store it. Save it somewhere safe right now.": "Without this key, your wallet (and any credits in it) cannot be recovered if you change browsers or clear your data. We do not store it. Save it somewhere safe right now.",
   "Hide": "Hide",
   "Show": "Show",
   "Copy private key": "Copy private key",

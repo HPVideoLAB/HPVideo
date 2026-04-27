@@ -1094,6 +1094,8 @@
   "Wallet ready": "钱包已就绪",
   "Back up your private key now": "请立即备份私钥",
   "It is the only way to recover this wallet on another device or after clearing your browser. We will not show it again.": "这是在其他设备恢复或清除浏览器后找回钱包的唯一方式。我们不会再次显示。",
+  "Save your private key NOW": "请立即保存私钥",
+  "Without this key, your wallet (and any credits in it) cannot be recovered if you change browsers or clear your data. We do not store it. Save it somewhere safe right now.": "丢失私钥 = 丢失钱包 = 丢失里面所有积分。换浏览器、清缓存后无法恢复。我们不会保存这把私钥，请你现在就把它存在安全的地方。",
   "Hide": "隐藏",
   "Show": "显示",
   "Copy private key": "复制私钥",
