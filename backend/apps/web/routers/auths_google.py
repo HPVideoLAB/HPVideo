@@ -138,7 +138,7 @@ async def google_sign_in(request: Request, form_data: GoogleSigninForm):
     address = account.address.lower()
 
     user = Users.get_user_by_id(address)
-    user_count = None
+    is_first_time = False
     if not user:
         log.info("googleSignIn: creating new user for %s (sub=%s)", address, google_sub)
         hashed = get_password_hash("")
@@ -156,7 +156,13 @@ async def google_sign_in(request: Request, form_data: GoogleSigninForm):
         )
         if not result:
             raise HTTPException(500, "Failed to create user.")
-        user, user_count = result
+        # insert_new_auth returns (user, total_user_count). We don't use
+        # the count here — the create-vs-returning distinction lives in
+        # is_first_time, which is set explicitly so future readers don't
+        # have to puzzle out that "user_count is not None" meant "newly
+        # created".
+        user, _ = result
+        is_first_time = True
 
     # Email is intentionally NOT written to the user row here. There is
     # no users.update_email_by_id helper, and writing without a
@@ -175,7 +181,6 @@ async def google_sign_in(request: Request, form_data: GoogleSigninForm):
     # being created for the first time, so the client can render the
     # back-up-now reveal screen. Returning users get only address+token,
     # which the existing localStorage keystore is enough to operate on.
-    is_first_time = user_count is not None
 
     response: dict = {
         "address": address,
