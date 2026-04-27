@@ -17,9 +17,10 @@ Endpoint requires:
     Console). If not set, the endpoint returns 503 so the
     frontend can fall back to a 'coming soon' state.
 
-    WALLET_DERIVATION_SECRET env var. Falls back to WEBUI_SECRET_KEY
-    when not set, but you should set it to a dedicated 32+ byte secret
-    in production.
+    WALLET_DERIVATION_SECRET env var. MUST be a dedicated 32+ byte
+    secret distinct from WEBUI_SECRET_KEY (the JWT signing key).
+    Sharing them turns a JWT-key leak into a wallet-key compromise
+    for every Google user. Endpoint returns 503 if not set.
 """
 import os
 import hmac
@@ -115,7 +116,11 @@ async def google_sign_in(request: Request, form_data: GoogleSigninForm):
             audience=GOOGLE_CLIENT_ID,
         )
     except ValueError as exc:
-        raise HTTPException(401, f"Invalid Google token: {exc}")
+        # Don't echo the validator's message — it can leak internals
+        # like accepted audiences, expiry windows, or signing-key URLs.
+        # Log it server-side for debugging, return a generic 401.
+        log.warning("googleSignIn: id_token verification failed: %s", exc)
+        raise HTTPException(401, "Invalid Google token.")
 
     # Defense-in-depth: pin issuer explicitly, in case the google-auth
     # library ever loosens its defaults in a refactor.
