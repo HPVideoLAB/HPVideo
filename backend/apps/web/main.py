@@ -6,6 +6,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from apps.web.routers import (
     auths,
+    auths_google,
     users,
     chats,
     documents,
@@ -79,6 +80,8 @@ app.add_middleware(
 app.middleware("http")(x402pay.payment_middleware)
 
 app.include_router(auths.router, prefix="/auths", tags=["auths"])
+# Google sign-in lives on /auths/* too so the frontend hits a single namespace.
+app.include_router(auths_google.router, prefix="/auths", tags=["auths"])
 app.include_router(users.router, prefix="/users", tags=["users"])
 app.include_router(chats.router, prefix="/chats", tags=["chats"])
 

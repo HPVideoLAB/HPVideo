@@ -78,6 +78,8 @@ aliyun-python-sdk-viapiutils==1.0
 viapi-utils==1.0.1
 tweepy==4.14.0
 redis==5.2.1
+# Google sign-in: verifies id_tokens issued by Google Identity Services.
+google-auth==2.34.0
 
 # --- Transitive-dep CVE notes ---
 # urllib3 CVE-2025-66418 / 66471 / 2026-21441: fixed in 2.6.3, but

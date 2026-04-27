@@ -13,7 +13,11 @@
   } from '$lib/utils/wallet/dlcp/wallet';
   import { toast } from 'svelte-sonner';
   import { refreshWalletAddress } from '$lib/stores/wallet';
-  import { trackSignUp } from '$lib/utils/analytics';
+  import { trackSignUp, maybeTrackPurchaseFromBalance } from '$lib/utils/analytics';
+  import { onMount } from 'svelte';
+  import { ethers } from 'ethers';
+  import { WEBUI_API_BASE_URL } from '$lib/constants';
+  import { user } from '$lib/stores';
 
   const dispatch = createEventDispatcher();
   const i18n: any = getContext('i18n');
@@ -91,12 +95,98 @@
     privateKey = '';
   }
 
-  // Google flow placeholder. Wires the OAuth in a future commit; for now
-  // this surfaces a "coming soon" toast so the option is visible without
-  // dead-ending. When VITE_GOOGLE_CLIENT_ID lands, swap this for the
-  // real Google Identity Services callback.
-  function handleGoogle() {
-    toast.info($i18n.t('Google login coming soon — please use Create Wallet for now'));
+  // Google sign-in via Google Identity Services. Reads the client ID
+  // from VITE_GOOGLE_CLIENT_ID at build time. If absent, surface a
+  // 'coming soon' toast and skip; backend returns 503 in that case
+  // anyway. The id_token we receive is verified server-side, where the
+  // private key is derived deterministically from the Google sub. The
+  // server returns the plaintext private key once so we can show the
+  // backup screen and stash an encrypted keystore locally.
+  const GOOGLE_CLIENT_ID = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '';
+  let googleScriptLoaded = false;
+
+  function loadGoogleScript() {
+    if (googleScriptLoaded) return Promise.resolve();
+    return new Promise<void>((resolve, reject) => {
+      const existing = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+      if (existing) {
+        googleScriptLoaded = true;
+        resolve();
+        return;
+      }
+      const s = document.createElement('script');
+      s.src = 'https://accounts.google.com/gsi/client';
+      s.async = true;
+      s.defer = true;
+      s.onload = () => {
+        googleScriptLoaded = true;
+        resolve();
+      };
+      s.onerror = () => reject(new Error('Failed to load Google Identity Services'));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function handleGoogle() {
+    if (!GOOGLE_CLIENT_ID) {
+      toast.info($i18n.t('Google login coming soon — please use Create Wallet for now'));
+      return;
+    }
+    try {
+      await loadGoogleScript();
+      const google = (window as any).google;
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleCallback,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+      google.accounts.id.prompt();
+    } catch (e: any) {
+      toast.error(e?.message || 'Google login error');
+    }
+  }
+
+  async function handleGoogleCallback(resp: { credential: string }) {
+    if (!resp?.credential) return;
+    loading = true;
+    try {
+      const r = await fetch(`${WEBUI_API_BASE_URL}/auths/googleSignIn`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_token: resp.credential, channel: 'google' }),
+      });
+      if (!r.ok) throw new Error(`Server returned ${r.status}`);
+      const data = await r.json();
+      if (!data?.privateKey || !data?.address) throw new Error('Invalid server response');
+
+      // Encrypt + persist same way as Create Wallet so the rest of the
+      // app sees a normal points wallet.
+      const wallet = new ethers.Wallet(data.privateKey);
+      const passwordlessPwd = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+      const keystoreJson = await wallet.encrypt(passwordlessPwd);
+      localStorage.setItem('hpv_points_keystore', keystoreJson);
+      localStorage.setItem('hpv_points_address', data.address);
+      localStorage.setItem('hpv_points_pass', passwordlessPwd);
+
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        if (data.user) user.set(data.user);
+      }
+
+      connectedAddress = data.address;
+      revealedPrivateKey = data.privateKey;
+      step = 'created';
+      trackSignUp('google');
+      toast.success($i18n.t('Wallet created successfully'));
+      refreshWalletAddress();
+      await refreshBalance();
+    } catch (e: any) {
+      toast.error(e?.message || 'Google sign-in failed');
+    }
+    loading = false;
   }
 
   function copyPrivateKey() {
@@ -128,6 +218,9 @@
       ]);
       dlcpBalance.set(bal);
       if (id) walletId = id;
+      // Fire GA4 'purchase' when the balance grows since we last saw it.
+      // Helps the ad pixels optimise on real revenue.
+      maybeTrackPurchaseFromBalance(connectedAddress, parseInt(bal) || 0);
     } catch (e) {
       console.error(e);
     }

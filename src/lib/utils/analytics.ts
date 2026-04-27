@@ -85,3 +85,63 @@ export function trackTemplateApplied(templateId: string, model: string) {
 export function trackShare(method: 'copy' | 'x' | 'telegram', videoId: string) {
   gtag('event', 'share', { method, content_type: 'video', item_id: videoId });
 }
+
+// ----------------------------------------------------------------------
+// Purchase detection: fires GA4 'purchase' when DLCP balance increases.
+//
+// We can't observe the Creem webhook directly from the browser, so we
+// detect a purchase indirectly: when the on-chain balance grows since
+// the last value we saw, the difference (in 1000:1 credits-to-USD) is
+// the implied purchase amount.
+//
+// This will produce false positives for incoming HPC token rewards,
+// promo grants, etc. — keep an eye on the value distribution in GA4
+// and tighten if needed.
+// ----------------------------------------------------------------------
+
+const BALANCE_KEY = 'hpv_last_balance';
+
+export function maybeTrackPurchaseFromBalance(
+  address: string | undefined | null,
+  newBalanceCredits: number,
+) {
+  if (!address) return;
+  const key = `${BALANCE_KEY}:${address.toLowerCase()}`;
+  const prevStr = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+  const prev = prevStr === null ? null : Number(prevStr);
+
+  // First observation: just record, don't fire (we don't know if any
+  // historical credits came from a purchase or a transfer).
+  if (prev === null) {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(key, String(newBalanceCredits));
+    }
+    return;
+  }
+
+  const delta = newBalanceCredits - prev;
+  if (delta <= 0) return;
+
+  // Below 1,000 credits ($1) we treat as noise (rounding, micro-grants).
+  // Above that we fire a 'purchase' attributed to the smallest plausible
+  // pack tier the delta could correspond to.
+  if (delta >= 1000) {
+    const valueUsd = delta / 1000;
+    gtag('event', 'purchase', {
+      value: valueUsd,
+      currency: 'USD',
+      transaction_id: `delta-${Date.now()}`,
+      items: [
+        {
+          item_name: `Credit delta ${delta}`,
+          quantity: 1,
+          price: valueUsd,
+        },
+      ],
+    });
+  }
+
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(key, String(newBalanceCredits));
+  }
+}
