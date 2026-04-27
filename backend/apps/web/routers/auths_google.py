@@ -36,7 +36,8 @@ from eth_account import Account
 from config import JWT_EXPIRES_IN
 from apps.web.models.auths import Auths
 from apps.web.models.users import Users
-from utils.utils import create_token, get_password_hash, parse_duration
+from utils.utils import create_token, get_password_hash
+from utils.misc import parse_duration
 
 log = logging.getLogger(__name__)
 router = APIRouter()
