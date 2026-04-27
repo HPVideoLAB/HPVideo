@@ -259,8 +259,8 @@
     <MyButton type="primary" round size="small" loading disabled>Connecting...</MyButton>
   {:else}
     <MyButton id="connect-wallet-btn" size="small" round type="primary" on:click={() => connect()}>
-      <iconify-icon slot="icon" icon="lucide:wallet" class="text-lg" />
-      {$i18n.t('Connect Wallet')}
+      <iconify-icon slot="icon" icon="mdi:flash" class="text-lg" />
+      {$i18n.t('Get started')}
     </MyButton>
   {/if}
 </div>

@@ -19,7 +19,7 @@
 
   export let show = false;
 
-  // States: 'entry' | 'create' | 'import' | 'connected'
+  // States: 'entry' | 'create' | 'created' | 'import' | 'connected'
   let step = 'entry';
   let password = '';
   let privateKey = '';
@@ -28,6 +28,11 @@
   let connectedAddress = '';
   let showBuyPanel = false;
   let walletId = '';
+  // After a fresh create, the plaintext private key is shown ONCE so the user
+  // can back it up. Cleared as soon as they leave the 'created' step.
+  let revealedPrivateKey = '';
+  let pkVisible = false;
+  let pkCopied = false;
 
   // Check if already has wallet
   $: if (show) {
@@ -41,13 +46,16 @@
     }
   }
 
-  async function handleCreate() {
-    if (!password.trim()) return;
+  // One-click create: no password input, auto-generate everything,
+  // then show a "back up your private key" reveal step.
+  async function handleQuickCreate() {
+    if (loading) return;
     loading = true;
     try {
-      const { address } = await createPointsWallet(password);
+      const { address, privateKey: pk } = await createPointsWallet();
       connectedAddress = address;
-      step = 'connected';
+      revealedPrivateKey = pk;
+      step = 'created';
       toast.success($i18n.t('Wallet created successfully'));
       refreshWalletAddress();
       await refreshBalance();
@@ -59,10 +67,11 @@
   }
 
   async function handleImport() {
-    if (!privateKey.trim() || !password.trim()) return;
+    if (!privateKey.trim()) return;
     loading = true;
     try {
-      const { address } = await importPointsWallet(privateKey, password);
+      // Password is optional now — match Create's one-click ergonomics.
+      const { address } = await importPointsWallet(privateKey, password.trim() || undefined);
       connectedAddress = address;
       step = 'connected';
       toast.success($i18n.t('Wallet imported successfully'));
@@ -75,6 +84,29 @@
     }
     loading = false;
     privateKey = '';
+  }
+
+  // Google flow placeholder. Wires the OAuth in a future commit; for now
+  // this surfaces a "coming soon" toast so the option is visible without
+  // dead-ending. When VITE_GOOGLE_CLIENT_ID lands, swap this for the
+  // real Google Identity Services callback.
+  function handleGoogle() {
+    toast.info($i18n.t('Google login coming soon — please use Create Wallet for now'));
+  }
+
+  function copyPrivateKey() {
+    if (!revealedPrivateKey) return;
+    navigator.clipboard.writeText(revealedPrivateKey).then(() => {
+      pkCopied = true;
+      setTimeout(() => (pkCopied = false), 1800);
+    });
+  }
+
+  function finishBackupStep() {
+    revealedPrivateKey = '';
+    pkVisible = false;
+    pkCopied = false;
+    step = 'connected';
   }
 
   async function refreshBalance() {
@@ -130,102 +162,149 @@
     <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-[420px] max-w-[92vw] overflow-hidden border border-gray-200 dark:border-gray-700">
 
       {#if step === 'entry'}
-        <!-- Entry: Choose create or import -->
+        <!-- Entry: 3 onboarding paths (Create / Import / Google) -->
         <div class="px-6 py-5">
           <div class="flex items-center gap-3 mb-4">
             <div class="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
               <iconify-icon icon="mdi:star-circle" class="text-2xl text-amber-500"></iconify-icon>
             </div>
             <div>
-              <h3 class="text-lg font-bold text-gray-900 dark:text-white">{$i18n.t('Points Wallet')}</h3>
-              <p class="text-xs text-gray-500">{$i18n.t('Create or import a wallet to use DLCP points')}</p>
+              <h3 class="text-lg font-bold text-gray-900 dark:text-white">{$i18n.t('Get started')}</h3>
+              <p class="text-xs text-gray-500">{$i18n.t('Pick how you want to sign in. No email, no password — just one click.')}</p>
             </div>
           </div>
 
-          <div class="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-xl p-3 mb-5 text-sm text-amber-700 dark:text-amber-400">
-            <p class="font-medium mb-1">{$i18n.t('How it works')}:</p>
-            <p class="text-xs opacity-80">{$i18n.t('Your points wallet is on DBC Chain. Buy DLCP points to pay for AI video generation. 1000 points = $1 USD.')}</p>
-          </div>
-
-          <div class="flex flex-col gap-3">
+          <div class="flex flex-col gap-2.5">
+            <!-- Primary: one-click create -->
             <button
-              class="w-full py-3 rounded-xl font-semibold text-white primaryButton transition hover:opacity-90"
-              on:click={() => { step = 'create'; }}
+              class="w-full py-3 px-4 rounded-xl font-semibold text-white primaryButton transition hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+              disabled={loading}
+              on:click={handleQuickCreate}
             >
-              <iconify-icon icon="mdi:plus-circle-outline" class="mr-1.5 align-middle text-lg"></iconify-icon>
-              {$i18n.t('Create New Wallet')}
+              {#if loading}
+                <iconify-icon icon="mdi:loading" class="animate-spin text-xl"></iconify-icon>
+                {$i18n.t('Creating...')}
+              {:else}
+                <iconify-icon icon="mdi:flash" class="text-xl"></iconify-icon>
+                <div class="flex flex-col items-start leading-tight">
+                  <span>{$i18n.t('Create Wallet')}</span>
+                  <span class="text-[10px] font-normal opacity-80">{$i18n.t('One click — instant access')}</span>
+                </div>
+              {/if}
             </button>
+
+            <!-- Secondary: Google -->
             <button
-              class="w-full py-3 rounded-xl font-semibold border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 transition hover:border-primary-500"
+              class="w-full py-3 px-4 rounded-xl font-medium border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 transition hover:border-gray-400 flex items-center justify-center gap-2"
+              on:click={handleGoogle}
+            >
+              <iconify-icon icon="logos:google-icon" class="text-xl"></iconify-icon>
+              {$i18n.t('Continue with Google')}
+            </button>
+
+            <!-- Tertiary: Import existing -->
+            <button
+              class="w-full py-3 px-4 rounded-xl font-medium text-sm border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 transition hover:border-primary-500/60 hover:text-primary-600 dark:hover:text-primary-300 flex items-center justify-center gap-2"
               on:click={() => { step = 'import'; }}
             >
-              <iconify-icon icon="mdi:key-variant" class="mr-1.5 align-middle text-lg"></iconify-icon>
-              {$i18n.t('Import by Private Key')}
+              <iconify-icon icon="mdi:key-variant" class="text-base"></iconify-icon>
+              {$i18n.t('Import existing wallet')}
             </button>
           </div>
+
+          <p class="mt-4 text-center text-[11px] text-gray-400 dark:text-gray-500">
+            {$i18n.t('1,000 credits = $1. No subscription.')}
+          </p>
         </div>
 
-      {:else if step === 'create'}
-        <!-- Create wallet -->
+      {:else if step === 'created'}
+        <!-- Created: backup-now reveal screen. Shown ONCE. -->
         <div class="px-6 py-5">
-          <button class="text-sm text-gray-400 hover:text-gray-600 mb-3 flex items-center gap-1" on:click={() => { step = 'entry'; password = ''; }}>
-            <iconify-icon icon="mdi:arrow-left" class="text-base"></iconify-icon> {$i18n.t('Back')}
-          </button>
-          <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-1">{$i18n.t('Create Points Wallet')}</h3>
-          <p class="text-xs text-amber-600 dark:text-amber-400 mb-4">{$i18n.t('Set a password to encrypt your wallet. Keep it safe!')}</p>
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+              <iconify-icon icon="mdi:check-circle" class="text-2xl text-emerald-500"></iconify-icon>
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-gray-900 dark:text-white">{$i18n.t('Wallet ready')}</h3>
+              <p class="text-xs text-gray-500">{connectedAddress.slice(0, 6)}…{connectedAddress.slice(-4)}</p>
+            </div>
+          </div>
 
-          <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">{$i18n.t('Password')}</label>
-          <input
-            type="password"
-            bind:value={password}
-            placeholder={$i18n.t('Enter a secure password')}
-            class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:border-primary-500 mb-4"
-            on:keydown={(e) => { if (e.key === 'Enter') handleCreate(); }}
-          />
+          <div class="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-xl p-3 mb-4 text-xs text-amber-700 dark:text-amber-400">
+            <p class="font-medium mb-1">⚠️ {$i18n.t('Back up your private key now')}</p>
+            <p class="opacity-90">{$i18n.t('It is the only way to recover this wallet on another device or after clearing your browser. We will not show it again.')}</p>
+          </div>
+
+          <div class="relative mb-3">
+            <div
+              class="font-mono text-[11px] break-all bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-3 pr-12 select-all min-h-[56px]"
+              style={pkVisible ? '' : 'filter: blur(6px);'}
+            >
+              {revealedPrivateKey || '\u00A0'}
+            </div>
+            <button
+              type="button"
+              class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+              on:click={() => (pkVisible = !pkVisible)}
+              title={pkVisible ? $i18n.t('Hide') : $i18n.t('Show')}
+            >
+              <iconify-icon icon={pkVisible ? 'mdi:eye-off-outline' : 'mdi:eye-outline'} class="text-lg"></iconify-icon>
+            </button>
+          </div>
+
+          <div class="flex gap-2 mb-4">
+            <button
+              class="flex-1 py-2.5 rounded-xl font-medium text-sm border border-gray-200 dark:border-gray-700 hover:border-primary-500/60 transition flex items-center justify-center gap-1.5"
+              on:click={copyPrivateKey}
+            >
+              <iconify-icon icon={pkCopied ? 'mdi:check' : 'mdi:content-copy'} class="text-base"></iconify-icon>
+              {pkCopied ? $i18n.t('Copied!') : $i18n.t('Copy private key')}
+            </button>
+          </div>
 
           <button
-            class="w-full py-3 rounded-xl font-semibold text-white primaryButton transition hover:opacity-90 disabled:opacity-50"
-            disabled={!password.trim() || loading}
-            on:click={handleCreate}
+            class="w-full py-3 rounded-xl font-semibold text-white primaryButton transition hover:opacity-90"
+            on:click={finishBackupStep}
           >
-            {#if loading}
-              <iconify-icon icon="mdi:loading" class="animate-spin mr-1.5 align-middle"></iconify-icon>
-              {$i18n.t('Creating...')}
-            {:else}
-              {$i18n.t('Create Wallet')}
-            {/if}
+            {$i18n.t('I have backed it up — continue')}
           </button>
         </div>
 
       {:else if step === 'import'}
-        <!-- Import wallet -->
+        <!-- Import wallet by private key. Password is optional now —
+             leaving it blank produces a one-click-style auto-encrypted
+             wallet that decrypts without prompting. -->
         <div class="px-6 py-5">
           <button class="text-sm text-gray-400 hover:text-gray-600 mb-3 flex items-center gap-1" on:click={() => { step = 'entry'; password = ''; privateKey = ''; }}>
             <iconify-icon icon="mdi:arrow-left" class="text-base"></iconify-icon> {$i18n.t('Back')}
           </button>
-          <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-1">{$i18n.t('Import Points Wallet')}</h3>
-          <p class="text-xs text-amber-600 dark:text-amber-400 mb-4">{$i18n.t('Import your existing DeepLink wallet by private key')}</p>
+          <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-1">{$i18n.t('Import existing wallet')}</h3>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">{$i18n.t('Paste the private key of any DBC-Chain compatible wallet.')}</p>
 
           <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">{$i18n.t('Private Key')}</label>
           <input
             type="password"
             bind:value={privateKey}
-            placeholder={$i18n.t('Enter your private key')}
+            placeholder="0x..."
             class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:border-primary-500 mb-3"
-          />
-
-          <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">{$i18n.t('Password')}</label>
-          <input
-            type="password"
-            bind:value={password}
-            placeholder={$i18n.t('Set a password for encryption')}
-            class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:border-primary-500 mb-4"
             on:keydown={(e) => { if (e.key === 'Enter') handleImport(); }}
           />
 
+          <details class="mb-4 text-sm">
+            <summary class="cursor-pointer text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+              {$i18n.t('Optional: encrypt with a password')}
+            </summary>
+            <input
+              type="password"
+              bind:value={password}
+              placeholder={$i18n.t('Leave blank for one-click access')}
+              class="w-full mt-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:border-primary-500"
+            />
+          </details>
+
           <button
             class="w-full py-3 rounded-xl font-semibold text-white primaryButton transition hover:opacity-90 disabled:opacity-50"
-            disabled={!privateKey.trim() || !password.trim() || loading}
+            disabled={!privateKey.trim() || loading}
             on:click={handleImport}
           >
             {#if loading}

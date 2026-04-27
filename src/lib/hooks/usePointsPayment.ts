@@ -6,7 +6,7 @@ import { getContext } from 'svelte';
 import { get } from 'svelte/store';
 import { ethers } from 'ethers';
 import { dlcpBalance } from '$lib/stores';
-import { getStoredAddress, getDLCPBalance } from '$lib/utils/wallet/dlcp/wallet';
+import { getStoredAddress, getDLCPBalance, getStoredPassword } from '$lib/utils/wallet/dlcp/wallet';
 
 const DBC_RPC_URL = 'https://rpc1.dbcwallet.io';
 const DLCP_CONTRACT = '0x9b09b4B7a748079DAd5c280dCf66428e48E38Cd6';
@@ -92,22 +92,36 @@ export function usePointsPayment() {
 
       // Phase 3: Decrypt wallet and send DLCP transfer
       toast.dismiss();
-      toast.loading(t('Enter your wallet password to confirm payment'));
 
-      // Get password from user
-      const password = prompt(t('Enter your points wallet password to confirm payment:'));
-      if (!password) {
-        throw new Error(t('Payment canceled'));
+      // Try the auto-password first (one-click wallets). If that fails,
+      // fall back to prompting the user — only old-style password
+      // wallets reach this branch.
+      const stashedPwd = getStoredPassword();
+      let wallet: ethers.Wallet | null = null;
+
+      if (stashedPwd) {
+        toast.loading(t('Signing transaction...'));
+        try {
+          wallet = (await ethers.Wallet.fromEncryptedJson(keystoreJson, stashedPwd)) as ethers.Wallet;
+        } catch {
+          // Stashed password didn't work — wallet was migrated, fall through to prompt.
+          wallet = null;
+        }
       }
 
-      toast.dismiss();
-      toast.loading(t('Signing transaction...'));
-
-      let wallet: ethers.Wallet;
-      try {
-        wallet = (await ethers.Wallet.fromEncryptedJson(keystoreJson, password)) as ethers.Wallet;
-      } catch (e) {
-        throw new Error(t('Incorrect password'));
+      if (!wallet) {
+        toast.loading(t('Enter your wallet password to confirm payment'));
+        const password = prompt(t('Enter your points wallet password to confirm payment:'));
+        if (!password) {
+          throw new Error(t('Payment canceled'));
+        }
+        toast.dismiss();
+        toast.loading(t('Signing transaction...'));
+        try {
+          wallet = (await ethers.Wallet.fromEncryptedJson(keystoreJson, password)) as ethers.Wallet;
+        } catch (e) {
+          throw new Error(t('Incorrect password'));
+        }
       }
 
       const signer = wallet.connect(provider);

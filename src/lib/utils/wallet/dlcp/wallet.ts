@@ -5,6 +5,18 @@ const DBC_RPC_URL = 'https://rpc1.dbcwallet.io';
 const DLCP_CONTRACT = '0x9b09b4B7a748079DAd5c280dCf66428e48E38Cd6';
 const STORAGE_KEY = 'hpv_points_keystore';
 const ADDR_KEY = 'hpv_points_address';
+// Auto-generated keystore password for passwordless onboarding. When
+// the user opts for one-click create (no password), we generate a
+// strong random password and stash it locally so the rest of the app
+// can decrypt without prompting. Trade-off: clearing localStorage =
+// losing the wallet, same risk model as Privy embedded wallets.
+const PASS_KEY = 'hpv_points_pass';
+
+function strongRandomHex(byteLen = 32): string {
+  const bytes = new Uint8Array(byteLen);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 const ERC20_ABI = [
   { constant: true, inputs: [{ name: '_owner', type: 'address' }], name: 'balanceOf', outputs: [{ name: 'balance', type: 'uint256' }], type: 'function' },
@@ -15,28 +27,64 @@ function getProvider() {
   return new ethers.JsonRpcProvider(DBC_RPC_URL);
 }
 
-/** Create a new wallet with password, returns address */
-export async function createPointsWallet(password: string): Promise<{ address: string }> {
-  if (!password?.trim()) throw new Error('Password required');
+/**
+ * Create a new wallet. Password is optional — if not provided we
+ * auto-generate a strong random one and stash it in localStorage so
+ * the user gets a true one-click experience. The plaintext private
+ * key is also returned (once) so the modal can offer a backup-now
+ * reveal step.
+ */
+export async function createPointsWallet(
+  password?: string,
+): Promise<{ address: string; privateKey: string; passwordless: boolean }> {
+  const passwordless = !password?.trim();
+  const pwd = passwordless ? strongRandomHex(32) : password!;
   const wallet = ethers.Wallet.createRandom();
-  const keystoreJson = await wallet.encrypt(password);
+  const keystoreJson = await wallet.encrypt(pwd);
   const address = wallet.address.toLowerCase();
+  const privateKey = wallet.privateKey;
   localStorage.setItem(STORAGE_KEY, keystoreJson);
   localStorage.setItem(ADDR_KEY, address);
-  return { address };
+  if (passwordless) {
+    localStorage.setItem(PASS_KEY, pwd);
+  } else {
+    // If the user explicitly chose a password, drop any prior auto-pwd.
+    localStorage.removeItem(PASS_KEY);
+  }
+  return { address, privateKey, passwordless };
 }
 
-/** Import wallet by private key + password */
-export async function importPointsWallet(privateKey: string, password: string): Promise<{ address: string }> {
-  if (!password?.trim()) throw new Error('Password required');
+/**
+ * Import wallet by private key. Password is optional — when omitted
+ * we auto-generate one (same behavior as createPointsWallet).
+ */
+export async function importPointsWallet(
+  privateKey: string,
+  password?: string,
+): Promise<{ address: string; passwordless: boolean }> {
   let pk = privateKey.trim();
   if (!pk.startsWith('0x')) pk = '0x' + pk;
   const wallet = new ethers.Wallet(pk);
-  const keystoreJson = await wallet.encrypt(password);
+  const passwordless = !password?.trim();
+  const pwd = passwordless ? strongRandomHex(32) : password!;
+  const keystoreJson = await wallet.encrypt(pwd);
   const address = wallet.address.toLowerCase();
   localStorage.setItem(STORAGE_KEY, keystoreJson);
   localStorage.setItem(ADDR_KEY, address);
-  return { address };
+  if (passwordless) {
+    localStorage.setItem(PASS_KEY, pwd);
+  } else {
+    localStorage.removeItem(PASS_KEY);
+  }
+  return { address, passwordless };
+}
+
+/**
+ * Returns the stored auto-password (if any). Callers that need to
+ * decrypt the keystore without prompting use this.
+ */
+export function getStoredPassword(): string | null {
+  return localStorage.getItem(PASS_KEY);
 }
 
 /** Get stored wallet address */
@@ -53,6 +101,7 @@ export function hasPointsWallet(): boolean {
 export function clearPointsWallet() {
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(ADDR_KEY);
+  localStorage.removeItem(PASS_KEY);
 }
 
 /** Get DLCP balance */
