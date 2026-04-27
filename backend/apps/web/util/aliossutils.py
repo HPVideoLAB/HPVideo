@@ -3,8 +3,13 @@ import os
 import datetime
 import uuid
 import base64
+import logging
 
-# 配置访问密钥和Endpoint
+log = logging.getLogger(__name__)
+
+# OSS credentials. Read on demand (not at import) so the module loads
+# in CI / smoke-test environments where these aren't set without
+# crashing every router that imports it transitively.
 access_key_id = os.getenv("FILE_ACCESS_KEY_ID")
 access_key_secret = os.getenv("FILE_ACCESS_KEY_SECRET")
 endpoint = os.getenv("FILE_HK_ENDPOINT")
@@ -14,27 +19,35 @@ oss_url = os.getenv("FILE_OSS_HK_URL")
 
 class AliOssUtils:
     def __init__(self):
-        # 创建Bucket对象
-        auth = oss2.Auth(access_key_id, access_key_secret)
-        self.bucket = oss2.Bucket(auth, endpoint, bucket_name)
+        # Lazy: bucket is built on first use, so missing env vars only
+        # surface when someone actually calls upload_base64_to_oss(),
+        # not at module import time.
+        self._bucket = None
+
+    def _get_bucket(self):
+        if self._bucket is None:
+            if not (access_key_id and access_key_secret and endpoint and bucket_name):
+                raise RuntimeError(
+                    "AliOSS env vars not set — FILE_ACCESS_KEY_ID, "
+                    "FILE_ACCESS_KEY_SECRET, FILE_HK_ENDPOINT, "
+                    "FILE_BUCKET_HK_NAME are required."
+                )
+            auth = oss2.Auth(access_key_id, access_key_secret)
+            self._bucket = oss2.Bucket(auth, endpoint, bucket_name)
+        return self._bucket
 
     def upload_base64_to_oss(self, base64_str):
         try:
-            # 获取当前日期
             now = datetime.datetime.now()
-            # 格式化为 年/月/日 形式
             formatted_date = now.strftime("%Y/%m/%d")
             file_name = f"{formatted_date}/audio_{uuid.uuid4()}.wav"
 
-            # 检查并清理 Base64 前缀
             if "," in base64_str:
                 base64_str = base64_str.split(",")[1]
 
-            # 解码 Base64 字符串
             audio_data = base64.b64decode(base64_str)
 
-            # 上传到 OSS
-            result = self.bucket.put_object(
+            result = self._get_bucket().put_object(
                 file_name, audio_data, headers={"Content-Type": "audio/wav"}
             )
 
@@ -43,7 +56,7 @@ class AliOssUtils:
             else:
                 return None
         except Exception as e:
-            print("==========Oss Upload Error==========:", e)
+            log.error("OSS upload error: %s", e)
             return None
 
 
