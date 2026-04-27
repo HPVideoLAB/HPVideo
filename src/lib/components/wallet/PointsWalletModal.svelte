@@ -149,6 +149,10 @@
 
   async function handleGoogleCallback(resp: { credential: string }) {
     if (!resp?.credential) return;
+    // Guard against a stale callback firing after the user already kicked
+    // off another flow (Create Wallet / Import) — earlier this race
+    // could overwrite connectedAddress mid-payment.
+    if (loading) return;
     loading = true;
     try {
       const r = await fetch(`${WEBUI_API_BASE_URL}/auths/googleSignIn`, {
@@ -158,18 +162,22 @@
       });
       if (!r.ok) throw new Error(`Server returned ${r.status}`);
       const data = await r.json();
-      if (!data?.privateKey || !data?.address) throw new Error('Invalid server response');
+      if (!data?.address) throw new Error('Invalid server response');
 
-      // Encrypt + persist same way as Create Wallet so the rest of the
-      // app sees a normal points wallet.
-      const wallet = new ethers.Wallet(data.privateKey);
-      const passwordlessPwd = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-        .map((b) => b.toString(16).padStart(2, '0'))
-        .join('');
-      const keystoreJson = await wallet.encrypt(passwordlessPwd);
-      localStorage.setItem('hpv_points_keystore', keystoreJson);
-      localStorage.setItem('hpv_points_address', data.address);
-      localStorage.setItem('hpv_points_pass', passwordlessPwd);
+      // Server returns the plaintext private key only on first sign-in
+      // (data.first_time === true). On subsequent sign-ins we trust the
+      // existing localStorage keystore, or — if the user lost it — they
+      // can use Import with a recovery code in a future flow.
+      if (data.privateKey) {
+        const wallet = new ethers.Wallet(data.privateKey);
+        const passwordlessPwd = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('');
+        const keystoreJson = await wallet.encrypt(passwordlessPwd);
+        localStorage.setItem('hpv_points_keystore', keystoreJson);
+        localStorage.setItem('hpv_points_address', data.address);
+        localStorage.setItem('hpv_points_pass', passwordlessPwd);
+      }
 
       if (data.token) {
         localStorage.setItem('token', data.token);
@@ -177,10 +185,18 @@
       }
 
       connectedAddress = data.address;
-      revealedPrivateKey = data.privateKey;
-      step = 'created';
-      trackSignUp('google');
-      toast.success($i18n.t('Wallet created successfully'));
+      if (data.privateKey) {
+        // First-time sign-in: show the backup screen.
+        revealedPrivateKey = data.privateKey;
+        step = 'created';
+        trackSignUp('google');
+        toast.success($i18n.t('Wallet created successfully'));
+      } else {
+        // Returning Google user: skip backup and go straight to connected.
+        step = 'connected';
+        toast.success($i18n.t('Wallet imported successfully'));
+        dispatch('connected', data.address);
+      }
       refreshWalletAddress();
       await refreshBalance();
     } catch (e: any) {
@@ -252,8 +268,18 @@
 
   function close() {
     show = false;
+    // Full state reset — earlier we leaked plaintext private keys, half-
+    // entered passwords, and the 'created' step state across modal
+    // open/close cycles.
     password = '';
     privateKey = '';
+    revealedPrivateKey = '';
+    pkVisible = false;
+    pkCopied = false;
+    loading = false;
+    balanceLoading = false;
+    // Step is recomputed reactively on next open via the `if (show)`
+    // block at the top, so we don't need to reset it here.
   }
 </script>
 

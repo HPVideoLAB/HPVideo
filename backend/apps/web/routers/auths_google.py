@@ -22,6 +22,7 @@ Endpoint requires:
     in production.
 """
 import os
+import hmac
 import hashlib
 import logging
 
@@ -32,20 +33,21 @@ from slowapi.util import get_remote_address
 
 from eth_account import Account
 
+from config import JWT_EXPIRES_IN
 from apps.web.models.auths import Auths
 from apps.web.models.users import Users
-from utils.utils import create_token, get_password_hash
+from utils.utils import create_token, get_password_hash, parse_duration
 
 log = logging.getLogger(__name__)
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
-WALLET_DERIVATION_SECRET = (
-    os.getenv("WALLET_DERIVATION_SECRET")
-    or os.getenv("WEBUI_SECRET_KEY")
-    or ""
-)
+# Wallet-derivation secret MUST be distinct from WEBUI_SECRET_KEY (the
+# JWT signing key). Sharing them turns a JWT-key leak into a
+# wallet-key compromise for every Google user. Endpoint refuses to
+# operate without an explicitly-set value.
+WALLET_DERIVATION_SECRET = os.getenv("WALLET_DERIVATION_SECRET", "")
 
 
 class GoogleSigninForm(BaseModel):
@@ -56,17 +58,28 @@ class GoogleSigninForm(BaseModel):
 
 
 def _derive_private_key(google_sub: str) -> str:
-    """sha256(sub | secret) -> 32-byte private key."""
+    """HKDF-SHA256(secret, salt=sub) -> 32-byte private key.
+
+    HKDF gives us salt-binding (different sub -> different key) plus a
+    proper extract-and-expand structure, which is harder to brute-force
+    if the secret ever leaks compared to a single-round sha256.
+    """
     if not WALLET_DERIVATION_SECRET:
-        raise RuntimeError("WALLET_DERIVATION_SECRET / WEBUI_SECRET_KEY must be set")
-    digest = hashlib.sha256(
-        f"{google_sub}|{WALLET_DERIVATION_SECRET}".encode("utf-8")
-    ).digest()
-    return "0x" + digest.hex()
+        raise RuntimeError("WALLET_DERIVATION_SECRET must be set")
+    secret = WALLET_DERIVATION_SECRET.encode("utf-8")
+    salt = google_sub.encode("utf-8")
+    info = b"hpvideo-wallet-v1"
+    # HKDF extract.
+    prk = hmac.new(salt, secret, hashlib.sha256).digest()
+    # HKDF expand to one block (32 bytes) — sufficient for an EC private
+    # key. info pins this derivation to wallet-v1 so a future schema
+    # rotation produces a different key for the same (sub, secret).
+    okm = hmac.new(prk, info + b"\x01", hashlib.sha256).digest()
+    return "0x" + okm.hex()
 
 
 @router.post("/googleSignIn")
-@limiter.limit("10/minute")
+@limiter.limit("5/minute")
 async def google_sign_in(request: Request, form_data: GoogleSigninForm):
     """
     Verifies a Google id_token, derives a deterministic wallet, ensures
@@ -80,7 +93,7 @@ async def google_sign_in(request: Request, form_data: GoogleSigninForm):
     if not WALLET_DERIVATION_SECRET:
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
-            "WALLET_DERIVATION_SECRET / WEBUI_SECRET_KEY missing.",
+            "WALLET_DERIVATION_SECRET missing — set it to a 32+ byte value distinct from WEBUI_SECRET_KEY.",
         )
 
     # Lazy-import google-auth so the rest of the app boots even if the
@@ -102,6 +115,12 @@ async def google_sign_in(request: Request, form_data: GoogleSigninForm):
         )
     except ValueError as exc:
         raise HTTPException(401, f"Invalid Google token: {exc}")
+
+    # Defense-in-depth: pin issuer explicitly, in case the google-auth
+    # library ever loosens its defaults in a refactor.
+    iss = idinfo.get("iss", "")
+    if iss not in ("accounts.google.com", "https://accounts.google.com"):
+        raise HTTPException(401, "Google token issuer mismatch.")
 
     google_sub = idinfo.get("sub")
     email = idinfo.get("email", "")
@@ -133,22 +152,27 @@ async def google_sign_in(request: Request, form_data: GoogleSigninForm):
             raise HTTPException(500, "Failed to create user.")
         user, user_count = result
 
-    # Persist the email on the user so account recovery / receipts can
-    # find them later. Only update if we actually got an email back.
-    if email and getattr(user, "email", None) != email:
-        try:
-            Users.update_user_email_by_id(user.id, email)
-        except Exception:
-            # Non-fatal — the wallet still works without the email update.
-            pass
+    # Email is intentionally NOT written to the user row here. There is
+    # no users.update_email_by_id helper, and writing without a
+    # uniqueness check across the existing email column would let any
+    # Google-signed user overwrite another account's email. The sub
+    # itself is stable; receipts can ride on it.
 
+    # Issue a JWT bound to the same expiry policy walletSignIn uses, so
+    # tokens aren't immortal.
     token = create_token(
         data={"id": user.id, "email": user.email, "role": user.role},
+        expires_delta=parse_duration(JWT_EXPIRES_IN),
     )
 
-    return {
+    # The deterministic private key is returned ONLY when the wallet is
+    # being created for the first time, so the client can render the
+    # back-up-now reveal screen. Returning users get only address+token,
+    # which the existing localStorage keystore is enough to operate on.
+    is_first_time = user_count is not None
+
+    response: dict = {
         "address": address,
-        "privateKey": private_key,
         "email": email,
         "token": token,
         "user": {
@@ -158,5 +182,8 @@ async def google_sign_in(request: Request, form_data: GoogleSigninForm):
             "role": user.role,
             "profile_image_url": user.profile_image_url,
         },
-        "first_time": user_count is not None,
+        "first_time": is_first_time,
     }
+    if is_first_time:
+        response["privateKey"] = private_key
+    return response

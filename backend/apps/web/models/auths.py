@@ -179,7 +179,13 @@ class AuthsTable:
         channel: str = None
     ) -> Optional[TypingTuple[UserModel, int]]:  # 修改返回类型声明
         
-        print("insert_new_auth:1", id, role, inviter_id, address_type, address)
+        # Don't print the wallet address / id — for Google sign-in users it
+        # pairs the deterministic wallet with the Google identity in any
+        # captured stdout log.
+        log.debug(
+            "insert_new_auth role=%s inviter_id=%s address_type=%s",
+            role, inviter_id, address_type,
+        )
 
         auth = AuthModel(
             **{"id": id, "email": email, "password": password, "active": True}
