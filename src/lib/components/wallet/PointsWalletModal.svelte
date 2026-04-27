@@ -106,23 +106,39 @@
   let googleScriptLoaded = false;
 
   function loadGoogleScript() {
-    if (googleScriptLoaded) return Promise.resolve();
+    // Short-circuit on the actual API surface, not on a cached flag or
+    // a stale <script> tag. A previous load that failed (network blip,
+    // CSP, etc.) can leave the script tag in the DOM with no
+    // `window.google` attached — we'd then return Promise.resolve()
+    // and the next line would throw on `google.accounts.id.initialize`.
+    if ((window as any).google?.accounts?.id) {
+      googleScriptLoaded = true;
+      return Promise.resolve();
+    }
     return new Promise<void>((resolve, reject) => {
       const existing = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
       if (existing) {
-        googleScriptLoaded = true;
-        resolve();
-        return;
+        // Tag exists but window.google is missing — the prior attempt
+        // failed. Reset the flag and re-add a fresh script.
+        googleScriptLoaded = false;
+        existing.remove();
       }
       const s = document.createElement('script');
       s.src = 'https://accounts.google.com/gsi/client';
       s.async = true;
       s.defer = true;
       s.onload = () => {
+        if (!(window as any).google?.accounts?.id) {
+          reject(new Error('Google Identity Services loaded but API surface missing'));
+          return;
+        }
         googleScriptLoaded = true;
         resolve();
       };
-      s.onerror = () => reject(new Error('Failed to load Google Identity Services'));
+      s.onerror = () => {
+        googleScriptLoaded = false;
+        reject(new Error('Failed to load Google Identity Services'));
+      };
       document.head.appendChild(s);
     });
   }
@@ -254,6 +270,48 @@
     dispatch('disconnected');
   }
 
+  // Reference to the modal card so we can focus on open + trap Tab.
+  let modalCardEl: HTMLDivElement;
+
+  // Snapshot of the element that triggered the modal so we can restore
+  // focus after close — losing focus to <body> after Esc is a known
+  // screen-reader-disorienting pattern.
+  let triggerEl: HTMLElement | null = null;
+
+  $: if (show && typeof document !== 'undefined' && !triggerEl) {
+    triggerEl = document.activeElement as HTMLElement;
+    // Focus the dialog itself on next tick so screen readers announce
+    // it. Individual interactive children pick up focus naturally as
+    // the user tabs.
+    setTimeout(() => modalCardEl?.focus(), 0);
+  }
+
+  function handleKeydown(e: KeyboardEvent) {
+    if (!show) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      close();
+      return;
+    }
+    if (e.key !== 'Tab') return;
+    // Lightweight focus trap: cycle focus among interactive children
+    // of the card. Avoids focus escaping to backdrop/body.
+    const focusables = modalCardEl?.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusables || focusables.length === 0) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    const active = document.activeElement as HTMLElement;
+    if (e.shiftKey && active === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
   let buyLoading = false;
   async function handleBuyPoints() {
     buyLoading = true;
@@ -278,10 +336,18 @@
     pkCopied = false;
     loading = false;
     balanceLoading = false;
+    // Restore focus to whatever opened the modal so keyboard / screen-
+    // reader users don't lose their place.
+    if (triggerEl && typeof triggerEl.focus === 'function') {
+      try { triggerEl.focus(); } catch { /* element may have unmounted */ }
+    }
+    triggerEl = null;
     // Step is recomputed reactively on next open via the `if (show)`
     // block at the top, so we don't need to reset it here.
   }
 </script>
+
+<svelte:window on:keydown={handleKeydown} />
 
 {#if show}
   <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -290,7 +356,14 @@
        to fight mobile Safari's viewport math. Earlier min-h-full +
        items-start was hiding the modal body on small viewports. -->
   <div class="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 md:p-8" style="margin:0;padding-left:1rem;padding-right:1rem;" on:click|self={close}>
-    <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-[420px] max-w-[92vw] max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
+    <div
+      bind:this={modalCardEl}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="points-wallet-modal-title"
+      tabindex="-1"
+      class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-[420px] max-w-[92vw] max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700 focus:outline-none"
+    >
 
       {#if step === 'entry'}
         <!-- Entry: 3 onboarding paths (Create / Import / Google) -->
@@ -300,7 +373,7 @@
               <iconify-icon icon="mdi:star-circle" class="text-2xl text-amber-500"></iconify-icon>
             </div>
             <div>
-              <h3 class="text-lg font-bold text-gray-900 dark:text-white">{$i18n.t('Get started')}</h3>
+              <h3 id="points-wallet-modal-title" class="text-lg font-bold text-gray-900 dark:text-white">{$i18n.t('Get started')}</h3>
               <p class="text-xs text-gray-500">{$i18n.t('Pick how you want to sign in. No email, no password — just one click.')}</p>
             </div>
           </div>
@@ -356,7 +429,7 @@
               <iconify-icon icon="mdi:check-circle" class="text-2xl text-emerald-500"></iconify-icon>
             </div>
             <div>
-              <h3 class="text-lg font-bold text-gray-900 dark:text-white">{$i18n.t('Wallet ready')}</h3>
+              <h3 id="points-wallet-modal-title" class="text-lg font-bold text-gray-900 dark:text-white">{$i18n.t('Wallet ready')}</h3>
               <p class="text-xs text-gray-500">{connectedAddress.slice(0, 6)}…{connectedAddress.slice(-4)}</p>
             </div>
           </div>
@@ -413,7 +486,7 @@
           <button class="text-sm text-gray-400 hover:text-gray-600 mb-3 flex items-center gap-1" on:click={() => { step = 'entry'; password = ''; privateKey = ''; }}>
             <iconify-icon icon="mdi:arrow-left" class="text-base"></iconify-icon> {$i18n.t('Back')}
           </button>
-          <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-1">{$i18n.t('Import existing wallet')}</h3>
+          <h3 id="points-wallet-modal-title" class="text-lg font-bold text-gray-900 dark:text-white mb-1">{$i18n.t('Import existing wallet')}</h3>
           <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">{$i18n.t('Paste the private key of any DBC-Chain compatible wallet.')}</p>
 
           <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">{$i18n.t('Private Key')}</label>
@@ -455,7 +528,7 @@
         <!-- Connected: Show balance -->
         <div class="px-6 py-5">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white">{$i18n.t('Points Wallet')}</h3>
+            <h3 id="points-wallet-modal-title" class="text-lg font-bold text-gray-900 dark:text-white">{$i18n.t('Points Wallet')}</h3>
             <button class="text-xs text-gray-400 hover:text-red-500 transition" on:click={close}>
               <iconify-icon icon="mdi:close" class="text-lg"></iconify-icon>
             </button>
