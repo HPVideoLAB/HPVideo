@@ -127,3 +127,12 @@ async def get_status():
     }
     RedisClientInstance.add_key_value(STATUS_CACHE_KEY, payload, ttl=STATUS_CACHE_TTL)
     return payload
+
+
+@app.get("/healthz")
+async def healthz():
+    # Liveness probe: zero dependencies, instant 200. Used by the
+    # post-deploy smoke step and k8s liveness probes — must NOT touch
+    # Redis or Postgres so a degraded dependency doesn't roll the pod.
+    # Confirms only that the FastAPI process is up and routing.
+    return {"ok": True}
