@@ -60,6 +60,23 @@ jobs:
         run: |
           pip install -r backend/requirements.txt
           pip install pytest pytest-asyncio
+      - name: Smoke-import the FastAPI app
+        # Catches ImportError / NameError that crashes the app at startup.
+        # Why this exists: v22 shipped with `from utils.utils import
+        # parse_duration` (it's actually in utils.misc) and took prod down
+        # for ~1 hour because nothing exercised the import path before
+        # k8s rolled the pod. A bare `import` is enough to detect this
+        # class of regression — we don't need a running server.
+        env:
+          DATABASE_URL: 'sqlite:///:memory:'
+          WEBUI_SECRET_KEY: 'ci-smoke-test-secret-not-used-in-prod-please'
+          WALLET_DERIVATION_SECRET: 'ci-smoke-test-wallet-secret-not-used-in-prod'
+          DATA_DIR: '/tmp/hpv-ci-data'
+          DISABLE_METRICS: '1'
+        run: |
+          mkdir -p /tmp/hpv-ci-data
+          cd backend
+          python -c "from apps.web.main import app; print(f'OK: {len(app.routes)} routes loaded')"
       - name: Run pytest if tests exist
         run: |
           if compgen -G 'backend/tests/**/*.py' > /dev/null || \
