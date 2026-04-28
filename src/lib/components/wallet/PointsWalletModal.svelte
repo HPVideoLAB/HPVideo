@@ -282,8 +282,15 @@
     triggerEl = document.activeElement as HTMLElement;
     // Focus the dialog itself on next tick so screen readers announce
     // it. Individual interactive children pick up focus naturally as
-    // the user tabs.
-    setTimeout(() => modalCardEl?.focus(), 0);
+    // the user tabs. Also scroll the card to the top — without this,
+    // focus management on iOS Safari can leave the card scrolled past
+    // the first interactive element, hiding the "Create" button above
+    // the visible area on iPhone SE.
+    setTimeout(() => {
+      if (!modalCardEl) return;
+      modalCardEl.scrollTop = 0;
+      modalCardEl.focus({ preventScroll: true });
+    }, 0);
   }
 
   function handleKeydown(e: KeyboardEvent) {

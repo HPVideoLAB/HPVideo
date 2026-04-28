@@ -258,7 +258,14 @@
   {:else if isLoading}
     <MyButton type="primary" round size="small" loading disabled>Connecting...</MyButton>
   {:else}
-    <MyButton id="connect-wallet-btn" size="small" round type="primary" on:click={() => connect()}>
+    <MyButton
+      id="connect-wallet-btn"
+      size="medium"
+      round
+      type="primary"
+      class="min-h-[44px] md:min-h-[36px]"
+      on:click={() => connect()}
+    >
       <iconify-icon slot="icon" icon="mdi:flash" class="text-lg" />
       {$i18n.t('Get started')}
     </MyButton>
