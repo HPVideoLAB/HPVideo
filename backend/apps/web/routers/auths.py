@@ -229,17 +229,21 @@ async def walletSignIn(request: Request, form_data: WalletSigninForm):
                 sign_is_valid = False
 
         else:
-            # 以太坊的消息签名格式是 "\x19Ethereum Signed Message:\n" + len(message) + message
-            # prefixed_message = "\x19Ethereum Signed Message:\n" + str(len(message)) + message
+            # Standard EIP-191 signature recovery (MetaMask et al).
             encoded_message = encode_defunct(text=message)
-
-            # 从签名中恢复地址
-            address_signed = w3.eth.account.recover_message(
-                encoded_message, signature=signature)
-
-            log.info(f"address_signed:{address_signed}")
-            log.info(f"address:{address}")
-            sign_is_valid = address_signed.lower() == address.lower()
+            try:
+                address_signed = w3.eth.account.recover_message(
+                    encoded_message, signature=signature)
+                log.info(f"address_signed:{address_signed}")
+                log.info(f"address:{address}")
+                sign_is_valid = address_signed.lower() == address.lower()
+            except (ValueError, Exception) as e:
+                # Malformed signature / nonce — return a clean 400 below
+                # rather than letting the ValueError bubble up to the
+                # outer except, which was raising 500 for what is
+                # always client-side bad input.
+                log.warning(f"walletSignIn: recover_message failed: {e}")
+                sign_is_valid = False
 
         if sign_is_valid:  # 忽略大小写进行比较
             user = Users.get_user_by_id(address)
@@ -307,8 +311,12 @@ async def walletSignIn(request: Request, form_data: WalletSigninForm):
                 status_code=400, detail="Signature verification failed")
 
     except ValueError as e:
-        log.info(f"ValueError: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        # Most ValueErrors here come from recover_message receiving
+        # malformed hex — treat as client-side bad input. Earlier
+        # this returned 500, masking a "user sent garbage" case as a
+        # backend incident.
+        log.info(f"walletSignIn ValueError (treating as 400): {e}")
+        raise HTTPException(status_code=400, detail="Invalid signature or nonce.")
     except Exception as e:
         log.info(f"Exception: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
