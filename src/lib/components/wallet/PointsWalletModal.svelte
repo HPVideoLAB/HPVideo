@@ -362,7 +362,20 @@
   <!-- Centered overlay; the card itself owns the scroll so we don't have
        to fight mobile Safari's viewport math. Earlier min-h-full +
        items-start was hiding the modal body on small viewports. -->
-  <div class="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 md:p-8" style="margin:0;padding-left:1rem;padding-right:1rem;" on:click|self={close}>
+  <!--
+    Why explicit `top/left/width/height` instead of `inset-0`:
+    PointsWalletModal is rendered inside the Studio's <nav>, which has
+    `backdrop-blur-md`. iOS Safari (and per CSS spec ambiguities, other
+    engines) treats `backdrop-filter` as establishing a containing
+    block for descendant `position: fixed` children. With `inset-0`,
+    the modal would resolve top/right/bottom/left against the 60px-tall
+    nav rather than the viewport, putting the card's top at ~y=-130
+    on iPhone SE and clipping the "Create Wallet" button above the
+    visible area. Explicit `100vw` / `100vh` bypasses the containing-
+    block confusion entirely. Same pattern as the marketing hamburger
+    drawer fix in HPVideoX/Meau.vue.
+  -->
+  <div class="z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 md:p-8" style="position:fixed;top:0;left:0;width:100vw;height:100vh;margin:0;padding-left:1rem;padding-right:1rem;" on:click|self={close}>
     <div
       bind:this={modalCardEl}
       role="dialog"
