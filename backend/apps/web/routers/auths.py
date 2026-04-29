@@ -435,18 +435,25 @@ async def signup(request: Request, form_data: SignupForm):
             else request.app.state.config.DEFAULT_USER_ROLE
         )
         hashed = get_password_hash(form_data.password)
+        # The Auth.id column is unique, but SignupForm.id defaults to
+        # empty string and the client typically doesn't pass it. The
+        # first email-signup created an Auth row with id="" and every
+        # subsequent signup collided with `duplicate key value
+        # violates unique constraint "auth_id"`. Mint a UUID when the
+        # client didn't provide one.
+        import uuid as _uuid
+        user_id = form_data.id or str(_uuid.uuid4())
         # insert_new_auth returns Optional[Tuple[UserModel, int]] — a
-        # tuple of (user, total_user_count). The earlier signup
-        # handler treated the return as a UserModel directly, so every
-        # successful signup 500'd with `'tuple' object has no
-        # attribute 'id'`. Destructure properly.
+        # tuple of (user, total_user_count). Earlier signup treated
+        # the return as a UserModel directly, so every successful
+        # signup 500'd with `'tuple' object has no attribute 'id'`.
         result = Auths.insert_new_auth(
             form_data.email.lower(),
             hashed,
             form_data.name,
             form_data.profile_image_url,
             "user",
-            form_data.id,
+            user_id,
             form_data.inviter_id,
             address_type=None
         )
