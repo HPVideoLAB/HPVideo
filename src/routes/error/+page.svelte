@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { WEBUI_NAME, config } from '$lib/stores';
+	import { WEBUI_NAME, config, initPageFlag } from '$lib/stores';
 	import { onMount, getContext } from 'svelte';
 
 	const i18n: any = getContext('i18n');
@@ -13,6 +13,10 @@
 		}
 
 		loaded = true;
+		// Same reason as /auth: this route lives outside the (app)
+		// layout, so the splash overlay never clears without an
+		// explicit set.
+		initPageFlag.set(true);
 	});
 </script>
 

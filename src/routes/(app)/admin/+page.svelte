@@ -122,13 +122,17 @@
   };
 
   onMount(async () => {
+    // Route guard: redirect non-admins before firing any data requests.
+    // Backend auth still rejects the API calls if role is wrong, but
+    // letting the SPA render the admin UI shell at all leaks the
+    // navigation surface (filters / column headers / "all users" copy)
+    // and triggers needless 401s from /users + /configs endpoints.
+    if ($user?.role !== "admin") {
+      await goto("/");
+      return;
+    }
     handleUsersRequest();
     initChannel();
-    if ($user?.role !== "admin") {
-      // await goto('/');
-    } else {
-      handleUsersRequest();
-    }
     loaded = true;
   });
 </script>

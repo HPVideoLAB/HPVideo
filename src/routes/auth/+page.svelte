@@ -3,7 +3,7 @@
   import { userSignIn, userSignUp } from '$lib/apis/auths';
   import Spinner from '$lib/components/common/Spinner.svelte';
   import { WEBUI_API_BASE_URL, WEBUI_BASE_URL } from '$lib/constants';
-  import { WEBUI_NAME, config, user } from '$lib/stores';
+  import { WEBUI_NAME, config, user, initPageFlag } from '$lib/stores';
   import { onMount, getContext } from 'svelte';
   import { toast } from 'svelte-sonner';
   import { generateInitialsImage, canvasPixelTest } from '$lib/utils';
@@ -58,6 +58,12 @@
       await goto('/creator');
     }
     loaded = true;
+    // /auth lives outside the (app) layout group, so the layout that
+    // normally sets initPageFlag=true (and thereby clears the
+    // #splash-screen overlay) never mounts here. Without this, the
+    // splash overlay sits on top of the form indefinitely and
+    // intercepts every click. Set the flag explicitly.
+    initPageFlag.set(true);
     if (($config?.trusted_header_auth ?? false) || $config?.auth === false) {
       await signInHandler();
     }
