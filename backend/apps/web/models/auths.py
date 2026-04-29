@@ -211,7 +211,14 @@ class AuthsTable:
 
     # 验证用户
     def authenticate_user(self, email: str, password: str) -> Optional[UserModel]:
-        # 记录日志，打印要验证的用户邮箱
+        # Defense-in-depth: refuse empty email or password regardless of
+        # what the calling router does. /printSignIn creates "visitor"
+        # auth rows with email="" and password=hash(""), so without
+        # this guard a caller passing empty strings would match the
+        # first visitor row and successfully authenticate.
+        if not email or not password:
+            log.info("authenticate_user rejected: empty email or password")
+            return None
         log.info(f"authenticate_user: {email}")
         try:
             # 根据邮箱和活动状态查询Auth表中的记录
