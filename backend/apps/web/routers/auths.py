@@ -310,11 +310,15 @@ async def walletSignIn(request: Request, form_data: WalletSigninForm):
             raise HTTPException(
                 status_code=400, detail="Signature verification failed")
 
+    except HTTPException:
+        # Re-raise HTTPException without re-wrapping. Without this clause
+        # the `except Exception` below would catch the explicit 400
+        # raised at "Signature verification failed" and re-throw it as
+        # 500 ("Internal server error"), masking the proper status.
+        raise
     except ValueError as e:
         # Most ValueErrors here come from recover_message receiving
-        # malformed hex — treat as client-side bad input. Earlier
-        # this returned 500, masking a "user sent garbage" case as a
-        # backend incident.
+        # malformed hex — treat as client-side bad input.
         log.info(f"walletSignIn ValueError (treating as 400): {e}")
         raise HTTPException(status_code=400, detail="Invalid signature or nonce.")
     except Exception as e:
@@ -431,7 +435,12 @@ async def signup(request: Request, form_data: SignupForm):
             else request.app.state.config.DEFAULT_USER_ROLE
         )
         hashed = get_password_hash(form_data.password)
-        user = Auths.insert_new_auth(
+        # insert_new_auth returns Optional[Tuple[UserModel, int]] — a
+        # tuple of (user, total_user_count). The earlier signup
+        # handler treated the return as a UserModel directly, so every
+        # successful signup 500'd with `'tuple' object has no
+        # attribute 'id'`. Destructure properly.
+        result = Auths.insert_new_auth(
             form_data.email.lower(),
             hashed,
             form_data.name,
@@ -441,6 +450,10 @@ async def signup(request: Request, form_data: SignupForm):
             form_data.inviter_id,
             address_type=None
         )
+
+        user = None
+        if result:
+            user, _ = result
 
         if user:
             token = create_token(
@@ -472,7 +485,13 @@ async def signup(request: Request, form_data: SignupForm):
             }
         else:
             raise HTTPException(500, detail=ERROR_MESSAGES.CREATE_USER_ERROR)
+    except HTTPException:
+        # Re-raise without wrapping so the explicit 400/403/500 above
+        # doesn't get re-thrown as a generic 500 + ERROR_MESSAGES.DEFAULT,
+        # which leaks the underlying Python repr to clients.
+        raise
     except Exception as err:
+        log.error(f"signup unexpected error: {err}")
         raise HTTPException(500, detail=ERROR_MESSAGES.DEFAULT(err))
 
 
@@ -496,13 +515,19 @@ async def add_user(form_data: AddUserForm, user=Depends(get_admin_user)):
 
         log.info(form_data)
         hashed = get_password_hash(form_data.password)
-        user = Auths.insert_new_auth(
+        # Same tuple unpack as /signup — insert_new_auth returns
+        # Optional[Tuple[UserModel, int]], not a bare UserModel.
+        result = Auths.insert_new_auth(
             form_data.email.lower(),
             hashed,
             form_data.name,
             form_data.profile_image_url,
             form_data.role,
         )
+
+        user = None
+        if result:
+            user, _ = result
 
         if user:
             token = create_token(data={"id": user.id})
@@ -517,7 +542,10 @@ async def add_user(form_data: AddUserForm, user=Depends(get_admin_user)):
             }
         else:
             raise HTTPException(500, detail=ERROR_MESSAGES.CREATE_USER_ERROR)
+    except HTTPException:
+        raise
     except Exception as err:
+        log.error(f"add_user unexpected error: {err}")
         raise HTTPException(500, detail=ERROR_MESSAGES.DEFAULT(err))
 
 
