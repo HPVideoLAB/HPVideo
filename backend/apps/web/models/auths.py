@@ -118,6 +118,13 @@ class SignupForm(BaseModel):
     password: str
     profile_image_url: Optional[str] = "/user.png"
     id: Optional[str] = ""
+    # The /signup handler passes form_data.inviter_id into
+    # Auths.insert_new_auth so the new user is attributed to whoever
+    # referred them. Field was missing from this model, so every
+    # /signup attempt 500'd with `'SignupForm' object has no
+    # attribute 'inviter_id'` — caught when probing the rate-limit
+    # behavior post-v26 rollout.
+    inviter_id: Optional[str] = ""
 
 
 class AddUserForm(SignupForm):
