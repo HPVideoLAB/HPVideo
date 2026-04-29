@@ -1,5 +1,5 @@
 
-<script>
+<script lang="ts">
   import { getContext } from "svelte";
   import { RewardProperties } from "$lib/constants"
   const i18n: any = getContext("i18n");
