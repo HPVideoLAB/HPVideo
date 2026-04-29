@@ -140,10 +140,15 @@ async def update_password(
 @router.post("/printSignIn", response_model=None)
 async def printSignIn(request: Request, form_data: FingerprintSignInForm):
 
+    # Initialize so the `if user:` below is safe even when get_user_by_id
+    # raises. Earlier the except clause logged `e.message` (which Python 3
+    # exceptions don't have, so it AttributeError'd) AND left `user`
+    # undefined — a NameError would mask whatever the real error was.
+    user = None
     try:
         user = Users.get_user_by_id(form_data.id)
     except Exception as e:
-        log.info(f"Error retrieving user by id:{e.message}")
+        log.info(f"Error retrieving user by id: {e}")
 
     if user:
         DailyUsersInstance.refresh_active_today(user.last_active_at)
@@ -157,9 +162,6 @@ async def printSignIn(request: Request, form_data: FingerprintSignInForm):
         # 使用 web3.py 创建新的以太坊账户
         account = w3.eth.account.create()
         wallet_address = account.address
-        # private_key = account.key.hex()
-        # private_key=w3.to_hex(account.key)
-        # python -c "from web3 import Web3; w3 = Web3(); acc = w3.eth.account.create(); print(f'private key={w3.to_hex(acc.key)}, account={acc.address}')"
         log.info(f"系统创建钱包账户:{wallet_address}")
 
         Auths.insert_new_auth(
@@ -177,6 +179,11 @@ async def printSignIn(request: Request, form_data: FingerprintSignInForm):
         log.info("Auths.insert_new_auth executed")
 
         user = Users.get_user_by_id(form_data.id)
+        if not user:
+            # Insert reported success but the user row isn't queryable.
+            # Return a clean 500 instead of NameError'ing on user.id below.
+            log.error(f"printSignIn: user creation appeared to succeed but get_user_by_id({form_data.id}) returned None")
+            raise HTTPException(500, detail="User creation failed.")
         log.info(f"New user created:{user.id}")
 
     token = create_token(
@@ -329,6 +336,15 @@ async def walletSignIn(request: Request, form_data: WalletSigninForm):
 @router.post("/signin", response_model=SigninResponse)
 @limiter.limit("5/minute")
 async def signin(request: Request, form_data: SigninForm):
+    # Reject empty credentials. Without this, POST /signin with
+    # `{"email": "", "password": ""}` matched the first row in the
+    # auth table whose email is "" (created by /printSignIn for
+    # fingerprint-based visitors, which use empty email + empty
+    # password) and returned a valid JWT for that visitor account —
+    # an authentication bypass for any anonymous visitor session.
+    if not form_data.email.strip() or not form_data.password:
+        raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
+
     # 检查是否启用了基于信任头的 WebUI 认证
     if WEBUI_AUTH_TRUSTED_EMAIL_HEADER:
         log.info("Checking if trusted email header authentication is enabled")
@@ -419,6 +435,14 @@ async def signup(request: Request, form_data: SignupForm):
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, detail=ERROR_MESSAGES.ACCESS_PROHIBITED
         )
+
+    # Reject empty / trivially-short credentials. Without this,
+    # POST /signup `{"name":"","email":"x","password":""}` created an
+    # account with name="" and password=""; that account would then be
+    # signin'able by anyone sending the same empty-string pair until
+    # we tightened /signin (which we just did). Belt-and-suspenders.
+    if not form_data.email.strip() or not form_data.password or len(form_data.password) < 1:
+        raise HTTPException(400, detail="Email and password are required.")
 
     # if not validate_email_format(form_data.email.lower()):
     #     raise HTTPException(
