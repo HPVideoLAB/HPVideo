@@ -170,6 +170,11 @@ class WaveApi:
 
 	# Get the model price
 	def calc_model_price(self, model: str, duration: int, size: str, messageid: str):
+		# Defensive: callers occasionally pass None for size/duration when
+		# the request didn't include those query params. The substring
+		# match below would AttributeError on None and 500 the request.
+		size = size if size is not None else ""
+		duration = duration if duration is not None else ""
 		amount_dict = amounts.get(model)
 		amount = "$0.02"
 		if amount_dict is not None:

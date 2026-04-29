@@ -97,8 +97,13 @@ async def payment_middleware(request: Request, call_next):
 
 def calTotal(request: Request, model: str):
     messageid = str(uuid.uuid4())
-    size = request.query_params.get("size")
-    duration = request.query_params.get("duration")
+    # Default to the canonical pricing tier when the client omits
+    # query params. calc_model_price() does `size.find(key)` and a
+    # similar lookup on `duration`, both of which AttributeError on
+    # None. Without these defaults a bare GET to /x402/creator/<slug>
+    # 500'd before payment-middleware could even run.
+    size = request.query_params.get("size") or "720p"
+    duration = request.query_params.get("duration") or "5"
     return WaveApiInstance.calc_model_price(model, duration, size, messageid)
 
 
