@@ -21,7 +21,9 @@
 	import BlockCard from '$lib/components/canvas/BlockCard.svelte';
 	import Palette from '$lib/components/canvas/Palette.svelte';
 	import Inspector from '$lib/components/canvas/Inspector.svelte';
+	import TemplatesMenu from '$lib/components/canvas/TemplatesMenu.svelte';
 	import { BLOCK_TYPE_BY_KEY, makeNodeData, type TypeKey } from '$lib/components/canvas/blockTypes';
+	import { TEMPLATES } from '$lib/components/canvas/templates';
 	import { WEBUI_NAME, initPageFlag } from '$lib/stores';
 
 	const i18n: any = getContext('i18n');
@@ -253,6 +255,25 @@
 		selectedNodeId = null;
 	}
 
+	function loadTemplate(ev: CustomEvent<{ id: string }>) {
+		const tpl = TEMPLATES.find((t) => t.id === ev.detail.id);
+		if (!tpl) return;
+		const hasWork = $nodes.length > 0;
+		if (hasWork && !confirm(`Replace your current canvas with the "${tpl.name}" template?`)) return;
+		const built = tpl.build();
+		nodes.set(built.nodes);
+		edges.set(built.edges);
+		selectedNodeId = null;
+		// Bump id counter past any numeric suffix in the template so newly
+		// added nodes don't collide.
+		const numericSuffixes = built.nodes
+			.map((n) => Number(String(n.id).split('-').pop()))
+			.filter((n) => Number.isFinite(n));
+		if (numericSuffixes.length) {
+			nextNodeIdCounter = Math.max(...numericSuffixes, nextNodeIdCounter) + 100;
+		}
+	}
+
 	onMount(() => {
 		initPageFlag.set(true);
 		loadFromStorage();
@@ -278,7 +299,7 @@
 		</div>
 		<div class="topbar-right">
 			<button class="btn" on:click={resetCanvas}>Reset</button>
-			<button class="btn">Templates</button>
+			<TemplatesMenu on:load={loadTemplate} />
 			<button class="btn primary" disabled title="Coming in v0.3">
 				▶ Run All · {totalCost.toLocaleString()} cr
 			</button>
