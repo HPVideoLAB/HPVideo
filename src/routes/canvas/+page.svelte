@@ -100,7 +100,6 @@
 
 	// Drop handler: add a new node where the user dropped from palette.
 	let svelteFlowRef: HTMLDivElement;
-	let projectFn: ((p: { x: number; y: number }) => { x: number; y: number }) | null = null;
 
 	function onDragOver(ev: DragEvent) {
 		ev.preventDefault();
@@ -114,10 +113,16 @@
 		const def = BLOCK_TYPE_BY_KEY[typeKey];
 		if (!def || def.locked) return;
 
-		// Translate screen coords → flow coords.
+		// Approximate screen → flow translation. We don't have access to
+		// the SvelteFlow instance from this scope (xyflow's
+		// useSvelteFlow hook only works inside a child component of
+		// <SvelteFlow>), and xyflow 0.1.x's oninit callback receives
+		// no instance arg. For v0.2 we drop in canvas-relative pixel
+		// coords; xyflow accepts these at the default 1× viewport.
+		// Pan/zoom-aware drop lands in v0.3 once we wrap a child
+		// component that calls useSvelteFlow().
 		const bounds = svelteFlowRef.getBoundingClientRect();
-		const screenPos = { x: ev.clientX - bounds.left, y: ev.clientY - bounds.top };
-		const flowPos = projectFn ? projectFn(screenPos) : screenPos;
+		const flowPos = { x: ev.clientX - bounds.left, y: ev.clientY - bounds.top };
 
 		const data = makeNodeData(typeKey, get(nodes));
 		const newNode: Node = {
@@ -177,10 +182,13 @@
 	}
 
 	// Track selection changes from xyflow itself so clicks on a node
-	// in the canvas update the Inspector.
-	function onSelectionChange(ev: CustomEvent<{ nodes: Node[]; edges: Edge[] }>) {
-		const sel = ev.detail.nodes[0];
-		selectedNodeId = sel?.id ?? null;
+	// in the canvas update the Inspector. xyflow/svelte 0.1.x emits
+	// `nodeclick` per click, not the v1.x-style `selectionchange`.
+	function onNodeClick(ev: CustomEvent<{ event: MouseEvent; node: Node }>) {
+		selectedNodeId = ev.detail.node?.id ?? null;
+	}
+	function onPaneClick() {
+		selectedNodeId = null;
 	}
 
 	// LocalStorage auto-save (debounced 800ms after last edit).
@@ -299,10 +307,8 @@
 				maxZoom={2}
 				defaultEdgeOptions={{ style: 'stroke: #c213f2; stroke-width: 2;', animated: false }}
 				proOptions={{ hideAttribution: true }}
-				on:selectionchange={onSelectionChange}
-				oninit={(instance) => {
-					projectFn = (p) => instance.screenToFlowPosition(p);
-				}}
+				on:nodeclick={onNodeClick}
+				on:paneclick={onPaneClick}
 			>
 				<Background gap={28} size={1.2} />
 				<Controls />
