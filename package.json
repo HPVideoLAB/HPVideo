@@ -65,6 +65,7 @@
 		"@tanstack/react-query": "^5.40.0",
 		"@wagmi/core": "^2.14.4",
 		"@web3modal/wagmi": "^4.2.3",
+		"@xyflow/svelte": "^0.1.39",
 		"async": "^3.2.5",
 		"bits-ui": "^0.19.7",
 		"clsx": "^2.1.1",
