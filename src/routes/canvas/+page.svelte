@@ -1,106 +1,72 @@
 <!--
-  /creator/canvas — HPVideo Canvas v0.1
-  Node-based multi-shot video composition editor. First shippable
-  cut: drag-and-connect canvas with 5 sample blocks pre-placed,
-  proves @xyflow/svelte renders inside our existing Studio shell.
-  Real interactions (palette drag-add, run-block, persistence) come
-  in subsequent commits per the PRD.
+  /creator/canvas — HPVideo Canvas v0.2
+  Adds: drag-from-palette, click-to-select + Inspector edit,
+  duplicate / delete, localStorage auto-save (debounced).
+
+  Run All + template loader + backend execution come in v0.3.
 -->
 <script lang="ts">
-	import { onMount, getContext } from 'svelte';
-	import { writable } from 'svelte/store';
+	import { onMount, getContext, tick } from 'svelte';
+	import { writable, get } from 'svelte/store';
 	import {
 		SvelteFlow,
 		Background,
 		Controls,
 		MiniMap,
+		useSvelteFlow,
 		type Node,
 		type Edge
 	} from '@xyflow/svelte';
 	import '@xyflow/svelte/dist/style.css';
 	import BlockCard from '$lib/components/canvas/BlockCard.svelte';
+	import Palette from '$lib/components/canvas/Palette.svelte';
+	import Inspector from '$lib/components/canvas/Inspector.svelte';
+	import { BLOCK_TYPE_BY_KEY, makeNodeData, type TypeKey } from '$lib/components/canvas/blockTypes';
 	import { WEBUI_NAME, initPageFlag } from '$lib/stores';
 
 	const i18n: any = getContext('i18n');
 
-	// Initial sample workflow — same shape as the v2 mockup so reviewers
-	// can visually confirm parity.
+	const STORAGE_KEY = 'hpv_canvas_v0_2';
+
+	// Initial sample workflow — used only if localStorage is empty.
 	const initialNodes: Node[] = [
 		{
 			id: 'ref-1',
 			type: 'block',
 			position: { x: 0, y: 100 },
-			data: {
-				title: 'Image Reference',
-				num: 1,
-				typeKey: 'imageref',
-				icon: '📷',
-				state: 'ready',
-				cost: 0,
-				hasIn: false
-			}
+			data: { title: 'Image Reference', num: 1, typeKey: 'imageref', icon: '📷', state: 'ready', cost: 0, hasIn: false, hasOut: true, config: {} }
 		},
 		{
 			id: 'prompt-1',
 			type: 'block',
 			position: { x: 0, y: 350 },
-			data: {
-				title: 'Text Prompt',
-				num: 2,
-				typeKey: 'prompt',
-				icon: '📝',
-				state: 'ready',
-				cost: 0,
-				hasIn: false
-			}
+			data: { title: 'Text Prompt', num: 2, typeKey: 'prompt', icon: '📝', state: 'ready', cost: 0, hasIn: false, hasOut: true, config: { text: '' } }
 		},
 		{
 			id: 'imagegen-1',
 			type: 'block',
 			position: { x: 320, y: 80 },
-			data: {
-				title: 'Image Gen',
-				num: 1,
-				typeKey: 'imagegen',
-				icon: '🎨',
-				state: 'ok',
-				cost: 100
-			}
+			data: { title: 'Image Gen', num: 1, typeKey: 'imagegen', icon: '🎨', state: 'ok', cost: 100, hasIn: true, hasOut: true, config: { model: 'flux-dev', aspect: '16:9' } }
 		},
 		{
 			id: 'videogen-1',
 			type: 'block',
 			position: { x: 640, y: 80 },
-			data: {
-				title: 'Video Gen',
-				num: 1,
-				typeKey: 'videogen',
-				icon: '🎬',
-				state: 'queued',
-				cost: 1500
-			}
+			data: { title: 'Video Gen', num: 1, typeKey: 'videogen', icon: '🎬', state: 'queued', cost: 1500, hasIn: true, hasOut: true, config: { model: 'wan-2.7', duration: 5, resolution: '720p', seed: 'random' } }
 		},
 		{
 			id: 'stitcher-1',
 			type: 'block',
 			position: { x: 960, y: 200 },
-			data: {
-				title: 'Stitcher',
-				num: 1,
-				typeKey: 'stitcher',
-				icon: '⏯',
-				state: 'queued',
-				cost: 0,
-				hasOut: false
-			}
+			data: { title: 'Stitcher', num: 1, typeKey: 'stitcher', icon: '⏯', state: 'queued', cost: 0, hasIn: true, hasOut: false, config: { transitions: 'cut' } }
 		}
 	];
 
 	const initialEdges: Edge[] = [
-		{ id: 'e1', source: 'ref-1', target: 'imagegen-1', animated: false },
-		{ id: 'e2', source: 'prompt-1', target: 'imagegen-1', animated: false },
-		{ id: 'e3', source: 'imagegen-1', target: 'videogen-1', animated: false },
-		{ id: 'e4', source: 'videogen-1', target: 'stitcher-1', animated: false }
+		{ id: 'e1', source: 'ref-1', target: 'imagegen-1' },
+		{ id: 'e2', source: 'prompt-1', target: 'imagegen-1' },
+		{ id: 'e3', source: 'imagegen-1', target: 'videogen-1' },
+		{ id: 'e4', source: 'videogen-1', target: 'stitcher-1' }
 	];
 
 	const nodes = writable<Node[]>(initialNodes);
@@ -108,12 +74,12 @@
 
 	const nodeTypes = { block: BlockCard };
 
+	let selectedNodeId: string | null = null;
+	$: selectedNode = selectedNodeId ? $nodes.find((n) => n.id === selectedNodeId) ?? null : null;
+
 	let totalCost = 0;
 	$: totalCost = $nodes.reduce((sum, n) => sum + (Number(n.data?.cost) || 0), 0);
 
-	// Defined out here so the Svelte 4 attribute parser doesn't choke on
-	// the inline arrow-with-typed-Record-literal that lived inside the
-	// MiniMap nodeColor prop.
 	const TYPE_TO_COLOR: { [k: string]: string } = {
 		imageref: '#4ec3d9',
 		prompt: '#e5b53c',
@@ -126,8 +92,163 @@
 		return TYPE_TO_COLOR[(n.data as any)?.typeKey] || '#888';
 	}
 
+	let nextNodeIdCounter = 100;
+	function nextId(prefix: string) {
+		nextNodeIdCounter += 1;
+		return `${prefix}-${nextNodeIdCounter}`;
+	}
+
+	// Drop handler: add a new node where the user dropped from palette.
+	let svelteFlowRef: HTMLDivElement;
+	let projectFn: ((p: { x: number; y: number }) => { x: number; y: number }) | null = null;
+
+	function onDragOver(ev: DragEvent) {
+		ev.preventDefault();
+		if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move';
+	}
+
+	function onDrop(ev: DragEvent) {
+		ev.preventDefault();
+		const typeKey = ev.dataTransfer?.getData('application/hpvideo-canvas-block') as TypeKey | '';
+		if (!typeKey) return;
+		const def = BLOCK_TYPE_BY_KEY[typeKey];
+		if (!def || def.locked) return;
+
+		// Translate screen coords → flow coords.
+		const bounds = svelteFlowRef.getBoundingClientRect();
+		const screenPos = { x: ev.clientX - bounds.left, y: ev.clientY - bounds.top };
+		const flowPos = projectFn ? projectFn(screenPos) : screenPos;
+
+		const data = makeNodeData(typeKey, get(nodes));
+		const newNode: Node = {
+			id: nextId(typeKey),
+			type: 'block',
+			position: flowPos,
+			data
+		};
+		nodes.update((ns) => [...ns, newNode]);
+		selectedNodeId = newNode.id;
+	}
+
+	// Inspector edit handlers
+	function handleConfigUpdate(ev: CustomEvent<{ id: string; config: Record<string, any> }>) {
+		const { id, config } = ev.detail;
+		// Pull off the optional _newCost piggyback (Inspector emits it when
+		// resolution changes for videogen blocks so total cost stays correct).
+		const { _newCost, ...cleanConfig } = config as any;
+		nodes.update((ns) =>
+			ns.map((n) =>
+				n.id === id
+					? {
+							...n,
+							data: {
+								...n.data,
+								config: cleanConfig,
+								...(typeof _newCost === 'number' ? { cost: _newCost } : {})
+							}
+						}
+					: n
+			)
+		);
+	}
+
+	function handleDuplicate(ev: CustomEvent<{ id: string }>) {
+		const target = $nodes.find((n) => n.id === ev.detail.id);
+		if (!target) return;
+		const data = makeNodeData(target.data.typeKey as TypeKey, get(nodes));
+		// Override num so duplicates inherit fresh numbering, but copy
+		// the source's config so the user's settings survive.
+		data.config = { ...(target.data.config || {}) };
+		const newNode: Node = {
+			id: nextId(target.data.typeKey as string),
+			type: 'block',
+			position: { x: target.position.x + 40, y: target.position.y + 40 },
+			data: { ...data, cost: target.data.cost }
+		};
+		nodes.update((ns) => [...ns, newNode]);
+		selectedNodeId = newNode.id;
+	}
+
+	function handleDelete(ev: CustomEvent<{ id: string }>) {
+		const id = ev.detail.id;
+		nodes.update((ns) => ns.filter((n) => n.id !== id));
+		edges.update((es) => es.filter((e) => e.source !== id && e.target !== id));
+		if (selectedNodeId === id) selectedNodeId = null;
+	}
+
+	// Track selection changes from xyflow itself so clicks on a node
+	// in the canvas update the Inspector.
+	function onSelectionChange(ev: CustomEvent<{ nodes: Node[]; edges: Edge[] }>) {
+		const sel = ev.detail.nodes[0];
+		selectedNodeId = sel?.id ?? null;
+	}
+
+	// LocalStorage auto-save (debounced 800ms after last edit).
+	let saveTimer: ReturnType<typeof setTimeout> | null = null;
+	let savedFlash = false;
+
+	function scheduleSave() {
+		if (saveTimer) clearTimeout(saveTimer);
+		saveTimer = setTimeout(() => {
+			try {
+				const payload = {
+					version: 1,
+					savedAt: new Date().toISOString(),
+					nodes: get(nodes),
+					edges: get(edges)
+				};
+				localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+				savedFlash = true;
+				setTimeout(() => (savedFlash = false), 1500);
+			} catch (e) {
+				// localStorage might be full or disabled; fail silently —
+				// the user's work is still in memory until they close the tab.
+			}
+		}, 800);
+	}
+
+	// Save whenever nodes or edges store updates (after first paint).
+	let booted = false;
+	$: if (booted) {
+		// Touch both stores to register dependency.
+		void $nodes;
+		void $edges;
+		scheduleSave();
+	}
+
+	function loadFromStorage() {
+		try {
+			const raw = localStorage.getItem(STORAGE_KEY);
+			if (!raw) return false;
+			const parsed = JSON.parse(raw);
+			if (!parsed?.nodes || !parsed?.edges) return false;
+			nodes.set(parsed.nodes);
+			edges.set(parsed.edges);
+			// Bump nextNodeIdCounter past any existing numeric suffix so
+			// a session restored from disk doesn't reuse old ids.
+			const numericSuffixes = parsed.nodes
+				.map((n: Node) => Number(String(n.id).split('-').pop()))
+				.filter((n: number) => Number.isFinite(n));
+			if (numericSuffixes.length) {
+				nextNodeIdCounter = Math.max(...numericSuffixes, nextNodeIdCounter);
+			}
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	function resetCanvas() {
+		if (!confirm('Reset canvas? This will remove all blocks and wires you have on screen now.')) return;
+		nodes.set(initialNodes);
+		edges.set(initialEdges);
+		selectedNodeId = null;
+	}
+
 	onMount(() => {
 		initPageFlag.set(true);
+		loadFromStorage();
+		booted = true;
 	});
 </script>
 
@@ -145,11 +266,12 @@
 		<div class="breadcrumb">
 			<span style="opacity:0.4;">/</span>
 			<span class="current">Untitled canvas</span>
-			<span class="saved">● Auto-saved (local)</span>
+			<span class="saved" class:flash={savedFlash}>● Auto-saved (local)</span>
 		</div>
 		<div class="topbar-right">
+			<button class="btn" on:click={resetCanvas}>Reset</button>
 			<button class="btn">Templates</button>
-			<button class="btn primary" disabled title="Coming in v0.2">
+			<button class="btn primary" disabled title="Coming in v0.3">
 				▶ Run All · {totalCost.toLocaleString()} cr
 			</button>
 		</div>
@@ -158,44 +280,51 @@
 	<div class="banner">
 		<div class="icon">🚧</div>
 		<div class="text">
-			<strong>Canvas v0.1 — preview build.</strong>
-			Drag/connect/zoom works. <strong>Run All</strong>, palette drag-add,
-			template picker, server-side persistence ship in v0.2 (~1 week out).
-			<a href="https://github.com/HPVideoLAB/HPVideoBNB/blob/main/docs/INFINITE_CANVAS_PRD.md" target="_blank">Read the PRD</a>
+			<strong>Canvas v0.2 — preview build.</strong>
+			Drag blocks from the left palette, edit settings on the right, your work auto-saves.
+			<strong>Run All</strong> + 3 starter templates + backend execution land in v0.3.
+			<a href="https://github.com/HPVideoLAB/HPVideoBNB/blob/main/docs/INFINITE_CANVAS_PRD.md" target="_blank">PRD</a>
 		</div>
 	</div>
 
-	<main class="canvas-host">
-		<SvelteFlow
-			{nodes}
-			{edges}
-			{nodeTypes}
-			fitView
-			minZoom={0.2}
-			maxZoom={2}
-			defaultEdgeOptions={{
-				style: 'stroke: #c213f2; stroke-width: 2;',
-				animated: false
-			}}
-			proOptions={{ hideAttribution: true }}
-		>
-			<Background gap={28} size={1.2} />
-			<Controls />
-			<MiniMap
-				style="background: rgba(13,10,28,0.9); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;"
-				maskColor="rgba(7,6,14,0.7)"
-				{nodeColor}
-			/>
-		</SvelteFlow>
-	</main>
+	<div class="main">
+		<Palette />
+		<main class="canvas-host" bind:this={svelteFlowRef} on:dragover={onDragOver} on:drop={onDrop}>
+			<SvelteFlow
+				{nodes}
+				{edges}
+				{nodeTypes}
+				fitView
+				minZoom={0.2}
+				maxZoom={2}
+				defaultEdgeOptions={{ style: 'stroke: #c213f2; stroke-width: 2;', animated: false }}
+				proOptions={{ hideAttribution: true }}
+				on:selectionchange={onSelectionChange}
+				oninit={(instance) => {
+					projectFn = (p) => instance.screenToFlowPosition(p);
+				}}
+			>
+				<Background gap={28} size={1.2} />
+				<Controls />
+				<MiniMap
+					style="background: rgba(13,10,28,0.9); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;"
+					maskColor="rgba(7,6,14,0.7)"
+					{nodeColor}
+				/>
+			</SvelteFlow>
+		</main>
+		<Inspector
+			node={selectedNode}
+			on:update={handleConfigUpdate}
+			on:duplicate={handleDuplicate}
+			on:delete={handleDelete}
+		/>
+	</div>
 
 	<footer class="bottombar">
 		<span class="muted">{$nodes.length} blocks · {$edges.length} wires</span>
 		<span class="muted spacer">·</span>
-		<span>
-			Total cost: <strong>{totalCost.toLocaleString()}</strong>
-			<span class="muted">cr</span>
-		</span>
+		<span>Total cost: <strong>{totalCost.toLocaleString()}</strong> <span class="muted">cr</span></span>
 		<span class="balance">
 			<span class="muted">Balance:</span>
 			<strong>—</strong>
@@ -213,16 +342,9 @@
 		width: 100vw;
 		background: #07060e;
 		color: #e5e3f0;
-		font-family:
-			'Inter',
-			-apple-system,
-			BlinkMacSystemFont,
-			'Segoe UI',
-			system-ui,
-			sans-serif;
+		font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 		-webkit-font-smoothing: antialiased;
 	}
-	/* Top bar */
 	.topbar {
 		height: 56px;
 		background: rgba(13, 10, 28, 0.85);
@@ -291,6 +413,14 @@
 		padding: 2px 8px;
 		border-radius: 999px;
 		font-weight: 600;
+		transition: opacity 0.3s;
+	}
+	.breadcrumb .saved.flash {
+		animation: savedFlash 1.4s ease-out;
+	}
+	@keyframes savedFlash {
+		0% { background: rgba(54, 196, 123, 0.4); }
+		100% { background: rgba(54, 196, 123, 0.12); }
 	}
 	.topbar-right {
 		margin-left: auto;
@@ -322,7 +452,6 @@
 		font-weight: 600;
 		box-shadow: 0 4px 12px rgba(194, 19, 242, 0.3);
 	}
-	/* Beta banner */
 	.banner {
 		background: linear-gradient(90deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.04));
 		border-bottom: 1px solid rgba(245, 158, 11, 0.25);
@@ -344,9 +473,15 @@
 		color: #c213f2;
 		font-weight: 600;
 	}
-	/* Canvas host */
+	.main {
+		flex: 1;
+		display: flex;
+		min-height: 0;
+		overflow: hidden;
+	}
 	.canvas-host {
 		flex: 1;
+		min-width: 0;
 		min-height: 0;
 		position: relative;
 	}
@@ -357,7 +492,8 @@
 		background-color: #07060e !important;
 	}
 	:global(.svelte-flow__pane) {
-		background: radial-gradient(circle at 30% 30%, rgba(194, 19, 242, 0.06) 0, transparent 45%),
+		background:
+			radial-gradient(circle at 30% 30%, rgba(194, 19, 242, 0.06) 0, transparent 45%),
 			#07060e !important;
 	}
 	:global(.svelte-flow__edge-path) {
@@ -379,7 +515,6 @@
 	:global(.svelte-flow__controls button:hover) {
 		background: rgba(255, 255, 255, 0.06) !important;
 	}
-	/* Bottom bar */
 	.bottombar {
 		height: 38px;
 		background: rgba(13, 10, 28, 0.85);
