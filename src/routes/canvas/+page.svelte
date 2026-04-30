@@ -24,6 +24,8 @@
 	import TemplatesMenu from '$lib/components/canvas/TemplatesMenu.svelte';
 	import { BLOCK_TYPE_BY_KEY, makeNodeData, type TypeKey } from '$lib/components/canvas/blockTypes';
 	import { TEMPLATES } from '$lib/components/canvas/templates';
+	import { runCanvas, type RunSummary } from '$lib/components/canvas/runner';
+	import { toast } from 'svelte-sonner';
 	import { WEBUI_NAME, initPageFlag } from '$lib/stores';
 
 	const i18n: any = getContext('i18n');
@@ -255,6 +257,48 @@
 		selectedNodeId = null;
 	}
 
+	let isRunning = false;
+	let runAbort: AbortController | null = null;
+	let lastRun: RunSummary | null = null;
+	let runLog: string[] = [];
+
+	async function handleRunAll() {
+		if (isRunning) {
+			runAbort?.abort();
+			return;
+		}
+		if ($nodes.length === 0) {
+			toast.info('Drag some blocks onto the canvas first.');
+			return;
+		}
+		isRunning = true;
+		runLog = [];
+		runAbort = new AbortController();
+		try {
+			const summary = await runCanvas({
+				nodes,
+				edges,
+				signal: runAbort.signal,
+				onLog: (line) => {
+					runLog = [...runLog, line];
+				}
+			});
+			lastRun = summary;
+			if (summary.failedAt) {
+				toast.error(`Stopped at block ${summary.failedAt}.`);
+			} else {
+				toast.success(
+					`Done in ${summary.totalElapsedS.toFixed(1)}s · ${summary.totalCostCr.toLocaleString()} cr (stub).`
+				);
+			}
+		} catch (e: any) {
+			toast.error(e?.message || 'Run failed.');
+		} finally {
+			isRunning = false;
+			runAbort = null;
+		}
+	}
+
 	function loadTemplate(ev: CustomEvent<{ id: string }>) {
 		const tpl = TEMPLATES.find((t) => t.id === ev.detail.id);
 		if (!tpl) return;
@@ -300,8 +344,12 @@
 		<div class="topbar-right">
 			<button class="btn" on:click={resetCanvas}>Reset</button>
 			<TemplatesMenu on:load={loadTemplate} />
-			<button class="btn primary" disabled title="Coming in v0.3">
-				▶ Run All · {totalCost.toLocaleString()} cr
+			<button class="btn primary" on:click={handleRunAll}>
+				{#if isRunning}
+					⏸ Cancel
+				{:else}
+					▶ Run All · {totalCost.toLocaleString()} cr
+				{/if}
 			</button>
 		</div>
 	</header>
