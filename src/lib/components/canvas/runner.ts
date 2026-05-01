@@ -206,6 +206,11 @@ export async function runCanvas(opts: ExecOptions): Promise<RunSummary> {
 	let failedAt: string | undefined;
 
 	const token = (typeof localStorage !== 'undefined' && localStorage.getItem('token')) || '';
+	// Hidden opt-in for the v0.4 real-mode MVP. Admins set this in DevTools:
+	//   localStorage.canvas_mode = 'real'
+	// Backend (`canvas.py`) cross-checks the header against the user's role.
+	// Non-admins get 403 even if they set the localStorage value.
+	const canvasMode = (typeof localStorage !== 'undefined' && localStorage.getItem('canvas_mode')) || '';
 
 	for (const node of ordered) {
 		if (signal?.aborted) {
@@ -239,7 +244,8 @@ export async function runCanvas(opts: ExecOptions): Promise<RunSummary> {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					...(token ? { Authorization: `Bearer ${token}` } : {})
+					...(token ? { Authorization: `Bearer ${token}` } : {}),
+					...(canvasMode ? { 'X-Canvas-Mode': canvasMode } : {})
 				},
 				body: JSON.stringify({
 					block_id: node.id,
