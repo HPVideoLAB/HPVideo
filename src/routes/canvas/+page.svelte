@@ -259,12 +259,25 @@
 
 	let isRunning = false;
 	let runAbort: AbortController | null = null;
+	let runPromise: Promise<RunSummary> | null = null;
 	let lastRun: RunSummary | null = null;
 	let runLog: string[] = [];
 
 	async function handleRunAll() {
+		// Already running: first click after Run All cancels the abort signal.
+		// We then wait for the in-flight runCanvas to fully wind down before
+		// allowing a new run. Without this, a rapid "Run All → Cancel → Run All"
+		// could land while the first runCanvas was still inside an `await fetch`,
+		// leaving two execution flows mutating nodesStore at the same time.
 		if (isRunning) {
 			runAbort?.abort();
+			if (runPromise) {
+				try {
+					await runPromise;
+				} catch (_) {
+					// previous run's rejection is already handled in its own finally
+				}
+			}
 			return;
 		}
 		if ($nodes.length === 0) {
@@ -274,15 +287,18 @@
 		isRunning = true;
 		runLog = [];
 		runAbort = new AbortController();
+		const localAbort = runAbort;
+		const promise = runCanvas({
+			nodes,
+			edges,
+			signal: localAbort.signal,
+			onLog: (line) => {
+				runLog = [...runLog, line];
+			}
+		});
+		runPromise = promise;
 		try {
-			const summary = await runCanvas({
-				nodes,
-				edges,
-				signal: runAbort.signal,
-				onLog: (line) => {
-					runLog = [...runLog, line];
-				}
-			});
+			const summary = await promise;
 			lastRun = summary;
 			if (summary.failedAt) {
 				toast.error(`Stopped at block ${summary.failedAt}.`);
@@ -292,10 +308,13 @@
 				);
 			}
 		} catch (e: any) {
-			toast.error(e?.message || 'Run failed.');
+			if (e?.name !== 'AbortError') {
+				toast.error(e?.message || 'Run failed.');
+			}
 		} finally {
 			isRunning = false;
 			runAbort = null;
+			runPromise = null;
 		}
 	}
 
@@ -394,6 +413,28 @@
 			on:duplicate={handleDuplicate}
 			on:delete={handleDelete}
 		/>
+	</div>
+
+	<!--
+		Mobile interstitial. Canvas is structurally desktop-only — Palette + canvas
+		+ Inspector total ~880px and xyflow's drag/connect doesn't work well on touch.
+		Below 1024px we hide the canvas and show a friendly notice instead of
+		shipping a broken layout to phone users coming from the marketing nav.
+	-->
+	<div class="mobile-block">
+		<div class="mobile-block-card">
+			<div class="mobile-block-icon">🖥</div>
+			<h2>Canvas is desktop-only (for now)</h2>
+			<p>
+				The infinite canvas needs a wider screen to fit the block palette,
+				editor and inspector. Open this page on a desktop or tablet
+				(1024px+) to start composing multi-shot videos.
+			</p>
+			<p class="mobile-block-sub">
+				On mobile? Try our single-shot creator instead.
+			</p>
+			<a class="mobile-block-cta" href="/creator/" rel="noopener">Open Creator →</a>
+		</div>
 	</div>
 
 	<footer class="bottombar">
@@ -633,5 +674,69 @@
 		color: #6b6884;
 		font-style: italic;
 		margin-left: 4px;
+	}
+
+	/* Mobile interstitial — hidden on desktop, shown when viewport <1024px. */
+	.mobile-block {
+		display: none;
+	}
+	@media (max-width: 1023px) {
+		.banner,
+		.main,
+		.bottombar {
+			display: none !important;
+		}
+		.mobile-block {
+			display: flex;
+			flex: 1;
+			align-items: center;
+			justify-content: center;
+			padding: 32px 20px;
+			background:
+				radial-gradient(circle at 50% 30%, rgba(194, 19, 242, 0.12) 0, transparent 50%),
+				#07060e;
+		}
+		.mobile-block-card {
+			max-width: 380px;
+			text-align: center;
+			background: linear-gradient(180deg, rgba(28, 21, 56, 0.95) 0%, rgba(21, 16, 42, 0.95) 100%);
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			border-radius: 14px;
+			padding: 28px 22px;
+			box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+		}
+		.mobile-block-icon {
+			font-size: 40px;
+			margin-bottom: 8px;
+		}
+		.mobile-block-card h2 {
+			font-size: 18px;
+			font-weight: 700;
+			color: #fff;
+			margin: 0 0 12px;
+		}
+		.mobile-block-card p {
+			font-size: 14px;
+			line-height: 1.5;
+			color: #b9b6cc;
+			margin: 0 0 12px;
+		}
+		.mobile-block-sub {
+			font-size: 13px;
+			color: #6b6884;
+		}
+		.mobile-block-cta {
+			display: inline-block;
+			margin-top: 8px;
+			padding: 11px 22px;
+			border-radius: 999px;
+			background: linear-gradient(135deg, #c213f2 0%, #8a2ce6 100%);
+			color: #fff;
+			font-weight: 600;
+			font-size: 14px;
+			text-decoration: none;
+			min-height: 44px;
+			line-height: 22px;
+		}
 	}
 </style>

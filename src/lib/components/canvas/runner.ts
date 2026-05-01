@@ -87,24 +87,34 @@ function gatherInputs(
 	node: Node,
 	incomingSourceIds: string[],
 	resultsById: Record<string, BlockResult>,
-	nodesById: Record<string, Node>
+	nodesById: Record<string, Node>,
+	onLog?: (msg: string) => void
 ): Record<string, any> {
 	const incoming = incomingSourceIds
 		.map((sid) => ({ id: sid, src: nodesById[sid], result: resultsById[sid] }))
 		.filter((x) => x.src && x.result && x.result.status === 'ok');
 
 	const typeKey = (node.data as any)?.typeKey;
+	const num = (node.data as any)?.num;
 	const inputs: Record<string, any> = {};
 
 	if (typeKey === 'imagegen' || typeKey === 'videogen') {
-		// First text source becomes the prompt.
-		const promptSrc = incoming.find(
+		// First text source becomes the prompt; warn if multiple were wired.
+		const textSrcs = incoming.filter(
 			(x) => x.result.output_kind === 'text' || (x.src.data as any)?.typeKey === 'prompt'
 		);
-		if (promptSrc) inputs.prompt = promptSrc.result.output_text ?? '';
+		if (textSrcs[0]) inputs.prompt = textSrcs[0].result.output_text ?? '';
+		if (textSrcs.length > 1) {
+			const ignored = textSrcs.slice(1).map((s) => `#${(s.src.data as any)?.num ?? s.id}`).join(', ');
+			onLog?.(`⚠ ${typeKey} #${num}: using prompt from #${(textSrcs[0].src.data as any)?.num ?? textSrcs[0].id}, ignoring ${ignored}`);
+		}
 		// First image source becomes the first-frame reference.
-		const imgSrc = incoming.find((x) => x.result.output_kind === 'image');
-		if (imgSrc) inputs.first_frame_url = imgSrc.result.output_url;
+		const imgSrcs = incoming.filter((x) => x.result.output_kind === 'image');
+		if (imgSrcs[0]) inputs.first_frame_url = imgSrcs[0].result.output_url;
+		if (imgSrcs.length > 1) {
+			const ignored = imgSrcs.slice(1).map((s) => `#${(s.src.data as any)?.num ?? s.id}`).join(', ');
+			onLog?.(`⚠ ${typeKey} #${num}: using first-frame from #${(imgSrcs[0].src.data as any)?.num ?? imgSrcs[0].id}, ignoring ${ignored}`);
+		}
 	} else if (typeKey === 'stitcher') {
 		inputs.clips = incoming
 			.filter((x) => x.result.output_kind === 'video')
@@ -170,7 +180,7 @@ export async function runCanvas(opts: ExecOptions): Promise<RunSummary> {
 		}
 		const typeKey = (node.data as any)?.typeKey as string;
 		const config = (node.data as any)?.config ?? {};
-		const inputs = gatherInputs(node, incomingByTarget[node.id] || [], results, nodesById);
+		const inputs = gatherInputs(node, incomingByTarget[node.id] || [], results, nodesById, onLog);
 
 		// Flip to running.
 		nodesStore.update((ns) =>

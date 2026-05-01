@@ -60,18 +60,14 @@
 	};
 
 	// When videogen resolution changes, also propagate the new cost up.
+	// Single dispatch so the parent peels off `_newCost` from config and
+	// persists in one Svelte tick — previous double-dispatch was a race
+	// waiting to fire when Svelte's reactivity batching changes (e.g.
+	// Svelte 5 migration). Parent (+page.svelte:147) destructures
+	// `_newCost` out of the config patch.
 	function onResolutionChange(newRes: string) {
 		if (!node) return;
 		const newCost = VIDEO_RES_COSTS[newRes] || 1500;
-		dispatch('update', {
-			id: node.id,
-			config: { ...config, resolution: newRes },
-			// hack: include cost in same patch via second event
-		} as any);
-		// Also flip cost — Inspector emits a second event so the parent can
-		// update node.data.cost without going through config.
-		// (Kept as a single update event with cost piggybacked; parent peels
-		// it off if present.)
 		dispatch('update', {
 			id: node.id,
 			config: { ...config, resolution: newRes, _newCost: newCost }
