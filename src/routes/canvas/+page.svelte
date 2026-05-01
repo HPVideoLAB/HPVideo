@@ -263,6 +263,21 @@
 	let runPromise: Promise<RunSummary> | null = null;
 	let lastRun: RunSummary | null = null;
 	let runLog: string[] = [];
+	let showRunLog = false;
+	let runLogBodyEl: HTMLDivElement;
+
+	function clearRunLog() {
+		runLog = [];
+	}
+
+	// Auto-scroll to bottom whenever new lines land. Runs after every
+	// runLog reactive update; cheap because lines only append.
+	$: if (runLogBodyEl && runLog.length) {
+		// next-tick scroll so the new line is laid out before we scroll
+		tick().then(() => {
+			if (runLogBodyEl) runLogBodyEl.scrollTop = runLogBodyEl.scrollHeight;
+		});
+	}
 
 	async function handleRunAll() {
 		// Already running: first click after Run All cancels the abort signal.
@@ -287,6 +302,7 @@
 		}
 		isRunning = true;
 		runLog = [];
+		showRunLog = true;
 		runAbort = new AbortController();
 		const localAbort = runAbort;
 		const promise = runCanvas({
@@ -342,6 +358,7 @@
 		if (isRunning) return;
 		isRunning = true;
 		runLog = [];
+		showRunLog = true;
 		runAbort = new AbortController();
 		const localAbort = runAbort;
 		const promise = runCanvas({
@@ -548,10 +565,51 @@
 		</div>
 	</div>
 
+	<!--
+		Run log drawer. Captures the same lines runner.ts emits via onLog
+		(▶ start, ✓ success, ✕ failure, ⚠ multi-input warning, ↻ resume-cached)
+		so the user can scroll back through the run after the toast disappears.
+		Auto-opens when a run starts, stays open after the run ends so the user
+		can read failures without racing the toast.
+	-->
+	{#if runLog.length > 0 && showRunLog}
+		<aside class="run-log">
+			<div class="run-log-head">
+				<span class="run-log-title">Run log</span>
+				<span class="run-log-count">{runLog.length}</span>
+				<span class="run-log-spacer"></span>
+				<button type="button" class="run-log-btn" on:click={clearRunLog} title="Clear log">
+					Clear
+				</button>
+				<button type="button" class="run-log-btn" on:click={() => (showRunLog = false)} title="Hide log">
+					Hide
+				</button>
+			</div>
+			<div class="run-log-body" bind:this={runLogBodyEl}>
+				{#each runLog as line, i}
+					<div class="run-log-line" class:line-fail={line.startsWith('✕')} class:line-ok={line.startsWith('✓')} class:line-run={line.startsWith('▶')} class:line-warn={line.startsWith('⚠')} class:line-cache={line.startsWith('↻')}>
+						<span class="run-log-idx">{(i + 1).toString().padStart(2, '0')}</span>
+						<span class="run-log-text">{line}</span>
+					</div>
+				{/each}
+			</div>
+		</aside>
+	{/if}
+
 	<footer class="bottombar">
 		<span class="muted">{$nodes.length} blocks · {$edges.length} wires</span>
 		<span class="muted spacer">·</span>
 		<span>Total cost: <strong>{totalCost.toLocaleString()}</strong> <span class="muted">cr</span></span>
+		{#if runLog.length > 0}
+			<button
+				type="button"
+				class="log-toggle"
+				on:click={() => (showRunLog = !showRunLog)}
+				title="{showRunLog ? 'Hide' : 'Show'} run log"
+			>
+				{showRunLog ? '▾' : '▸'} Log <span class="log-toggle-count">{runLog.length}</span>
+			</button>
+		{/if}
 		<span class="balance">
 			<span class="muted">Balance:</span>
 			<strong>—</strong>
@@ -787,6 +845,119 @@
 		margin-left: 4px;
 	}
 
+	.run-log {
+		flex-shrink: 0;
+		max-height: 200px;
+		display: flex;
+		flex-direction: column;
+		background: linear-gradient(180deg, rgba(13, 10, 28, 0.96) 0%, rgba(7, 6, 14, 0.96) 100%);
+		border-top: 1px solid rgba(255, 255, 255, 0.08);
+	}
+	.run-log-head {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 8px 14px;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+		font-size: 12px;
+	}
+	.run-log-title {
+		color: #e5e3f0;
+		font-weight: 600;
+		letter-spacing: 0.4px;
+		text-transform: uppercase;
+		font-size: 11px;
+	}
+	.run-log-count {
+		color: #a6a2bc;
+		font-variant-numeric: tabular-nums;
+		font-size: 11px;
+		padding: 1px 7px;
+		background: rgba(255, 255, 255, 0.06);
+		border-radius: 999px;
+	}
+	.run-log-spacer {
+		flex: 1;
+	}
+	.run-log-btn {
+		font-family: inherit;
+		font-size: 11px;
+		padding: 4px 10px;
+		border-radius: 5px;
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		background: transparent;
+		color: #a6a2bc;
+		cursor: pointer;
+	}
+	.run-log-btn:hover {
+		background: rgba(255, 255, 255, 0.06);
+		color: #fff;
+	}
+	.run-log-body {
+		overflow-y: auto;
+		padding: 6px 14px 8px;
+		font-family: ui-monospace, 'JetBrains Mono', SFMono-Regular, monospace;
+		font-size: 12px;
+		line-height: 1.5;
+	}
+	.run-log-line {
+		display: flex;
+		gap: 10px;
+		padding: 2px 0;
+		color: #b9b6cc;
+	}
+	.run-log-idx {
+		color: #4a466a;
+		font-variant-numeric: tabular-nums;
+		min-width: 20px;
+		flex-shrink: 0;
+	}
+	.run-log-text {
+		white-space: pre-wrap;
+		word-break: break-word;
+	}
+	.run-log-line.line-fail .run-log-text {
+		color: #fca5a5;
+	}
+	.run-log-line.line-ok .run-log-text {
+		color: #86efac;
+	}
+	.run-log-line.line-run .run-log-text {
+		color: #fcd34d;
+	}
+	.run-log-line.line-warn .run-log-text {
+		color: #fde68a;
+	}
+	.run-log-line.line-cache .run-log-text {
+		color: #93c5fd;
+	}
+	.log-toggle {
+		font-family: inherit;
+		font-size: 11px;
+		padding: 4px 10px;
+		border-radius: 5px;
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		background: transparent;
+		color: #c213f2;
+		cursor: pointer;
+		font-weight: 600;
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+	}
+	.log-toggle:hover {
+		background: rgba(194, 19, 242, 0.08);
+		border-color: rgba(194, 19, 242, 0.4);
+	}
+	.log-toggle-count {
+		font-size: 10px;
+		padding: 1px 6px;
+		border-radius: 999px;
+		background: rgba(194, 19, 242, 0.18);
+		color: #fff;
+		font-variant-numeric: tabular-nums;
+	}
+
 	/* Mobile interstitial — hidden on desktop, shown when viewport <1024px. */
 	.mobile-block {
 		display: none;
@@ -794,7 +965,8 @@
 	@media (max-width: 1023px) {
 		.banner,
 		.main,
-		.bottombar {
+		.bottombar,
+		.run-log {
 			display: none !important;
 		}
 		.mobile-block {
