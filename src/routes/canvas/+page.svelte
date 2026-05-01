@@ -252,7 +252,7 @@
 	}
 
 	function resetCanvas() {
-		if (!confirm('Reset canvas? This will remove all blocks and wires you have on screen now.')) return;
+		if (!confirm($i18n.t('Reset canvas? This will remove all blocks and wires you have on screen now.'))) return;
 		nodes.set(initialNodes);
 		edges.set(initialEdges);
 		selectedNodeId = null;
@@ -297,7 +297,7 @@
 			return;
 		}
 		if ($nodes.length === 0) {
-			toast.info('Drag some blocks onto the canvas first.');
+			toast.info($i18n.t('Drag some blocks onto the canvas first.'));
 			return;
 		}
 		isRunning = true;
@@ -318,15 +318,18 @@
 			const summary = await promise;
 			lastRun = summary;
 			if (summary.failedAt) {
-				toast.error(`Stopped at block ${summary.failedAt}.`);
+				toast.error($i18n.t('Stopped at block {{id}}.', { id: summary.failedAt }));
 			} else {
 				toast.success(
-					`Done in ${summary.totalElapsedS.toFixed(1)}s · ${summary.totalCostCr.toLocaleString()} cr (stub).`
+					$i18n.t('Done in {{seconds}}s · {{cost}} cr (stub).', {
+						seconds: summary.totalElapsedS.toFixed(1),
+						cost: summary.totalCostCr.toLocaleString()
+					})
 				);
 			}
 		} catch (e: any) {
 			if (e?.name !== 'AbortError') {
-				toast.error(e?.message || 'Run failed.');
+				toast.error(e?.message || $i18n.t('Run failed.'));
 			}
 		} finally {
 			isRunning = false;
@@ -375,14 +378,17 @@
 			const summary = await promise;
 			lastRun = summary;
 			if (summary.failedAt) {
-				toast.error(`Stopped at block ${summary.failedAt}.`);
+				toast.error($i18n.t('Stopped at block {{id}}.', { id: summary.failedAt }));
 			} else {
 				toast.success(
-					`Resumed in ${summary.totalElapsedS.toFixed(1)}s · +${summary.totalCostCr.toLocaleString()} cr (stub).`
+					$i18n.t('Resumed in {{seconds}}s · +{{cost}} cr (stub).', {
+						seconds: summary.totalElapsedS.toFixed(1),
+						cost: summary.totalCostCr.toLocaleString()
+					})
 				);
 			}
 		} catch (e: any) {
-			if (e?.name !== 'AbortError') toast.error(e?.message || 'Run failed.');
+			if (e?.name !== 'AbortError') toast.error(e?.message || $i18n.t('Run failed.'));
 		} finally {
 			isRunning = false;
 			runAbort = null;
@@ -426,12 +432,12 @@
 
 	async function handleCanvasAction(action: CanvasAction) {
 		if (isRunning) {
-			toast.info('Run is in progress — wait for it to finish or cancel first.');
+			toast.info($i18n.t('Run is in progress — wait for it to finish or cancel first.'));
 			return;
 		}
 		if (action.type === 'skip') {
 			skipNode(action.id);
-			toast.info(`Block #${action.id} marked skipped — running downstream…`);
+			toast.info($i18n.t('Block #{{id}} marked skipped — running downstream…', { id: action.id }));
 		} else {
 			invalidateNodeAndDescendants(action.id);
 		}
@@ -450,7 +456,7 @@
 		const tpl = TEMPLATES.find((t) => t.id === ev.detail.id);
 		if (!tpl) return;
 		const hasWork = $nodes.length > 0;
-		if (hasWork && !confirm(`Replace your current canvas with the "${tpl.name}" template?`)) return;
+		if (hasWork && !confirm($i18n.t('Replace your current canvas with the "{{name}}" template?', { name: tpl.name }))) return;
 		const built = tpl.build();
 		nodes.set(built.nodes);
 		edges.set(built.edges);
@@ -480,22 +486,22 @@
 	<header class="topbar">
 		<a class="brand" href="/creator">
 			<div class="brand-mark"></div>
-			<span class="brand-name">HPVideo Canvas</span>
+			<span class="brand-name">{$i18n.t('HPVideo Canvas')}</span>
 			<span class="badge-beta">BETA</span>
 		</a>
 		<div class="breadcrumb">
 			<span style="opacity:0.4;">/</span>
-			<span class="current">Untitled canvas</span>
-			<span class="saved" class:flash={savedFlash}>● Auto-saved (local)</span>
+			<span class="current">{$i18n.t('Untitled canvas')}</span>
+			<span class="saved" class:flash={savedFlash}>● {$i18n.t('Auto-saved (local)')}</span>
 		</div>
 		<div class="topbar-right">
-			<button class="btn" on:click={resetCanvas}>Reset</button>
+			<button class="btn" on:click={resetCanvas}>{$i18n.t('Reset')}</button>
 			<TemplatesMenu on:load={loadTemplate} />
 			<button class="btn primary" on:click={handleRunAll}>
 				{#if isRunning}
-					⏸ Cancel
+					⏸ {$i18n.t('Cancel')}
 				{:else}
-					▶ Run All · {totalCost.toLocaleString()} cr
+					▶ {$i18n.t('Run All')} · {totalCost.toLocaleString()} {$i18n.t('cr')}
 				{/if}
 			</button>
 		</div>
@@ -504,10 +510,10 @@
 	<div class="banner banner-demo">
 		<div class="icon">⚠</div>
 		<div class="text">
-			<strong>DEMO MODE — Canvas v0.3.</strong>
-			Run All works end-to-end, but every output is a placeholder (same demo image / same demo MP4).
-			Real per-model generation lands in v0.4 once <code>CANVAS_RUN_MODE=real</code> is flipped on the backend.
-			<a href="https://github.com/HPVideoLAB/HPVideoBNB/blob/main/docs/INFINITE_CANVAS_PRD.md" target="_blank">PRD</a>
+			<strong>{$i18n.t('DEMO MODE — Canvas v0.3.')}</strong>
+			{$i18n.t('Run All works end-to-end, but every output is a placeholder (same demo image / same demo MP4).')}
+			{@html $i18n.t('Real per-model generation lands in v0.4 once <code>CANVAS_RUN_MODE=real</code> is flipped on the backend.')}
+			<a href="https://github.com/HPVideoLAB/HPVideoBNB/blob/main/docs/INFINITE_CANVAS_PRD.md" target="_blank">{$i18n.t('PRD')}</a>
 		</div>
 	</div>
 
@@ -556,16 +562,14 @@
 	<div class="mobile-block">
 		<div class="mobile-block-card">
 			<div class="mobile-block-icon">🖥</div>
-			<h2>Canvas is desktop-only (for now)</h2>
+			<h2>{$i18n.t('Canvas is desktop-only (for now)')}</h2>
 			<p>
-				The infinite canvas needs a wider screen to fit the block palette,
-				editor and inspector. Open this page on a desktop or tablet
-				(1024px+) to start composing multi-shot videos.
+				{$i18n.t('The infinite canvas needs a wider screen to fit the block palette, editor and inspector. Open this page on a desktop or tablet (1024px+) to start composing multi-shot videos.')}
 			</p>
 			<p class="mobile-block-sub">
-				On mobile? Try our single-shot creator instead.
+				{$i18n.t('On mobile? Try our single-shot creator instead.')}
 			</p>
-			<a class="mobile-block-cta" href="/creator/" rel="noopener">Open Creator →</a>
+			<a class="mobile-block-cta" href="/creator/" rel="noopener">{$i18n.t('Open Creator →')}</a>
 		</div>
 	</div>
 
@@ -579,14 +583,14 @@
 	{#if runLog.length > 0 && showRunLog}
 		<aside class="run-log">
 			<div class="run-log-head">
-				<span class="run-log-title">Run log</span>
+				<span class="run-log-title">{$i18n.t('Run log')}</span>
 				<span class="run-log-count">{runLog.length}</span>
 				<span class="run-log-spacer"></span>
-				<button type="button" class="run-log-btn" on:click={clearRunLog} title="Clear log">
-					Clear
+				<button type="button" class="run-log-btn" on:click={clearRunLog} title={$i18n.t('Clear log')}>
+					{$i18n.t('Clear')}
 				</button>
-				<button type="button" class="run-log-btn" on:click={() => (showRunLog = false)} title="Hide log">
-					Hide
+				<button type="button" class="run-log-btn" on:click={() => (showRunLog = false)} title={$i18n.t('Hide log')}>
+					{$i18n.t('Hide')}
 				</button>
 			</div>
 			<div class="run-log-body" bind:this={runLogBodyEl}>
@@ -601,24 +605,24 @@
 	{/if}
 
 	<footer class="bottombar">
-		<span class="muted">{$nodes.length} blocks · {$edges.length} wires</span>
+		<span class="muted">{$i18n.t('{{nodes}} blocks · {{edges}} wires', { nodes: $nodes.length, edges: $edges.length })}</span>
 		<span class="muted spacer">·</span>
-		<span>Total cost: <strong>{totalCost.toLocaleString()}</strong> <span class="muted">cr</span></span>
+		<span>{$i18n.t('Total cost:')} <strong>{totalCost.toLocaleString()}</strong> <span class="muted">{$i18n.t('cr')}</span></span>
 		{#if runLog.length > 0}
 			<button
 				type="button"
 				class="log-toggle"
 				on:click={() => (showRunLog = !showRunLog)}
-				title="{showRunLog ? 'Hide' : 'Show'} run log"
+				title={showRunLog ? $i18n.t('Hide log') : $i18n.t('Show log')}
 			>
-				{showRunLog ? '▾' : '▸'} Log <span class="log-toggle-count">{runLog.length}</span>
+				{showRunLog ? '▾' : '▸'} {$i18n.t('Log')} <span class="log-toggle-count">{runLog.length}</span>
 			</button>
 		{/if}
 		<span class="balance">
-			<span class="muted">Balance:</span>
+			<span class="muted">{$i18n.t('Balance:')}</span>
 			<strong>—</strong>
-			<span class="muted">cr</span>
-			<span class="hint">(connect wallet to enable Run)</span>
+			<span class="muted">{$i18n.t('cr')}</span>
+			<span class="hint">{$i18n.t('(connect wallet to enable Run)')}</span>
 		</span>
 	</footer>
 </div>
