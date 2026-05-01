@@ -129,10 +129,16 @@ export type ExecOptions = {
 	edges: Writable<Edge[]>;
 	onLog?: (msg: string) => void;
 	signal?: AbortSignal;
+	// 'all' (default): every node is re-run, prior 'ok' results discarded.
+	// 'resume': nodes whose state is already 'ok' AND have a stored
+	// `data.result` are skipped and their result is fed to descendants.
+	// Used by Retry/Skip flows so users don't pay to re-run successful
+	// upstream blocks just to take another swing at one failed block.
+	mode?: 'all' | 'resume';
 };
 
 export async function runCanvas(opts: ExecOptions): Promise<RunSummary> {
-	const { nodes: nodesStore, edges: edgesStore, onLog, signal } = opts;
+	const { nodes: nodesStore, edges: edgesStore, onLog, signal, mode = 'all' } = opts;
 
 	let allNodes: Node[] = [];
 	let allEdges: Edge[] = [];
@@ -157,16 +163,44 @@ export async function runCanvas(opts: ExecOptions): Promise<RunSummary> {
 		if (incomingByTarget[e.target]) incomingByTarget[e.target].push(e.source);
 	}
 
-	// Mark all blocks queued up front so the user sees them queued
-	// immediately (state "ready" → "queued" on Run All click).
+	// Queue up the runnable set:
+	//   - mode='all': everything goes to 'queued' (existing behavior)
+	//   - mode='resume': only nodes that aren't already 'ok' (and have a
+	//     stored result) go to queued. The 'ok' ones stay as-is so the
+	//     user keeps seeing the prior successful preview while we re-run
+	//     the failed/unattempted ones.
 	nodesStore.update((ns) =>
-		ns.map((n) => ({
-			...n,
-			data: { ...n.data, state: 'queued' as BlockState }
-		}))
+		ns.map((n) => {
+			const prevState = (n.data as any)?.state;
+			const prevResult = (n.data as any)?.result;
+			if (mode === 'resume' && prevState === 'ok' && prevResult) {
+				return n;
+			}
+			return { ...n, data: { ...n.data, state: 'queued' as BlockState } };
+		})
 	);
 
 	const results: Record<string, BlockResult> = {};
+	// Seed `results` from already-ok nodes so resume-mode descendants can
+	// thread upstream output into their own inputs without re-fetching.
+	if (mode === 'resume') {
+		for (const n of allNodes) {
+			const prevState = (n.data as any)?.state;
+			const prevResult = (n.data as any)?.result;
+			if (prevState === 'ok' && prevResult) {
+				results[n.id] = {
+					block_id: n.id,
+					status: 'ok',
+					output_kind: prevResult.output_kind,
+					output_url: prevResult.output_url,
+					output_text: prevResult.output_text,
+					cost_cr: 0,
+					elapsed_s: 0,
+					mode: 'resume-cached'
+				};
+			}
+		}
+	}
 	const t0 = performance.now();
 	let totalCost = 0;
 	let failedAt: string | undefined;
@@ -177,6 +211,14 @@ export async function runCanvas(opts: ExecOptions): Promise<RunSummary> {
 		if (signal?.aborted) {
 			onLog?.('Run aborted');
 			break;
+		}
+		// Resume-mode skip: this node's prior result is already in `results`
+		// from the seed step above, and the node's state pill is left at
+		// 'ok'. Nothing to fetch, nothing to flip — descendants will pick
+		// up the cached output via gatherInputs.
+		if (mode === 'resume' && results[node.id]?.status === 'ok' && results[node.id]?.mode === 'resume-cached') {
+			onLog?.(`↻ ${(node.data as any)?.typeKey} #${(node.data as any)?.num}: skipped (cached)`);
+			continue;
 		}
 		const typeKey = (node.data as any)?.typeKey as string;
 		const config = (node.data as any)?.config ?? {};

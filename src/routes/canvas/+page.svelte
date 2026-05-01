@@ -25,6 +25,7 @@
 	import { BLOCK_TYPE_BY_KEY, makeNodeData, type TypeKey } from '$lib/components/canvas/blockTypes';
 	import { TEMPLATES } from '$lib/components/canvas/templates';
 	import { runCanvas, type RunSummary } from '$lib/components/canvas/runner';
+	import { pendingAction, type CanvasAction } from '$lib/components/canvas/canvasActions';
 	import { toast } from 'svelte-sonner';
 	import { WEBUI_NAME, initPageFlag } from '$lib/stores';
 
@@ -316,6 +317,116 @@
 			runAbort = null;
 			runPromise = null;
 		}
+	}
+
+	// Find every node downstream of `nodeId` (transitively). Used by Retry/
+	// Skip/Re-run to invalidate descendants whose cached output is no longer
+	// valid the moment we re-run an upstream block.
+	function descendantsOf(nodeId: string): Set<string> {
+		const out = new Set<string>();
+		const queue = [nodeId];
+		const edgeList = $edges;
+		while (queue.length) {
+			const cur = queue.shift()!;
+			for (const e of edgeList) {
+				if (e.source === cur && !out.has(e.target)) {
+					out.add(e.target);
+					queue.push(e.target);
+				}
+			}
+		}
+		return out;
+	}
+
+	async function runResume() {
+		if (isRunning) return;
+		isRunning = true;
+		runLog = [];
+		runAbort = new AbortController();
+		const localAbort = runAbort;
+		const promise = runCanvas({
+			nodes,
+			edges,
+			signal: localAbort.signal,
+			mode: 'resume',
+			onLog: (line) => {
+				runLog = [...runLog, line];
+			}
+		});
+		runPromise = promise;
+		try {
+			const summary = await promise;
+			lastRun = summary;
+			if (summary.failedAt) {
+				toast.error(`Stopped at block ${summary.failedAt}.`);
+			} else {
+				toast.success(
+					`Resumed in ${summary.totalElapsedS.toFixed(1)}s · +${summary.totalCostCr.toLocaleString()} cr (stub).`
+				);
+			}
+		} catch (e: any) {
+			if (e?.name !== 'AbortError') toast.error(e?.message || 'Run failed.');
+		} finally {
+			isRunning = false;
+			runAbort = null;
+			runPromise = null;
+		}
+	}
+
+	// Invalidate one node and everything downstream of it. Sets each to
+	// 'ready' and clears `data.result` so resume mode re-runs them.
+	function invalidateNodeAndDescendants(nodeId: string) {
+		const toClear = descendantsOf(nodeId);
+		toClear.add(nodeId);
+		nodes.update((ns) =>
+			ns.map((n) => {
+				if (!toClear.has(n.id)) return n;
+				const { result: _result, ...rest } = (n.data as any) || {};
+				return { ...n, data: { ...rest, state: 'ready' } };
+			})
+		);
+	}
+
+	// "Skip" the failed block: pretend it succeeded with no output. Downstream
+	// blocks' gatherInputs sees no result for this source and proceeds with
+	// whatever other inputs it has. The descendants are reset to 'ready' so
+	// resume picks them up.
+	function skipNode(nodeId: string) {
+		const desc = descendantsOf(nodeId);
+		nodes.update((ns) =>
+			ns.map((n) => {
+				if (n.id === nodeId) {
+					return { ...n, data: { ...n.data, state: 'ok', result: undefined } };
+				}
+				if (desc.has(n.id)) {
+					const { result: _r, ...rest } = (n.data as any) || {};
+					return { ...n, data: { ...rest, state: 'ready' } };
+				}
+				return n;
+			})
+		);
+	}
+
+	async function handleCanvasAction(action: CanvasAction) {
+		if (isRunning) {
+			toast.info('Run is in progress — wait for it to finish or cancel first.');
+			return;
+		}
+		if (action.type === 'skip') {
+			skipNode(action.id);
+			toast.info(`Block #${action.id} marked skipped — running downstream…`);
+		} else {
+			invalidateNodeAndDescendants(action.id);
+		}
+		await runResume();
+	}
+
+	$: if ($pendingAction) {
+		const a = $pendingAction;
+		pendingAction.set(null);
+		// Schedule on next tick so the store-set above lands before we
+		// kick off another store update inside handleCanvasAction.
+		tick().then(() => handleCanvasAction(a));
 	}
 
 	function loadTemplate(ev: CustomEvent<{ id: string }>) {

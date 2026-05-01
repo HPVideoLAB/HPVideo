@@ -9,6 +9,7 @@
 -->
 <script lang="ts">
 	import { Handle, Position, type NodeProps } from '@xyflow/svelte';
+	import { pendingAction } from './canvasActions';
 
 	type Props = NodeProps<{
 		title: string;
@@ -31,7 +32,20 @@
 	}>;
 
 	export let data: Props['data'];
+	export let id: string;
 	export let selected: Props['selected'] = false;
+
+	// Action buttons render only for ok / failed states; running/queued
+	// hides them. Page guards against multi-action via its `isRunning` lock.
+	function onRetry() {
+		pendingAction.set({ type: 'retry', id });
+	}
+	function onSkip() {
+		pendingAction.set({ type: 'skip', id });
+	}
+	function onRerun() {
+		pendingAction.set({ type: 'rerun', id });
+	}
 
 	const TYPE_COLORS: Record<string, string> = {
 		imageref: '#4ec3d9',
@@ -104,6 +118,38 @@
 			{data.cost === 0 ? 'free' : data.cost.toLocaleString() + ' cr'}
 		</span>
 	</div>
+
+	{#if data.state === 'failed'}
+		<div class="actions">
+			<button
+				type="button"
+				class="action retry"
+				on:click|stopPropagation={onRetry}
+				title="Re-run this block and any downstream blocks"
+			>
+				↻ Retry
+			</button>
+			<button
+				type="button"
+				class="action skip"
+				on:click|stopPropagation={onSkip}
+				title="Mark as skipped and continue downstream without this block's output"
+			>
+				→ Skip
+			</button>
+		</div>
+	{:else if data.state === 'ok'}
+		<div class="actions">
+			<button
+				type="button"
+				class="action rerun"
+				on:click|stopPropagation={onRerun}
+				title="Re-run this block and any downstream blocks"
+			>
+				↻ Re-run
+			</button>
+		</div>
+	{/if}
 
 	{#if data.hasIn !== false}
 		<Handle type="target" position={Position.Left} />
@@ -292,6 +338,54 @@
 	.cost.free {
 		color: #6b6884;
 		font-weight: 500;
+	}
+	.actions {
+		display: flex;
+		gap: 6px;
+		padding: 0 10px 10px;
+	}
+	.action {
+		flex: 1;
+		font-family: inherit;
+		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.3px;
+		padding: 6px 8px;
+		border-radius: 6px;
+		border: 1px solid rgba(255, 255, 255, 0.12);
+		background: rgba(255, 255, 255, 0.04);
+		color: #e5e3f0;
+		cursor: pointer;
+		transition: background 0.15s ease, border-color 0.15s ease;
+	}
+	.action:hover:not(:disabled) {
+		background: rgba(255, 255, 255, 0.08);
+		border-color: rgba(255, 255, 255, 0.2);
+	}
+	.action:disabled {
+		opacity: 0.45;
+		cursor: not-allowed;
+	}
+	.action.retry {
+		color: #fca5a5;
+		border-color: rgba(239, 68, 68, 0.3);
+	}
+	.action.retry:hover:not(:disabled) {
+		background: rgba(239, 68, 68, 0.12);
+		border-color: rgba(239, 68, 68, 0.45);
+	}
+	.action.skip {
+		color: #fde68a;
+		border-color: rgba(245, 158, 11, 0.3);
+	}
+	.action.skip:hover:not(:disabled) {
+		background: rgba(245, 158, 11, 0.12);
+		border-color: rgba(245, 158, 11, 0.45);
+	}
+	.action.rerun {
+		color: #a6a2bc;
+		font-size: 10px;
+		padding: 4px 8px;
 	}
 	/* Override xyflow handle styling to match brand */
 	:global(.svelte-flow__handle) {
