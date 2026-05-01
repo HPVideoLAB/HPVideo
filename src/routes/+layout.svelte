@@ -169,13 +169,25 @@
   });
 
   // connect wallet function
+  //
+  // Only wipe the token / wagmi connector if THIS device's last sign-in
+  // was a wagmi-wallet sign-in. Google / email / visitor / printSignIn
+  // sessions don't have a wagmi account by design, so the previous
+  // unconditional removeItem('token') was 401-ing every non-wallet user
+  // on every page load (Canvas Run All was the loud canary). The
+  // auth_provider key is set alongside the token at sign-in time —
+  // see WalletConnect.svelte (wallet / visitor) and PointsWalletModal.svelte (google).
   const checkWallectConnect = async () => {
     let account = getAccount(wconfig);
     if (account?.address) {
       await threesideAccount.set(account);
-    } else {
+      return;
+    }
+    const provider = localStorage.getItem('auth_provider');
+    if (provider === 'wallet') {
       clearConnector();
       localStorage.removeItem('token');
+      localStorage.removeItem('auth_provider');
       disconnect(wconfig);
     }
   };

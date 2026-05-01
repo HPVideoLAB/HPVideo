@@ -354,12 +354,12 @@
 		</div>
 	</header>
 
-	<div class="banner">
-		<div class="icon">🚧</div>
+	<div class="banner banner-demo">
+		<div class="icon">⚠</div>
 		<div class="text">
-			<strong>Canvas v0.2 — preview build.</strong>
-			Drag blocks from the left palette, edit settings on the right, your work auto-saves.
-			<strong>Run All</strong> + 3 starter templates + backend execution land in v0.3.
+			<strong>DEMO MODE — Canvas v0.3.</strong>
+			Run All works end-to-end, but every output is a placeholder (same demo image / same demo MP4).
+			Real per-model generation lands in v0.4 once <code>CANVAS_RUN_MODE=real</code> is flipped on the backend.
 			<a href="https://github.com/HPVideoLAB/HPVideoBNB/blob/main/docs/INFINITE_CANVAS_PRD.md" target="_blank">PRD</a>
 		</div>
 	</div>
@@ -538,10 +538,23 @@
 		color: #fcd34d;
 		flex-shrink: 0;
 	}
+	.banner.banner-demo {
+		background: linear-gradient(90deg, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0.06));
+		border-bottom: 1px solid rgba(239, 68, 68, 0.35);
+		color: #fca5a5;
+	}
 	.banner .icon {
 		font-size: 14px;
 	}
 	.banner strong {
+		color: #fff;
+	}
+	.banner code {
+		font-family: ui-monospace, monospace;
+		font-size: 11px;
+		padding: 1px 5px;
+		background: rgba(255, 255, 255, 0.1);
+		border-radius: 3px;
 		color: #fff;
 	}
 	.banner a {

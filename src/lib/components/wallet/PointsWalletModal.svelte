@@ -197,6 +197,7 @@
 
       if (data.token) {
         localStorage.setItem('token', data.token);
+        localStorage.setItem('auth_provider', 'google');
         if (data.user) user.set(data.user);
       }
 

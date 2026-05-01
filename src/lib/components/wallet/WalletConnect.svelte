@@ -199,6 +199,7 @@
     if (walletSignInResult?.token) {
       localStorage.removeItem('token');
       localStorage.token = walletSignInResult.token;
+      localStorage.setItem('auth_provider', 'wallet');
       user.set(walletSignInResult);
 
       // 加上这几行
@@ -215,6 +216,7 @@
     localStorage.removeItem('walletKey');
     const res = await printSignIn('');
     localStorage.token = res.token;
+    localStorage.setItem('auth_provider', 'visitor');
     user.set(res);
   }
 </script>

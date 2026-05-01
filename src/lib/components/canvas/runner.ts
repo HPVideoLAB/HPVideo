@@ -209,7 +209,19 @@ export async function runCanvas(opts: ExecOptions): Promise<RunSummary> {
 			nodesStore.update((ns) =>
 				ns.map((n) =>
 					n.id === node.id
-						? { ...n, data: { ...n.data, state: newState } }
+						? {
+							...n,
+							data: {
+								...n.data,
+								state: newState,
+								result: {
+									output_kind: data.output_kind,
+									output_url: data.output_url,
+									output_text: data.output_text,
+									error: data.error
+								}
+							}
+						}
 						: n
 				)
 			);
@@ -232,7 +244,14 @@ export async function runCanvas(opts: ExecOptions): Promise<RunSummary> {
 			nodesStore.update((ns) =>
 				ns.map((n) =>
 					n.id === node.id
-						? { ...n, data: { ...n.data, state: 'failed' as BlockState } }
+						? {
+							...n,
+							data: {
+								...n.data,
+								state: 'failed' as BlockState,
+								result: { error: err?.message || 'request error' }
+							}
+						}
 						: n
 				)
 			);

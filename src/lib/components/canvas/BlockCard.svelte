@@ -19,6 +19,15 @@
 		cost: number; // in credits, 0 for free
 		hasIn?: boolean;
 		hasOut?: boolean;
+		// Populated by runner.ts after a successful Run All. Shown as a
+		// preview thumbnail when state==='ok' so the user can see what
+		// each block produced without opening Inspector.
+		result?: {
+			output_kind?: 'image' | 'video' | 'audio' | 'text';
+			output_url?: string;
+			output_text?: string;
+			error?: string;
+		};
 	}>;
 
 	export let data: Props['data'];
@@ -53,6 +62,37 @@
 
 	<div class="body">
 		<slot />
+		{#if data.state === 'ok' && data.result}
+			{#if data.result.output_kind === 'image' && data.result.output_url}
+				<a
+					class="preview"
+					href={data.result.output_url}
+					target="_blank"
+					rel="noopener"
+					title="Open full image"
+				>
+					<img src={data.result.output_url} alt="preview" loading="lazy" />
+				</a>
+			{:else if data.result.output_kind === 'video' && data.result.output_url}
+				<!-- svelte-ignore a11y-media-has-caption -->
+				<video
+					class="preview"
+					src={data.result.output_url}
+					controls
+					muted
+					playsinline
+					preload="metadata"
+				></video>
+			{:else if data.result.output_kind === 'text' && data.result.output_text}
+				<div class="preview-text" title={data.result.output_text}>
+					{data.result.output_text}
+				</div>
+			{/if}
+		{:else if data.state === 'failed' && data.result?.error}
+			<div class="preview-error" title={data.result.error}>
+				{data.result.error}
+			</div>
+		{/if}
 	</div>
 
 	<div class="footer">
@@ -137,6 +177,55 @@
 	.body {
 		padding: 4px 14px 12px;
 		font-size: 12px;
+	}
+	.preview {
+		display: block;
+		margin-top: 8px;
+		width: 100%;
+		max-height: 140px;
+		border-radius: 6px;
+		overflow: hidden;
+		background: #0a0014;
+		border: 1px solid rgba(255, 255, 255, 0.08);
+	}
+	.preview img,
+	.preview video {
+		display: block;
+		width: 100%;
+		max-height: 140px;
+		object-fit: cover;
+	}
+	.preview-text {
+		margin-top: 8px;
+		padding: 8px 10px;
+		border-radius: 6px;
+		background: rgba(229, 181, 60, 0.08);
+		border: 1px solid rgba(229, 181, 60, 0.2);
+		font-size: 11px;
+		color: #fde68a;
+		max-height: 60px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		display: -webkit-box;
+		-webkit-line-clamp: 3;
+		-webkit-box-orient: vertical;
+		line-height: 1.4;
+	}
+	.preview-error {
+		margin-top: 8px;
+		padding: 8px 10px;
+		border-radius: 6px;
+		background: rgba(239, 68, 68, 0.1);
+		border: 1px solid rgba(239, 68, 68, 0.3);
+		font-size: 11px;
+		color: #fca5a5;
+		max-height: 60px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		display: -webkit-box;
+		-webkit-line-clamp: 3;
+		-webkit-box-orient: vertical;
+		line-height: 1.4;
 	}
 	.footer {
 		border-top: 1px solid rgba(255, 255, 255, 0.06);
