@@ -511,7 +511,7 @@
 		</div>
 	</div>
 
-	<div class="main">
+	<div class="main" class:running={isRunning}>
 		<Palette />
 		<main class="canvas-host" bind:this={svelteFlowRef} on:dragover={onDragOver} on:drop={onDrop}>
 			<SvelteFlow
@@ -523,6 +523,10 @@
 				maxZoom={2}
 				defaultEdgeOptions={{ style: 'stroke: #c213f2; stroke-width: 2;', animated: false }}
 				proOptions={{ hideAttribution: true }}
+				nodesDraggable={!isRunning}
+				nodesConnectable={!isRunning}
+				edgesUpdatable={!isRunning}
+				elementsSelectable={true}
 				on:nodeclick={onNodeClick}
 				on:paneclick={onPaneClick}
 			>
@@ -776,6 +780,32 @@
 		display: flex;
 		min-height: 0;
 		overflow: hidden;
+	}
+	/*
+		Lock canvas chrome while a run is in flight. The audit's [C3] finding
+		was that runner.ts snapshots the topology at run start; if the user
+		drags / deletes / connects mid-run, the executor's view of the graph
+		diverges from what's on screen and state flips can clobber user edits.
+		Cheapest defensive fix: dim + disable Palette and Inspector and turn
+		off node drag / edge drawing in xyflow. Run All button stays clickable
+		so users can still cancel.
+	*/
+	.main.running :global(.palette),
+	.main.running :global(.inspector) {
+		pointer-events: none;
+		opacity: 0.55;
+		filter: saturate(0.7);
+		transition: opacity 0.2s ease;
+	}
+	.main.running .canvas-host {
+		cursor: progress;
+	}
+	.main.running .canvas-host::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: rgba(7, 6, 14, 0.04);
+		pointer-events: none;
 	}
 	.canvas-host {
 		flex: 1;
