@@ -147,12 +147,23 @@
 								<strong>Dialogue</strong>: don't use quotes. Write
 								<i>“speaks clearly in Korean with accurate lip-sync: 안녕하세요…”</i>
 							</p>
+							<p class="tip-warn">
+								<strong>⚠ Talking heads: prefer single 8–12s takes over chained shots.</strong>
+								Frame-by-frame inspection of i2v chains showed character identity drifts
+								between cuts (face/hair changes) — the model preserves motion, not face DNA.
+								HappyHorse natively supports up to 15s in one shot. The 🎙 Talking Head
+								template uses a single 8s take.
+							</p>
+							<p class="tip-warn">
+								<strong>⚠ Don't put small/dense text on screens or signs.</strong> The model
+								scrambles letterforms over multi-second clips (e.g. "Cinematic AI on BNB
+								Chain" tagline degraded into "C... AI... B Chain" by 4s). Use one large
+								wordmark only — large logos like a giant 'HPVideo' stay readable.
+							</p>
 							<p>
-								<strong>Multi-shot consistency</strong>: wire one videogen → next videogen
-								to chain the last frame as the first frame of the next shot (i2v under the
-								hood, same price). The 🎙 Talking Head template uses this pattern. Re-state
-								the character description in each shot's prompt anyway as a
-								belt-and-suspenders.
+								When you do need multi-shot, chain via videogen → next videogen edge (same
+								price as t2v, last-frame i2v under the hood) and re-state the character
+								description in each prompt — but expect some identity drift.
 							</p>
 							<p class="tip-footnote">
 								Native lip-sync in 7 langs: en / zh / yue / ja / ko / de / fr · 14.6% WER ·
@@ -511,5 +522,15 @@ accurate lip-sync: 안녕하세요...</pre>
 		border-top: 1px solid rgba(255, 255, 255, 0.06);
 		padding-top: 8px;
 		margin-top: 10px !important;
+	}
+	.tip-warn {
+		background: rgba(245, 158, 11, 0.08);
+		border-left: 2px solid rgba(245, 158, 11, 0.45);
+		padding: 8px 10px;
+		border-radius: 4px;
+		color: #fde68a;
+	}
+	.tip-warn strong {
+		color: #fef3c7;
 	}
 </style>

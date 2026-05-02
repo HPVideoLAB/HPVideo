@@ -73,48 +73,46 @@ function edge(id: string, source: string, target: string): Edge {
 
 export const TEMPLATES: CanvasTemplate[] = [
 	{
-		id: 'tpl-talking-head-10s',
-		name: '🎙 Talking Head 10s (Korean)',
+		id: 'tpl-talking-head-8s',
+		name: '🎙 Talking Head 8s (Korean)',
 		description:
-			'2 HappyHorse 1.0 shots, chained for character continuity. Native Korean dialogue + lip-sync, branded backgrounds. Shot 2 i2v from shot 1 last frame.',
+			'Single 8-second HappyHorse 1.0 take. No cuts = no character drift. Native Korean dialogue + lip-sync, large brand logo. Battle-tested with frame-by-frame inspection.',
 		icon: '🎙',
-		estimatedCostCr: 1_500,
+		estimatedCostCr: 1_200,
 		tag: 'popular',
 		build: () => {
-			const sharedCharacter =
-				'A 27-year-old Korean female presenter with shoulder-length straight black hair, light makeup, friendly warm smile, wearing a clean tailored navy blazer over a white blouse, looking directly at camera';
 			const nodes: Node[] = [
-				block('prompt-1', 0, 80, 'prompt', 1, {
+				block('prompt-1', 0, 200, 'prompt', 1, {
 					text:
-						`Cinematic medium shot, shallow depth of field. ${sharedCharacter}. ` +
-						'Background: a sleek modern AI studio with a massive glowing purple LED video wall behind her ' +
-						"clearly displaying 'HPVideo' wordmark and 'Cinematic AI Video on BNB Chain' tagline. " +
-						'She speaks clearly in Korean with accurate lip-sync: ' +
-						'안녕하세요! HPVideo입니다. 11개의 최첨단 AI 비디오 모델로 시네마급 영상을 만들 수 있어요. ' +
-						'Camera: slow dolly in. Audio: her natural Korean voice in foreground, faint studio room tone, no music. ' +
-						'Polished broadcast quality.'
+						// Subject
+						'Cinematic medium shot, shallow depth of field. ' +
+						'A 27-year-old Korean female presenter with shoulder-length straight black hair, ' +
+						'light makeup, friendly warm smile, wearing a clean tailored navy blazer over a ' +
+						'white blouse, looking directly at camera. ' +
+						// Environment — LARGE wordmark only (small text degrades over multi-second takes)
+						"Background: a sleek modern AI studio with a massive bold purple 'HPVideo' wordmark " +
+						'glowing on a soft purple-to-warm-gradient backdrop behind her. ' +
+						// Action — one continuous monologue, no cuts
+						'She speaks confidently and warmly to camera in Korean with accurate lip-sync ' +
+						'throughout the entire shot, in one continuous take, no cuts: ' +
+						'안녕하세요! HPVideo입니다. 11개의 AI 모델로 시네마급 영상을 만들 수 있어요. ' +
+						'클립당 0.45달러부터, 지금 바로 시작하세요! ' +
+						// Camera — one motion, smooth
+						'Camera: very slow gentle dolly in over the full 8 seconds, smooth and steady. ' +
+						// Audio
+						'Audio: her natural Korean voice in foreground, faint studio room tone in background, ' +
+						'no music. Lip-sync accurate throughout. ' +
+						// Style
+						'Polished broadcast quality. Soft film grain. Cinematic broadcast key light.'
 				}),
-				block('prompt-2', 0, 320, 'prompt', 2, {
-					text:
-						'The same Korean female presenter from the previous frame continues speaking confidently to camera ' +
-						'with accurate lip-sync, smiling warmly. She speaks clearly in Korean: ' +
-						'지갑만 연결하면 클립당 0.45달러부터. 이메일도 구독도 없어요. 지금 바로 시작하세요! ' +
-						'The shot transitions: the studio LED wall behind her dims and softly transitions into a warm ' +
-						"golden-hour bokeh, while a small minimalist purple 'HPVideo' wordmark sign and 'Start Now →' " +
-						'button graphic gently appear on the wall behind her. Camera: gentle slow push-in. ' +
-						'Audio: her natural Korean voice in foreground, slight room tone, no music. Lip-sync accurate.'
-				}),
-				block('videogen-1', 320, 80, 'videogen', 1, { model: 'happyhorse-1.0' }),
-				// videogen-2 chains from videogen-1 → backend extracts last frame, routes to i2v.
-				block('videogen-2', 640, 200, 'videogen', 2, { model: 'happyhorse-1.0' }),
-				block('stitcher-1', 960, 200, 'stitcher', 1, { transitions: 'crossfade' })
+				block('videogen-1', 320, 200, 'videogen', 1, {
+					model: 'happyhorse-1.0',
+					duration: 8,
+					resolution: '720p'
+				})
 			];
 			const edges: Edge[] = [
-				edge('e1', 'prompt-1', 'videogen-1'),
-				edge('e2', 'prompt-2', 'videogen-2'),
-				edge('e3', 'videogen-1', 'videogen-2'), // chain: shot 1 → shot 2 (last frame becomes first frame)
-				edge('e4', 'videogen-1', 'stitcher-1'),
-				edge('e5', 'videogen-2', 'stitcher-1')
+				edge('e1', 'prompt-1', 'videogen-1')
 			];
 			return { nodes, edges };
 		}
