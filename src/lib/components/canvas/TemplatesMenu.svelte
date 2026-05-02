@@ -4,9 +4,10 @@
   the page applies it (replacing the current canvas, after confirm).
 -->
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, getContext } from 'svelte';
 	import { TEMPLATES } from './templates';
 
+	const i18n: any = getContext('i18n');
 	const dispatch = createEventDispatcher<{ load: { id: string } }>();
 
 	let open = false;
@@ -27,32 +28,27 @@
 
 <div class="wrap">
 	<button class="trigger" on:click|stopPropagation={toggle}>
-		<span>Templates</span>
+		<span>{$i18n.t('Templates')}</span>
 		<span class="chev" class:open>▾</span>
 	</button>
 
 	{#if open}
 		<div class="menu" on:click|stopPropagation>
-			<div class="head">Start from a template</div>
+			<div class="head">{$i18n.t('Start from a template')}</div>
 			{#each TEMPLATES as t (t.id)}
 				<button class="item" on:click={() => pick(t.id)}>
 					<div class="icon">{t.icon}</div>
 					<div class="meta">
 						<div class="name">
-							{t.name}
-							{#if t.tag === 'popular'}<span class="tag tag-popular">⚡ Popular</span>{/if}
-							{#if t.tag === 'beginner'}<span class="tag tag-beginner">Beginner</span>{/if}
+							{$i18n.t(t.name)}
+							{#if t.tag === 'popular'}<span class="tag tag-popular">⚡ {$i18n.t('Popular')}</span>{/if}
+							{#if t.tag === 'beginner'}<span class="tag tag-beginner">{$i18n.t('Beginner')}</span>{/if}
 						</div>
-						<div class="desc">{t.description}</div>
-						<div class="cost">~{t.estimatedCostCr.toLocaleString()} cr</div>
+						<div class="desc">{$i18n.t(t.description)}</div>
+						<div class="cost">~{t.estimatedCostCr.toLocaleString()} {$i18n.t('cr')}</div>
 					</div>
 				</button>
 			{/each}
-			<div class="foot">
-				<a href="https://hpvideo.io/canvas-mockup-v2-templates.html" target="_blank">
-					Browse all templates →
-				</a>
-			</div>
 		</div>
 	{/if}
 </div>

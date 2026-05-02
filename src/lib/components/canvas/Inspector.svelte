@@ -97,14 +97,14 @@
 	{#if !node}
 		<div class="empty">
 			<div class="empty-icon">→</div>
-			<div class="empty-title">Click a block to edit</div>
-			<div class="empty-desc">Or drag a new one in from the palette on the left.</div>
+			<div class="empty-title">{$i18n.t('Click a block to edit')}</div>
+			<div class="empty-desc">{$i18n.t('Or drag a new one in from the palette on the left.')}</div>
 		</div>
 	{:else if typeDef}
 		<div class="head">
 			<div class="strip" style="background:{typeDef.color}"></div>
 			<div class="title">
-				{typeDef.name}
+				{$i18n.t(typeDef.name)}
 				<span class="num">#{node.data.num}</span>
 			</div>
 		</div>
@@ -112,7 +112,7 @@
 		<div class="body">
 			{#if typeKey === 'imagegen'}
 				<div class="field-group">
-					<label>Model — current cost: {blockCostCr('imagegen', config).toLocaleString()} cr</label>
+					<label>{$i18n.t('Model')} — {$i18n.t('current cost')}: {blockCostCr('imagegen', config).toLocaleString()} {$i18n.t('cr')}</label>
 					<select
 						value={config.model ?? 'gpt-image-2'}
 						on:change={(e) => onImagegenChange({ model: valueOf(e) })}
@@ -124,7 +124,7 @@
 					</select>
 				</div>
 				<div class="field-group">
-					<label>Aspect</label>
+					<label>{$i18n.t('Aspect')}</label>
 					<select
 						value={config.aspect ?? '16:9'}
 						on:change={(e) => onImagegenChange({ aspect: valueOf(e) })}
@@ -137,19 +137,19 @@
 					</select>
 				</div>
 				<div class="field-group">
-					<label>Resolution</label>
+					<label>{$i18n.t('Resolution')}</label>
 					<select
 						value={config.resolution ?? '1k'}
 						on:change={(e) => onImagegenChange({ resolution: valueOf(e) })}
 					>
-						<option value="1k">1K (default)</option>
+						<option value="1k">{$i18n.t('1K (default)')}</option>
 						<option value="2k">2K</option>
 						<option value="4k">4K</option>
 					</select>
 				</div>
 			{:else if typeKey === 'videogen'}
 				<div class="field-group">
-					<label>Model</label>
+					<label>{$i18n.t('Model')}</label>
 					<select
 						value={config.model ?? 'happyhorse-1.0'}
 						on:change={(e) => onVideogenModelChange(valueOf(e))}
@@ -205,7 +205,7 @@
 					</details>
 				{/if}
 				<div class="field-group">
-					<label>Duration</label>
+					<label>{$i18n.t('Duration')}</label>
 					<input
 						type="range"
 						min="3"
@@ -218,7 +218,7 @@
 					</div>
 				</div>
 				<div class="field-group">
-					<label>Resolution</label>
+					<label>{$i18n.t('Resolution')}</label>
 					<div class="seg">
 						{#each VIDEO_RES_OPTIONS as r (r.key)}
 							<button
@@ -232,17 +232,17 @@
 					</div>
 				</div>
 				<div class="field-group">
-					<label>Seed</label>
+					<label>{$i18n.t('Seed')}</label>
 					<input
 						type="text"
 						value={config.seed ?? 'random'}
 						on:change={(e) => update({ seed: valueOf(e) })}
 					/>
-					<div class="hint">Lock to keep variations consistent.</div>
+					<div class="hint">{$i18n.t('Lock to keep variations consistent.')}</div>
 				</div>
 			{:else if typeKey === 'prompt'}
 				<div class="field-group">
-					<label>Prompt text</label>
+					<label>{$i18n.t('Prompt text')}</label>
 					<textarea
 						rows="8"
 						value={config.text ?? ''}
@@ -250,12 +250,11 @@
 						placeholder={`Cinematic medium shot, shallow depth of field. [SUBJECT: who, age, hair, wardrobe]. Background: [ENVIRONMENT — props, lighting, brand elements]. They speak clearly in [LANGUAGE] with accurate lip-sync: [DIALOGUE]. Camera: [slow dolly in / push-in / lateral tracking]. Audio: their natural [LANGUAGE] voice in foreground, [room tone / ambient]. Polished broadcast quality.`}
 					></textarea>
 					<div class="hint">
-						6-layer structure: Subject → Action → Environment → Style → Camera → Audio.
-						Wired to any downstream videogen / imagegen block.
+						{$i18n.t('6-layer structure: Subject → Action → Environment → Style → Camera → Audio. Wired to any downstream videogen / imagegen block.')}
 					</div>
 				</div>
 				<details class="tip-card">
-					<summary>💡 Prompt cheatsheet</summary>
+					<summary>{$i18n.t('💡 Prompt cheatsheet')}</summary>
 					<div class="tip-body">
 						<p><b>Dialogue (no quotes):</b></p>
 						<pre>speaks clearly in Korean with
@@ -273,38 +272,38 @@ accurate lip-sync: 안녕하세요...</pre>
 				</details>
 			{:else if typeKey === 'imageref'}
 				<div class="field-group">
-					<label>Reference image</label>
-					<button class="upload-btn" disabled>Upload (v0.3) ↑</button>
-					<div class="hint">For now, file upload arrives in the next iteration.</div>
+					<label>{$i18n.t('Reference image')}</label>
+					<button class="upload-btn" disabled>{$i18n.t('Upload')} ↑</button>
+					<div class="hint">{$i18n.t('For now, file upload arrives in the next iteration.')}</div>
 				</div>
 			{:else if typeKey === 'stitcher'}
 				<div class="field-group">
-					<label>Transitions</label>
+					<label>{$i18n.t('Transitions')}</label>
 					<select
 						value={config.transitions ?? 'cut'}
 						on:change={(e) => update({ transitions: valueOf(e) })}
 					>
-						<option value="cut">Hard cut (no transition)</option>
-						<option value="crossfade">Crossfade (v0.3)</option>
+						<option value="cut">{$i18n.t('Hard cut (no transition)')}</option>
+						<option value="crossfade">{$i18n.t('Crossfade')}</option>
 					</select>
 				</div>
 			{:else if typeKey === 'voice'}
 				<div class="field-group">
-					<label>Voice</label>
-					<div class="hint">Voice generation lands in v1.0.</div>
+					<label>{$i18n.t('Voice')}</label>
+					<div class="hint">{$i18n.t('Voice generation lands in v1.0.')}</div>
 				</div>
 			{/if}
 		</div>
 
 		<div class="actions">
-			<button class="btn primary" disabled title="Coming in v0.2 backend">
-				▶ Run this block · {node.data.cost.toLocaleString()} cr
+			<button class="btn primary" disabled title={$i18n.t('Coming soon')}>
+				▶ {$i18n.t('Run this block')} · {node.data.cost.toLocaleString()} {$i18n.t('cr')}
 			</button>
 			<button class="btn" on:click={() => dispatch('duplicate', { id: node.id })}>
-				Duplicate
+				{$i18n.t('Duplicate')}
 			</button>
 			<button class="btn danger" on:click={() => dispatch('delete', { id: node.id })}>
-				Delete block
+				{$i18n.t('Delete block')}
 			</button>
 		</div>
 	{/if}

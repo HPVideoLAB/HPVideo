@@ -8,8 +8,11 @@
   preview thumbnails, etc.) is composed by parent block components.
 -->
 <script lang="ts">
+	import { getContext } from 'svelte';
 	import { Handle, Position, type NodeProps } from '@xyflow/svelte';
 	import { pendingAction } from './canvasActions';
+
+	const i18n: any = getContext('i18n');
 
 	type Props = NodeProps<{
 		title: string;
@@ -56,13 +59,13 @@
 		stitcher: '#ff8a3d'
 	};
 
-	const STATE_LABELS: Record<string, string> = {
-		ready: 'ready',
-		queued: 'queued',
-		running: 'running',
-		ok: 'done',
-		failed: 'failed'
-	};
+	$: STATE_LABELS = {
+		ready: $i18n.t('ready'),
+		queued: $i18n.t('queued'),
+		running: $i18n.t('running'),
+		ok: $i18n.t('done'),
+		failed: $i18n.t('failed')
+	} as Record<string, string>;
 </script>
 
 <div class="block" class:selected>
@@ -115,7 +118,7 @@
 			{STATE_LABELS[data.state]}
 		</span>
 		<span class="cost" class:free={data.cost === 0}>
-			{data.cost === 0 ? 'free' : data.cost.toLocaleString() + ' cr'}
+			{data.cost === 0 ? $i18n.t('free') : data.cost.toLocaleString() + ' ' + $i18n.t('cr')}
 		</span>
 	</div>
 
@@ -125,17 +128,17 @@
 				type="button"
 				class="action retry"
 				on:click|stopPropagation={onRetry}
-				title="Re-run this block and any downstream blocks"
+				title={$i18n.t('Re-run this block and any downstream blocks')}
 			>
-				↻ Retry
+				↻ {$i18n.t('Retry')}
 			</button>
 			<button
 				type="button"
 				class="action skip"
 				on:click|stopPropagation={onSkip}
-				title="Mark as skipped and continue downstream without this block's output"
+				title={$i18n.t("Mark as skipped and continue downstream without this block's output")}
 			>
-				→ Skip
+				→ {$i18n.t('Skip')}
 			</button>
 		</div>
 	{:else if data.state === 'ok'}
@@ -144,9 +147,9 @@
 				type="button"
 				class="action rerun"
 				on:click|stopPropagation={onRerun}
-				title="Re-run this block and any downstream blocks"
+				title={$i18n.t('Re-run this block and any downstream blocks')}
 			>
-				↻ Re-run
+				↻ {$i18n.t('Re-run')}
 			</button>
 		</div>
 	{/if}

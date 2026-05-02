@@ -7,7 +7,10 @@
   makeNodeData() from blockTypes.ts.
 -->
 <script lang="ts">
+	import { getContext } from 'svelte';
 	import { BLOCK_TYPES, type TypeKey } from './blockTypes';
+
+	const i18n: any = getContext('i18n');
 
 	function onDragStart(ev: DragEvent, key: TypeKey, locked: boolean) {
 		if (locked || !ev.dataTransfer) {
@@ -28,10 +31,10 @@
 
 <aside class="palette">
 	<div class="search">
-		<input bind:value={search} placeholder="Search blocks…" type="text" />
+		<input bind:value={search} placeholder={$i18n.t('Search blocks…')} type="text" />
 	</div>
 
-	<div class="section-title">Inputs</div>
+	<div class="section-title">{$i18n.t('Inputs')}</div>
 	{#each filtered.filter((t) => !t.hasIn) as t (t.key)}
 		<div
 			class="item"
@@ -41,14 +44,14 @@
 		>
 			<div class="icon" style="background:{t.color}">{t.icon}</div>
 			<div class="meta">
-				<div class="name">{t.name}</div>
-				<div class="desc">{t.desc}</div>
+				<div class="name">{$i18n.t(t.name)}</div>
+				<div class="desc">{$i18n.t(t.desc)}</div>
 			</div>
 			{#if t.locked}<span class="lock">🔒</span>{/if}
 		</div>
 	{/each}
 
-	<div class="section-title">Generators</div>
+	<div class="section-title">{$i18n.t('Generators')}</div>
 	{#each filtered.filter((t) => t.hasIn && t.hasOut) as t (t.key)}
 		<div
 			class="item"
@@ -58,14 +61,14 @@
 		>
 			<div class="icon" style="background:{t.color}">{t.icon}</div>
 			<div class="meta">
-				<div class="name">{t.name}</div>
-				<div class="desc">{t.desc}</div>
+				<div class="name">{$i18n.t(t.name)}</div>
+				<div class="desc">{$i18n.t(t.desc)}</div>
 			</div>
 			{#if t.locked}<span class="lock">🔒</span>{/if}
 		</div>
 	{/each}
 
-	<div class="section-title">Composers</div>
+	<div class="section-title">{$i18n.t('Composers')}</div>
 	{#each filtered.filter((t) => t.hasIn && !t.hasOut) as t (t.key)}
 		<div
 			class="item"
@@ -75,14 +78,14 @@
 		>
 			<div class="icon" style="background:{t.color}">{t.icon}</div>
 			<div class="meta">
-				<div class="name">{t.name}</div>
-				<div class="desc">{t.desc}</div>
+				<div class="name">{$i18n.t(t.name)}</div>
+				<div class="desc">{$i18n.t(t.desc)}</div>
 			</div>
 		</div>
 	{/each}
 
 	{#if filtered.length === 0}
-		<div class="empty">No blocks match "{search}"</div>
+		<div class="empty">{$i18n.t('No blocks match "{{q}}"', { q: search })}</div>
 	{/if}
 </aside>
 
