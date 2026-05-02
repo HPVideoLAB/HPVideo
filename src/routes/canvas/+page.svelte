@@ -36,7 +36,8 @@
 	} from '$lib/components/canvas/workspaceApi';
 	import { chargeForRun } from '$lib/components/canvas/dlcpCharge';
 	import { toast } from 'svelte-sonner';
-	import { WEBUI_NAME, initPageFlag } from '$lib/stores';
+	import { WEBUI_NAME, initPageFlag, dlcpBalance } from '$lib/stores';
+	import { getStoredAddress, hasPointsWallet, getDLCPBalance } from '$lib/utils/wallet/dlcp/wallet';
 
 	const i18n: any = getContext('i18n');
 
@@ -385,6 +386,58 @@
 	let showRunLog = false;
 	let runLogBodyEl: HTMLDivElement;
 
+	// ---- Real Mode toggle (Canvas v0.4 batch 13) ----
+	// Was a hidden `localStorage.canvas_mode='real'` admin opt-in;
+	// now a proper UI toggle for any user who has a DLCP wallet.
+	let realMode = false;
+	let walletConnected = false;
+	let walletAddress = '';
+
+	// On mount, hydrate state from localStorage + wallet.
+	onMount(() => {
+		try {
+			realMode = localStorage.getItem('canvas_mode') === 'real';
+			walletAddress = getStoredAddress() || '';
+			walletConnected = hasPointsWallet();
+		} catch {}
+		// Refresh DLCP balance so the topbar pill reads accurately on load.
+		if (walletAddress) {
+			getDLCPBalance(walletAddress)
+				.then((b) => dlcpBalance.set(b))
+				.catch(() => {});
+		}
+	});
+
+	function setRealMode(on: boolean) {
+		if (on && !walletConnected) {
+			toast.error(
+				$i18n.t(
+					'Connect a points wallet first — real mode pays in DLCP for each run.'
+				)
+			);
+			return;
+		}
+		realMode = on;
+		try {
+			if (on) localStorage.setItem('canvas_mode', 'real');
+			else localStorage.removeItem('canvas_mode');
+		} catch {}
+		toast.info(
+			on
+				? $i18n.t('Real Mode ON — generations charge from your DLCP balance.')
+				: $i18n.t('Real Mode OFF — outputs are demo placeholders.')
+		);
+	}
+
+	$: dlcpDisplay = (() => {
+		try {
+			const n = parseFloat(String($dlcpBalance || '0'));
+			return Number.isFinite(n) ? n.toFixed(3) : '0';
+		} catch {
+			return '0';
+		}
+	})();
+
 	function clearRunLog() {
 		runLog = [];
 	}
@@ -423,10 +476,8 @@
 		// DLCP charging: only required when real-mode is on AND the user
 		// isn't an admin. Admin / stub-mode keep the old free path.
 		// We mint the runId here so /canvas/charge and runCanvas share it.
-		const canvasMode =
-			(typeof localStorage !== 'undefined' && localStorage.getItem('canvas_mode')) || '';
 		const runId = newRunId();
-		if (canvasMode === 'real' && totalCost > 0) {
+		if (realMode && totalCost > 0) {
 			runLog = [
 				$i18n.t('💰 Real mode: paying {{cr}} cr ({{dlcp}} DLCP)…', {
 					cr: totalCost,
@@ -445,7 +496,7 @@
 		}
 
 		isRunning = true;
-		runLog = canvasMode === 'real' && totalCost > 0
+		runLog = realMode && totalCost > 0
 			? [...runLog, $i18n.t('✓ Payment confirmed. Starting Run All…')]
 			: [];
 		showRunLog = true;
@@ -659,9 +710,24 @@
 					{currentShareToken ? '🔗 ' + $i18n.t('Shared') : '🔗 ' + $i18n.t('Share')}
 				</button>
 			{/if}
+			<button
+				class="btn real-toggle"
+				class:on={realMode}
+				on:click={() => setRealMode(!realMode)}
+				title={walletConnected
+					? $i18n.t('Toggle real generation (DLCP-charged)')
+					: $i18n.t('Connect a points wallet to enable real mode')}
+			>
+				{realMode ? '🟢' : '⚪'} {realMode ? $i18n.t('Real') : $i18n.t('Demo')}
+				{#if walletConnected && realMode}
+					<span class="real-balance">· {dlcpDisplay} DLCP</span>
+				{/if}
+			</button>
 			<button class="btn primary" on:click={handleRunAll}>
 				{#if isRunning}
 					⏸ {$i18n.t('Cancel')}
+				{:else if realMode && totalCost > 0}
+					▶ {$i18n.t('Run All')} · {(totalCost / 1000).toFixed(2)} DLCP
 				{:else}
 					▶ {$i18n.t('Run All')} · {totalCost.toLocaleString()} {$i18n.t('cr')}
 				{/if}
@@ -669,15 +735,24 @@
 		</div>
 	</header>
 
-	<div class="banner banner-demo">
-		<div class="icon">⚠</div>
-		<div class="text">
-			<strong>{$i18n.t('DEMO MODE — Canvas v0.3.')}</strong>
-			{$i18n.t('Run All works end-to-end, but every output is a placeholder (same demo image / same demo MP4).')}
-			{@html $i18n.t('Real per-model generation lands in v0.4 once <code>CANVAS_RUN_MODE=real</code> is flipped on the backend.')}
-			<a href="https://github.com/HPVideoLAB/HPVideoBNB/blob/main/docs/INFINITE_CANVAS_PRD.md" target="_blank">{$i18n.t('PRD')}</a>
+	{#if realMode}
+		<div class="banner banner-real">
+			<div class="icon">🟢</div>
+			<div class="text">
+				<strong>{$i18n.t('REAL MODE — generations charge from your DLCP balance.')}</strong>
+				{$i18n.t('Each Run All triggers one DBC-chain DLCP transfer for the total cost (1000 cr = 1 DLCP). Output is real, not a placeholder.')}
+			</div>
 		</div>
-	</div>
+	{:else}
+		<div class="banner banner-demo">
+			<div class="icon">⚠</div>
+			<div class="text">
+				<strong>{$i18n.t('DEMO MODE — outputs are placeholders.')}</strong>
+				{$i18n.t('Run All works end-to-end, but every output is the same demo image / demo MP4. Toggle Real Mode in the topbar to charge DLCP and get real generation.')}
+				<a href="https://github.com/HPVideoLAB/HPVideoBNB/blob/main/docs/INFINITE_CANVAS_PRD.md" target="_blank">{$i18n.t('PRD')}</a>
+			</div>
+		</div>
+	{/if}
 
 	<div class="main" class:running={isRunning}>
 		<Palette />
@@ -1058,6 +1133,34 @@
 		background: linear-gradient(90deg, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0.06));
 		border-bottom: 1px solid rgba(239, 68, 68, 0.35);
 		color: #fca5a5;
+	}
+	.banner.banner-real {
+		background: linear-gradient(90deg, rgba(54, 196, 123, 0.20), rgba(54, 196, 123, 0.06));
+		border-bottom: 1px solid rgba(54, 196, 123, 0.35);
+		color: #86efac;
+	}
+	.real-toggle {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 6px 12px;
+		font-weight: 600;
+		font-size: 12px;
+		border-radius: 999px;
+	}
+	.real-toggle.on {
+		background: rgba(54, 196, 123, 0.14);
+		border-color: rgba(54, 196, 123, 0.45);
+		color: #86efac;
+	}
+	.real-toggle:not(.on) {
+		color: #a6a2bc;
+		border-color: rgba(255, 255, 255, 0.15);
+	}
+	.real-toggle .real-balance {
+		font-size: 10px;
+		font-variant-numeric: tabular-nums;
+		opacity: 0.8;
 	}
 	.banner .icon {
 		font-size: 14px;
