@@ -679,26 +679,80 @@ async def _real_stitcher(body: CanvasRunBlockRequest, started: float) -> CanvasR
             so, se = await proc.communicate()
             return proc.returncode or 0, so, se
 
-        # First try fast concat (no re-encode).
-        rc, _so, se = await _ffmpeg([
-            "ffmpeg", "-y", "-f", "concat", "-safe", "0",
-            "-i", list_path, "-c", "copy", out_path,
-        ])
-        if rc != 0 or not os.path.exists(out_path) or os.path.getsize(out_path) == 0:
-            log.info("stitcher: -c copy failed (%s), falling back to re-encode", se[:300] if se else "")
+        transition = ((body.config or {}).get("transitions") or "cut").lower()
+        XFADE_DUR = 0.5
+
+        if transition == "crossfade" and len(local_files) >= 2:
+            # Probe each clip's duration so we can build xfade offsets.
+            durations: List[float] = []
+            for p in local_files:
+                proc = await asyncio.create_subprocess_exec(
+                    "ffprobe", "-v", "error", "-show_entries", "format=duration",
+                    "-of", "default=noprint_wrappers=1:nokey=1", p,
+                    stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+                )
+                so, _ = await proc.communicate()
+                try:
+                    durations.append(float(so.decode().strip()))
+                except (ValueError, AttributeError):
+                    durations.append(0.0)
+            if any(d <= XFADE_DUR for d in durations):
+                # A clip too short for crossfade — silently downgrade to hard cut.
+                transition = "cut"
+            else:
+                # Build xfade + acrossfade filter graph.
+                v_chain: List[str] = []
+                a_chain: List[str] = []
+                running = 0.0
+                prev_v = "[0:v]"
+                prev_a = "[0:a]"
+                for i in range(1, len(local_files)):
+                    running += durations[i - 1] - XFADE_DUR
+                    v_out = f"[v{i}]" if i < len(local_files) - 1 else "[vout]"
+                    a_out = f"[a{i}]" if i < len(local_files) - 1 else "[aout]"
+                    v_chain.append(
+                        f"{prev_v}[{i}:v]xfade=transition=fade:duration={XFADE_DUR}:offset={running:.3f}{v_out}"
+                    )
+                    a_chain.append(f"{prev_a}[{i}:a]acrossfade=d={XFADE_DUR}{a_out}")
+                    prev_v = v_out
+                    prev_a = a_out
+                filter_graph = ";".join(v_chain + a_chain)
+                args = ["ffmpeg", "-y"]
+                for p in local_files:
+                    args += ["-i", p]
+                args += [
+                    "-filter_complex", filter_graph,
+                    "-map", "[vout]", "-map", "[aout]",
+                    "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+                    "-c:a", "aac", "-b:a", "128k",
+                    out_path,
+                ]
+                rc, _so, se = await _ffmpeg(args)
+                if rc != 0 or not os.path.exists(out_path) or os.path.getsize(out_path) == 0:
+                    log.info("stitcher: crossfade failed (%s), falling back to hard cut", se[:300] if se else "")
+                    transition = "cut"
+
+        if transition == "cut":
+            # Fast concat (no re-encode), with re-encode fallback for codec mismatch.
             rc, _so, se = await _ffmpeg([
                 "ffmpeg", "-y", "-f", "concat", "-safe", "0",
-                "-i", list_path,
-                "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
-                "-c:a", "aac", "-b:a", "128k",
-                out_path,
+                "-i", list_path, "-c", "copy", out_path,
             ])
-            if rc != 0:
-                return CanvasRunBlockResponse(
-                    block_id=body.block_id, status="failed",
-                    error=f"stitcher ffmpeg failed (rc={rc}): {se[:400].decode('utf-8', 'replace')}",
-                    elapsed_s=round(time.monotonic() - started, 2), mode="real",
-                )
+            if rc != 0 or not os.path.exists(out_path) or os.path.getsize(out_path) == 0:
+                log.info("stitcher: -c copy failed (%s), falling back to re-encode", se[:300] if se else "")
+                rc, _so, se = await _ffmpeg([
+                    "ffmpeg", "-y", "-f", "concat", "-safe", "0",
+                    "-i", list_path,
+                    "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+                    "-c:a", "aac", "-b:a", "128k",
+                    out_path,
+                ])
+                if rc != 0:
+                    return CanvasRunBlockResponse(
+                        block_id=body.block_id, status="failed",
+                        error=f"stitcher ffmpeg failed (rc={rc}): {se[:400].decode('utf-8', 'replace')}",
+                        elapsed_s=round(time.monotonic() - started, 2), mode="real",
+                    )
 
         # Upload to OSS.
         from apps.web.util.aliossutils import AliOSSUtil
