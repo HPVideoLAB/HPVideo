@@ -129,7 +129,21 @@ class WaveApi:
 				return s
 			return "16:9"
 
-		if source == 'pixverse':
+		# Resolution: prefer explicit "720p"/"1080p" tokens; otherwise default 720p.
+		resolution_token = "1080p" if (size and "1080" in size) else "720p"
+
+		if "happyhorse" in model:
+			# Alibaba HappyHorse-1.0 (joint audio+video model). Wants
+			# aspect_ratio + resolution; same vendor as wan-2.7 but different
+			# request shape — wan-2.7 takes plain `size` while happyhorse
+			# expects the modern aspect_ratio/resolution split.
+			data = {
+				"duration": duration,
+				"prompt": prompt,
+				"aspect_ratio": _to_aspect_ratio(size),
+				"resolution": resolution_token
+			}
+		elif source == 'pixverse':
 			data = {
 				"duration": duration,
 				"prompt": prompt,

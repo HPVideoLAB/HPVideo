@@ -50,16 +50,22 @@ CANVAS_RUN_MODE = os.getenv("CANVAS_RUN_MODE", "stub")
 # WaveSpeed. Mirrors x402pay.MODEL_REGISTRY but kept local so canvas.py
 # doesn't take a hard import from the payment router.
 VIDEOGEN_REGISTRY: Dict[str, Dict[str, str]] = {
-    "wan-2.7":      {"vendor": "alibaba",      "model": "wan-2.7/text-to-video"},
-    "ovi":          {"vendor": "character-ai", "model": "ovi/text-to-video"},
-    "veo3.1":       {"vendor": "google",       "model": "veo3.1/text-to-video"},
-    "ltx-2.3":      {"vendor": "wavespeed-ai", "model": "ltx-2.3/text-to-video"},
-    "hailuo-2.3":   {"vendor": "minimax",      "model": "hailuo-2.3/t2v-pro"},
-    "seedance-2.0": {"vendor": "bytedance",    "model": "seedance-2.0/text-to-video"},
-    "kling-3.0":    {"vendor": "kwaivgi",      "model": "kling-v3.0-std/text-to-video"},
-    "pixverse-v6":  {"vendor": "pixverse",     "model": "pixverse-v6/text-to-video"},
-    "luma-ray-2":   {"vendor": "luma",         "model": "ray-2-t2v"},
-    "vidu-q3":      {"vendor": "vidu",         "model": "q3/text-to-video"},
+    "wan-2.7":        {"vendor": "alibaba",      "model": "wan-2.7/text-to-video"},
+    # HappyHorse-1.0: native joint audio+video. Single forward pass produces
+    # synced lip-sync dialogue, ambient sound, and Foley across 7 languages
+    # (en/zh/yue/ja/ko/de/fr) at 14.6% WER. Currently #1 on WaveSpeed
+    # leaderboard. Speculated to be Alibaba's next WAN; vendor confirmed
+    # alibaba on WaveSpeed.
+    "happyhorse-1.0": {"vendor": "alibaba",      "model": "happyhorse-1.0/text-to-video"},
+    "ovi":            {"vendor": "character-ai", "model": "ovi/text-to-video"},
+    "veo3.1":         {"vendor": "google",       "model": "veo3.1/text-to-video"},
+    "ltx-2.3":        {"vendor": "wavespeed-ai", "model": "ltx-2.3/text-to-video"},
+    "hailuo-2.3":     {"vendor": "minimax",      "model": "hailuo-2.3/t2v-pro"},
+    "seedance-2.0":   {"vendor": "bytedance",    "model": "seedance-2.0/text-to-video"},
+    "kling-3.0":      {"vendor": "kwaivgi",      "model": "kling-v3.0-std/text-to-video"},
+    "pixverse-v6":    {"vendor": "pixverse",     "model": "pixverse-v6/text-to-video"},
+    "luma-ray-2":     {"vendor": "luma",         "model": "ray-2-t2v"},
+    "vidu-q3":        {"vendor": "vidu",         "model": "q3/text-to-video"},
 }
 
 DEFAULT_VIDEOGEN_MODEL = "wan-2.7"
