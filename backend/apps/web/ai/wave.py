@@ -196,7 +196,56 @@ class WaveApi:
 			print(f"Request Err: {e} body={body!r}")
 			return None
 
-	# Get Video By Video ID	
+	# Create X402 Video ID — image-to-video variant.
+	#
+	# Used by Canvas multi-shot chaining: the last frame of shot N becomes
+	# the first frame of shot N+1, so character + scene continuity carries
+	# across cuts. Currently wired for HappyHorse 1.0 (others may follow).
+	def x402create_i2v(self, source: str, model: str, prompt: str,
+	                   duration: int, size: str, image_url: str):
+		headers = {
+			"Authorization": f'Bearer {wave_key}',
+			"Content-Type": "application/json"
+		}
+		def _to_aspect_ratio(s: str) -> str:
+			if s and ":" in s:
+				return s
+			return "16:9"
+		resolution_token = "1080p" if (size and "1080" in size) else "720p"
+
+		# HappyHorse 1.0 i2v wants `image` + prompt + aspect_ratio + resolution + duration.
+		data = {
+			"image": image_url,
+			"prompt": prompt,
+			"duration": duration,
+			"aspect_ratio": _to_aspect_ratio(size),
+			"resolution": resolution_token,
+		}
+
+		# Build the i2v URL by swapping the model path.  HappyHorse t2v lives
+		# at `alibaba/happyhorse-1.0/text-to-video`, i2v at
+		# `alibaba/happyhorse-1.0/image-to-video`.  Same pattern for other
+		# i2v-capable models if we add them later.
+		i2v_model = model.replace("/text-to-video", "/image-to-video")
+		if i2v_model == model:
+			# Caller passed an already-i2v path, leave it.
+			i2v_model = model
+
+		try:
+			url = f'{wave_url}/{source}/{i2v_model}'
+			response = requests.post(url, json=data, headers=headers)
+			response.raise_for_status()
+			return response.json()
+		except Exception as e:
+			body = ""
+			try:
+				body = response.text[:400] if 'response' in locals() else ""
+			except Exception:
+				pass
+			print(f"i2v Request Err: {e} body={body!r}")
+			return None
+
+	# Get Video By Video ID
 	def get_prediction_result(self, requestId: str):
 		url = f"{wave_url}/predictions/{requestId}/result"
 		headers = {

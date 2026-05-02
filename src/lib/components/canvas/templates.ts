@@ -76,7 +76,7 @@ export const TEMPLATES: CanvasTemplate[] = [
 		id: 'tpl-talking-head-10s',
 		name: '🎙 Talking Head 10s (Korean)',
 		description:
-			'2 HappyHorse 1.0 shots with native Korean dialogue + lip-sync. Same presenter, branded background. Battle-tested 6-layer prompt structure baked in.',
+			'2 HappyHorse 1.0 shots, chained for character continuity. Native Korean dialogue + lip-sync, branded backgrounds. Shot 2 i2v from shot 1 last frame.',
 		icon: '🎙',
 		estimatedCostCr: 1_500,
 		tag: 'popular',
@@ -96,21 +96,25 @@ export const TEMPLATES: CanvasTemplate[] = [
 				}),
 				block('prompt-2', 0, 320, 'prompt', 2, {
 					text:
-						`Cinematic close-up, golden-hour warm bokeh. ${sharedCharacter} (same person, same wardrobe as previous shot). ` +
-						'Behind her on a softly out-of-focus wall: a small minimalist purple HPVideo wordmark sign and ' +
-						"a clean 'Start Now →' button graphic. She speaks clearly in Korean with accurate lip-sync: " +
+						'The same Korean female presenter from the previous frame continues speaking confidently to camera ' +
+						'with accurate lip-sync, smiling warmly. She speaks clearly in Korean: ' +
 						'지갑만 연결하면 클립당 0.45달러부터. 이메일도 구독도 없어요. 지금 바로 시작하세요! ' +
-						'Camera: gentle slow push-in. Audio: her natural Korean voice in foreground, slight room tone, no music.'
+						'The shot transitions: the studio LED wall behind her dims and softly transitions into a warm ' +
+						"golden-hour bokeh, while a small minimalist purple 'HPVideo' wordmark sign and 'Start Now →' " +
+						'button graphic gently appear on the wall behind her. Camera: gentle slow push-in. ' +
+						'Audio: her natural Korean voice in foreground, slight room tone, no music. Lip-sync accurate.'
 				}),
 				block('videogen-1', 320, 80, 'videogen', 1, { model: 'happyhorse-1.0' }),
-				block('videogen-2', 320, 320, 'videogen', 2, { model: 'happyhorse-1.0' }),
-				block('stitcher-1', 640, 200, 'stitcher', 1, { transitions: 'crossfade' })
+				// videogen-2 chains from videogen-1 → backend extracts last frame, routes to i2v.
+				block('videogen-2', 640, 200, 'videogen', 2, { model: 'happyhorse-1.0' }),
+				block('stitcher-1', 960, 200, 'stitcher', 1, { transitions: 'crossfade' })
 			];
 			const edges: Edge[] = [
 				edge('e1', 'prompt-1', 'videogen-1'),
 				edge('e2', 'prompt-2', 'videogen-2'),
-				edge('e3', 'videogen-1', 'stitcher-1'),
-				edge('e4', 'videogen-2', 'stitcher-1')
+				edge('e3', 'videogen-1', 'videogen-2'), // chain: shot 1 → shot 2 (last frame becomes first frame)
+				edge('e4', 'videogen-1', 'stitcher-1'),
+				edge('e5', 'videogen-2', 'stitcher-1')
 			];
 			return { nodes, edges };
 		}

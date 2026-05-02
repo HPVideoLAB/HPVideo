@@ -115,6 +115,21 @@ function gatherInputs(
 			const ignored = imgSrcs.slice(1).map((s) => `#${(s.src.data as any)?.num ?? s.id}`).join(', ');
 			onLog?.(`⚠ ${typeKey} #${num}: using first-frame from #${(imgSrcs[0].src.data as any)?.num ?? imgSrcs[0].id}, ignoring ${ignored}`);
 		}
+		// Multi-shot chaining: if an upstream videogen block feeds this
+		// videogen, thread its output as `chain_from_video_url`. Backend
+		// extracts the last frame and routes to the i2v endpoint so
+		// character + scene continuity carries across the cut. Same
+		// price as t2v. Quiet on stitcher (which expects video clips
+		// for concat, not chain references).
+		if (typeKey === 'videogen') {
+			const chainSrcs = incoming.filter(
+				(x) => x.result.output_kind === 'video' && (x.src.data as any)?.typeKey === 'videogen'
+			);
+			if (chainSrcs[0]) {
+				inputs.chain_from_video_url = chainSrcs[0].result.output_url;
+				onLog?.(`↳ videogen #${num}: chained from #${(chainSrcs[0].src.data as any)?.num ?? chainSrcs[0].id} (last-frame i2v)`);
+			}
+		}
 	} else if (typeKey === 'stitcher') {
 		inputs.clips = incoming
 			.filter((x) => x.result.output_kind === 'video')

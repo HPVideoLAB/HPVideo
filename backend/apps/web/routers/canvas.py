@@ -331,6 +331,77 @@ async def _real_imageref(body: CanvasRunBlockRequest, started: float) -> CanvasR
     )
 
 
+async def _extract_last_frame_to_oss(video_url: str) -> Optional[str]:
+    """Download a video, ffmpeg-extract the last frame, upload to OSS.
+
+    Used by multi-shot chaining: the last frame of the upstream videogen
+    shot becomes the first frame of the next videogen, fed as `image=`
+    to the i2v endpoint. Returns a public HTTPS URL on the OSS bucket
+    or None on failure (caller decides whether to fall back to t2v).
+    """
+    try:
+        # 1. Download the source video.
+        tmp = tempfile.mkdtemp(prefix="canvas_chain_")
+        src = os.path.join(tmp, "src.mp4")
+        r = await asyncio.to_thread(requests.get, video_url, timeout=60, stream=True)
+        r.raise_for_status()
+        with open(src, "wb") as f:
+            for chunk in r.iter_content(65536):
+                f.write(chunk)
+
+        # 2. Probe duration so we can seek to a frame that actually exists
+        #    (ffmpeg's `-sseof` is fragile across container variants).
+        probe_args = [
+            "ffprobe", "-v", "error", "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1", src,
+        ]
+        probe = await asyncio.create_subprocess_exec(
+            *probe_args,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        so, _se = await probe.communicate()
+        duration = float(so.decode().strip() or 0)
+        seek = max(0.0, duration - 0.1)
+
+        out_png = os.path.join(tmp, "last.png")
+        ff = await asyncio.create_subprocess_exec(
+            "ffmpeg", "-y", "-ss", f"{seek:.3f}", "-i", src,
+            "-vframes", "1", "-q:v", "2", "-update", "1", out_png,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await ff.communicate()
+        if ff.returncode != 0 or not os.path.exists(out_png) or os.path.getsize(out_png) == 0:
+            log.warning("last-frame extract failed for %s", video_url)
+            return None
+
+        # 3. Upload to OSS with a clean key + Content-Type.
+        from apps.web.util.aliossutils import AliOSSUtil
+        oss_url_prefix = os.getenv("FILE_OSS_HK_URL", "")
+        date = datetime.utcnow().strftime("%Y/%m/%d")
+        key = f"canvas/refframes/{date}/lastframe_{uuid.uuid4().hex}.png"
+        with open(out_png, "rb") as f:
+            data = f.read()
+        bucket = AliOSSUtil._get_bucket()
+        result = await asyncio.to_thread(
+            bucket.put_object, key, data, {"Content-Type": "image/png"},
+        )
+        if result.status != 200:
+            log.warning("OSS put_object status=%s for last-frame", result.status)
+            return None
+        return f"{oss_url_prefix}{key}"
+    except Exception as e:
+        log.exception("last-frame extraction errored: %s", e)
+        return None
+    finally:
+        try:
+            import shutil
+            shutil.rmtree(tmp, ignore_errors=True)
+        except Exception:
+            pass
+
+
 async def _real_videogen(body: CanvasRunBlockRequest, started: float) -> CanvasRunBlockResponse:
     """Call WaveAPI x402create + poll for prediction result.
 
@@ -362,10 +433,33 @@ async def _real_videogen(body: CanvasRunBlockRequest, started: float) -> CanvasR
     duration = int(config.get("duration") or 5)
     size = config.get("resolution") or config.get("size") or "720p"
 
+    # Multi-shot chaining: if an upstream block fed us a video URL via
+    # `chain_from_video_url`, extract its last frame and route to the
+    # image-to-video endpoint instead of text-to-video.  Same price.
+    # Same prompt.  But the next shot starts from the previous shot's
+    # final frame, so character + scene continuity carries across the
+    # cut.  Currently HappyHorse-1.0 i2v only — falls back to t2v for
+    # other models.
+    chain_url = inputs.get("chain_from_video_url") or ""
+    image_url = inputs.get("first_frame_url") or ""
+    if chain_url and "happyhorse" in cfg["model"]:
+        log.info("videogen chain: extracting last frame from %s", chain_url[:80])
+        extracted = await _extract_last_frame_to_oss(chain_url)
+        if extracted:
+            image_url = extracted
+        else:
+            log.info("videogen chain: extraction failed, falling back to t2v")
+
     # Kick off the generation.
-    create_resp = await asyncio.to_thread(
-        WaveApiInstance.x402create, cfg["vendor"], cfg["model"], prompt, duration, size
-    )
+    if image_url and "happyhorse" in cfg["model"]:
+        create_resp = await asyncio.to_thread(
+            WaveApiInstance.x402create_i2v,
+            cfg["vendor"], cfg["model"], prompt, duration, size, image_url,
+        )
+    else:
+        create_resp = await asyncio.to_thread(
+            WaveApiInstance.x402create, cfg["vendor"], cfg["model"], prompt, duration, size
+        )
     if not create_resp or create_resp.get("code") != 200:
         return CanvasRunBlockResponse(
             block_id=body.block_id, status="failed",

@@ -148,9 +148,11 @@
 								<i>“speaks clearly in Korean with accurate lip-sync: 안녕하세요…”</i>
 							</p>
 							<p>
-								<strong>Multi-shot consistency</strong>: re-state the character description
-								(hair / wardrobe / age) in every shot's prompt. For perfect continuity, future
-								v0.5 will support last-frame chaining.
+								<strong>Multi-shot consistency</strong>: wire one videogen → next videogen
+								to chain the last frame as the first frame of the next shot (i2v under the
+								hood, same price). The 🎙 Talking Head template uses this pattern. Re-state
+								the character description in each shot's prompt anyway as a
+								belt-and-suspenders.
 							</p>
 							<p class="tip-footnote">
 								Native lip-sync in 7 langs: en / zh / yue / ja / ko / de / fr · 14.6% WER ·
