@@ -386,6 +386,14 @@
 	let showRunLog = false;
 	let runLogBodyEl: HTMLDivElement;
 
+	// Sticky for the Retry/Skip flow: the runId of the most recent paid
+	// Run All. While the Redis paid bucket is alive (1h TTL) and the user
+	// has remaining DLCP credit in it, retries reuse this id so they
+	// don't re-pay. spent_cr only increments on successful generations,
+	// so a failed block doesn't drain the bucket — retries get a free
+	// (already-paid-for) shot.
+	let lastPaidRunId: string | null = null;
+
 	// ---- Real Mode toggle (Canvas v0.4 batch 13) ----
 	// Was a hidden `localStorage.canvas_mode='real'` admin opt-in;
 	// now a proper UI toggle for any user who has a DLCP wallet.
@@ -493,6 +501,13 @@
 			if (!charge.success) {
 				return; // Toasts already surfaced inside chargeForRun.
 			}
+			// Bucket is now alive in Redis for 1h. Sticky for Retry/Skip flows.
+			lastPaidRunId = runId;
+		} else if (!realMode) {
+			// Demo mode runs don't pay, but they shouldn't pollute lastPaidRunId
+			// either (retrying from a stale paid bucket after toggling Demo
+			// would be confusing — fresh demo runs use fresh ids).
+			lastPaidRunId = null;
 		}
 
 		isRunning = true;
@@ -560,6 +575,15 @@
 		isRunning = true;
 		runLog = [];
 		showRunLog = true;
+		// In real mode, reuse the most recent paid runId so retries don't
+		// re-charge. The Redis bucket lives 1h and only successful blocks
+		// drain it, so failed-block retries get a free shot. If no prior
+		// payment (admin / demo / paid bucket expired), fall through to a
+		// fresh id and the backend gates non-admin requests with 402.
+		const resumeRunId = realMode && lastPaidRunId ? lastPaidRunId : undefined;
+		if (resumeRunId) {
+			runLog = [$i18n.t('↻ Retrying from existing paid bucket (no new charge).')];
+		}
 		runAbort = new AbortController();
 		const localAbort = runAbort;
 		const promise = runCanvas({
@@ -567,6 +591,7 @@
 			edges,
 			signal: localAbort.signal,
 			mode: 'resume',
+			runId: resumeRunId,
 			onLog: (line) => {
 				runLog = [...runLog, line];
 			}
