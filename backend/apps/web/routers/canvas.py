@@ -208,7 +208,7 @@ async def run_block(
                 raise HTTPException(
                     status_code=status.HTTP_402_PAYMENT_REQUIRED,
                     detail=(
-                        f"Canvas real-mode requires DLCP payment: {err}. "
+                        f"Canvas real-mode requires DLP payment: {err}. "
                         "POST /canvas/charge with the tx hash before Run All."
                     ),
                 )
@@ -1117,7 +1117,7 @@ async def canvas_charge(
     if not matched:
         return CanvasChargeResponse(
             ok=False, run_id=body.run_id, paid_amount="0",
-            message="no matching DLCP Transfer log",
+            message="no matching DLP Transfer log",
         )
 
     try:
@@ -1249,7 +1249,7 @@ def _canvas_paid_check(user_id: str, run_id: str, block_cost_cr: int):
         return (False, 0.0, "corrupt payment record")
     if remaining_dlcp + 1e-6 < float(block_cost_cr):
         return (False, remaining_dlcp,
-                f"insufficient DLCP: need {block_cost_cr}, have {remaining_dlcp:.0f}")
+                f"insufficient DLP: need {block_cost_cr}, have {remaining_dlcp:.0f}")
     return (True, remaining_dlcp, "")
 
 

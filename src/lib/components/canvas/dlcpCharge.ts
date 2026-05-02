@@ -102,7 +102,7 @@ export async function chargeForRun({ runId, totalCostCr, t }: ChargeArgs): Promi
 		const writeContract = new ethers.Contract(DLCP_CONTRACT, ERC20_ABI, signer);
 
 		toast.dismiss();
-		toast.loading(t('Sending DLCP payment...'));
+		toast.loading(t('Sending DLP payment...'));
 
 		const tx = await writeContract.transfer(DLCP_RECEIVE_ADDRESS, pointsWei);
 		const receipt = await tx.wait();

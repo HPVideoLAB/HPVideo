@@ -388,7 +388,7 @@
 
 	// Sticky for the Retry/Skip flow: the runId of the most recent paid
 	// Run All. While the Redis paid bucket is alive (1h TTL) and the user
-	// has remaining DLCP credit in it, retries reuse this id so they
+	// has remaining DLP credit in it, retries reuse this id so they
 	// don't re-pay. spent_cr only increments on successful generations,
 	// so a failed block doesn't drain the bucket — retries get a free
 	// (already-paid-for) shot.
@@ -396,7 +396,7 @@
 
 	// ---- Real Mode toggle (Canvas v0.4 batch 13) ----
 	// Was a hidden `localStorage.canvas_mode='real'` admin opt-in;
-	// now a proper UI toggle for any user who has a DLCP wallet.
+	// now a proper UI toggle for any user who has a DLP wallet.
 	let realMode = false;
 	let walletConnected = false;
 	let walletAddress = '';
@@ -408,7 +408,7 @@
 			walletAddress = getStoredAddress() || '';
 			walletConnected = hasPointsWallet();
 		} catch {}
-		// Refresh DLCP balance so the topbar pill reads accurately on load.
+		// Refresh DLP balance so the topbar pill reads accurately on load.
 		if (walletAddress) {
 			getDLCPBalance(walletAddress)
 				.then((b) => dlcpBalance.set(b))
@@ -420,7 +420,7 @@
 		if (on && !walletConnected) {
 			toast.error(
 				$i18n.t(
-					'Connect a points wallet first — real mode pays in DLCP for each run.'
+					'Connect a points wallet first — real mode pays in DLP for each run.'
 				)
 			);
 			return;
@@ -432,7 +432,7 @@
 		} catch {}
 		toast.info(
 			on
-				? $i18n.t('Real Mode ON — generations charge from your DLCP balance.')
+				? $i18n.t('Real Mode ON — generations charge from your DLP balance.')
 				: $i18n.t('Real Mode OFF — outputs are demo placeholders.')
 		);
 	}
@@ -481,14 +481,14 @@
 			return;
 		}
 
-		// DLCP charging: only required when real-mode is on AND the user
+		// DLP charging: only required when real-mode is on AND the user
 		// isn't an admin. Admin / stub-mode keep the old free path.
 		// We mint the runId here so /canvas/charge and runCanvas share it.
 		const runId = newRunId();
 		if (realMode && totalCost > 0) {
 			runLog = [
-				// 1 cr = 1 DLCP. 1000 DLCP = $1.
-				$i18n.t('💰 Real mode: paying {{dlcp}} DLCP (≈ ${{usd}})…', {
+				// 1 cr = 1 DLP. 1000 DLP = $1.
+				$i18n.t('💰 Real mode: paying {{dlcp}} DLP (≈ ${{usd}})…', {
 					dlcp: totalCost.toLocaleString(),
 					usd: (totalCost / 1000).toFixed(2)
 				})
@@ -741,19 +741,19 @@
 				class:on={realMode}
 				on:click={() => setRealMode(!realMode)}
 				title={walletConnected
-					? $i18n.t('Toggle real generation (DLCP-charged)')
+					? $i18n.t('Toggle real generation (DLP-charged)')
 					: $i18n.t('Connect a points wallet to enable real mode')}
 			>
 				{realMode ? '🟢' : '⚪'} {realMode ? $i18n.t('Real') : $i18n.t('Demo')}
 				{#if walletConnected && realMode}
-					<span class="real-balance">· {dlcpDisplay} DLCP</span>
+					<span class="real-balance">· {dlcpDisplay} DLP</span>
 				{/if}
 			</button>
 			<button class="btn primary" on:click={handleRunAll}>
 				{#if isRunning}
 					⏸ {$i18n.t('Cancel')}
 				{:else if realMode && totalCost > 0}
-					▶ {$i18n.t('Run All')} · {totalCost.toLocaleString()} DLCP
+					▶ {$i18n.t('Run All')} · {totalCost.toLocaleString()} DLP
 				{:else}
 					▶ {$i18n.t('Run All')} · {totalCost.toLocaleString()} {$i18n.t('cr')}
 				{/if}
@@ -765,8 +765,8 @@
 		<div class="banner banner-real">
 			<div class="icon">🟢</div>
 			<div class="text">
-				<strong>{$i18n.t('REAL MODE — generations charge from your DLCP balance.')}</strong>
-				{$i18n.t('Each Run All triggers one DBC-chain DLCP transfer for the total cost (1000 cr = 1 DLCP). Output is real, not a placeholder.')}
+				<strong>{$i18n.t('REAL MODE — generations charge from your DLP balance.')}</strong>
+				{$i18n.t('Each Run All triggers one DBC-chain DLP transfer for the total cost (1000 cr = 1 DLP). Output is real, not a placeholder.')}
 			</div>
 		</div>
 	{:else}
@@ -774,7 +774,7 @@
 			<div class="icon">⚠</div>
 			<div class="text">
 				<strong>{$i18n.t('DEMO MODE — outputs are placeholders.')}</strong>
-				{$i18n.t('Run All works end-to-end, but every output is the same demo image / demo MP4. Toggle Real Mode in the topbar to charge DLCP and get real generation.')}
+				{$i18n.t('Run All works end-to-end, but every output is the same demo image / demo MP4. Toggle Real Mode in the topbar to charge DLP and get real generation.')}
 				<a href="https://github.com/HPVideoLAB/HPVideoBNB/blob/main/docs/INFINITE_CANVAS_PRD.md" target="_blank">{$i18n.t('PRD')}</a>
 			</div>
 		</div>
