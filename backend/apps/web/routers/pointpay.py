@@ -22,6 +22,43 @@ TOKEN_DECIMALS = 18
 
 w3_dbc = Web3(Web3.HTTPProvider(DBC_RPC))
 
+ERC20_BALANCE_ABI = [
+    {
+        "constant": True,
+        "inputs": [{"name": "_owner", "type": "address"}],
+        "name": "balanceOf",
+        "outputs": [{"name": "balance", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function",
+    }
+]
+
+
+@router.get("/balance")
+async def points_balance(address: str = "", user=Depends(get_current_user)):
+    if not address or not address.startswith("0x") or len(address) != 42:
+        return {"ok": False, "message": "missing or invalid address"}
+    try:
+        checksum = w3_dbc.to_checksum_address(address)
+    except Exception:
+        return {"ok": False, "message": "invalid address"}
+    try:
+        contract = w3_dbc.eth.contract(
+            address=w3_dbc.to_checksum_address(DLCP_TOKEN_ADDRESS),
+            abi=ERC20_BALANCE_ABI,
+        )
+        wei = await asyncio.to_thread(contract.functions.balanceOf(checksum).call)
+    except Exception as e:
+        log.info("balance read failed for %s: %s", checksum, e)
+        return {"ok": False, "message": "rpc error"}
+    whole = wei / (10 ** TOKEN_DECIMALS)
+    return {
+        "ok": True,
+        "address": checksum,
+        "balance_dlp": f"{whole:.6f}",
+        "balance_cr": int(whole),
+    }
+
 
 @router.post("/check")
 async def pointcheck(request: Request, user=Depends(get_current_user)):
