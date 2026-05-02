@@ -119,7 +119,7 @@ export function makeNodeData(typeKey: TypeKey, existingNodes: Array<any>) {
 export function defaultConfig(typeKey: TypeKey): Record<string, any> {
 	switch (typeKey) {
 		case 'imagegen':
-			return { model: 'flux-dev', aspect: '16:9', seed: 'random' };
+			return { model: 'gpt-image-2', aspect: '16:9', resolution: '1k', seed: 'random' };
 		case 'videogen':
 			return { model: 'happyhorse-1.0', duration: 5, resolution: '720p', seed: 'random' };
 		case 'prompt':

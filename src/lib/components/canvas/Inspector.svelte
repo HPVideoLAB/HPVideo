@@ -98,10 +98,13 @@
 				<div class="field-group">
 					<label>Model</label>
 					<select
-						value={config.model ?? 'flux-dev'}
+						value={config.model ?? 'gpt-image-2'}
 						on:change={(e) => update({ model: valueOf(e) })}
 					>
-						<option value="flux-dev">Flux Dev — 100 cr</option>
+						<option value="gpt-image-2">GPT Image 2 — $0.06 (default)</option>
+						<option value="nano-banana-2">Nano Banana 2 — 4K capable</option>
+						<option value="seedream-v5-lite">Seedream V5 Lite — cheap</option>
+						<option value="flux-dev">Flux Dev (legacy stub)</option>
 					</select>
 				</div>
 				<div class="field-group">
@@ -113,6 +116,19 @@
 						<option>16:9</option>
 						<option>9:16</option>
 						<option>1:1</option>
+						<option>3:2</option>
+						<option>4:3</option>
+					</select>
+				</div>
+				<div class="field-group">
+					<label>Resolution</label>
+					<select
+						value={config.resolution ?? '1k'}
+						on:change={(e) => update({ resolution: valueOf(e) })}
+					>
+						<option value="1k">1K (default)</option>
+						<option value="2k">2K</option>
+						<option value="4k">4K</option>
 					</select>
 				</div>
 			{:else if typeKey === 'videogen'}

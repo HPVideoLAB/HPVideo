@@ -245,6 +245,40 @@ class WaveApi:
 			print(f"i2v Request Err: {e} body={body!r}")
 			return None
 
+	# Create X402 Image ID — text-to-image variant.
+	#
+	# Used by Canvas imagegen blocks. Same poll endpoint as t2v, just
+	# different request body shape per WaveSpeed image-gen schema.
+	def x402create_t2i(self, source: str, model: str, prompt: str,
+	                   aspect_ratio: str = "16:9",
+	                   resolution: str = "1k",
+	                   quality: str = "medium"):
+		headers = {
+			"Authorization": f'Bearer {wave_key}',
+			"Content-Type": "application/json"
+		}
+		# WaveSpeed t2i common shape — works for openai/gpt-image-2,
+		# google/nano-banana-2, bytedance/seedream-v5.0-lite.
+		data = {
+			"prompt": prompt,
+			"aspect_ratio": aspect_ratio if aspect_ratio else "16:9",
+			"resolution": resolution if resolution else "1k",
+			"quality": quality if quality else "medium",
+		}
+		try:
+			url = f'{wave_url}/{source}/{model}'
+			response = requests.post(url, json=data, headers=headers)
+			response.raise_for_status()
+			return response.json()
+		except Exception as e:
+			body = ""
+			try:
+				body = response.text[:400] if 'response' in locals() else ""
+			except Exception:
+				pass
+			print(f"t2i Request Err: {e} body={body!r}")
+			return None
+
 	# Get Video By Video ID
 	def get_prediction_result(self, requestId: str):
 		url = f"{wave_url}/predictions/{requestId}/result"

@@ -72,6 +72,22 @@ DEFAULT_VIDEOGEN_MODEL = "happyhorse-1.0"
 VIDEOGEN_POLL_TIMEOUT_S = 240.0
 VIDEOGEN_POLL_INTERVAL_S = 5.0
 
+# Image generation models. Keep slugs in sync with the frontend
+# Inspector dropdown so a config.model the user picked actually
+# resolves here. The first entry is the canvas default.
+IMAGEGEN_REGISTRY: Dict[str, Dict[str, str]] = {
+    # OpenAI gpt-image-2 — $0.06 / image @ 1k medium quality. Fast,
+    # solid prompt fidelity, broad style range. Default.
+    "gpt-image-2": {"vendor": "openai", "model": "gpt-image-2/text-to-image"},
+    # Google Nano Banana 2 — 4K capable, fast iteration.
+    "nano-banana-2": {"vendor": "google", "model": "nano-banana-2/text-to-image"},
+    # ByteDance Seedream Lite — cheaper, decent quality.
+    "seedream-v5-lite": {"vendor": "bytedance", "model": "seedream-v5.0-lite/text-to-image"},
+}
+DEFAULT_IMAGEGEN_MODEL = "gpt-image-2"
+IMAGEGEN_POLL_TIMEOUT_S = 90.0
+IMAGEGEN_POLL_INTERVAL_S = 3.0
+
 # Hostnames allowed as inputs.file_url for the imageref block. Anything
 # else is rejected before we make a server-side fetch (SSRF guard).
 IMAGEREF_ALLOW_HOSTS = (
@@ -348,9 +364,11 @@ async def _run_real(body: CanvasRunBlockRequest, started: float) -> CanvasRunBlo
             return await _real_imageref(body, started)
         if bt == "videogen":
             return await _real_videogen(body, started)
+        if bt == "imagegen":
+            return await _real_imagegen(body, started)
         if bt == "stitcher":
             return await _real_stitcher(body, started)
-        # imagegen / voice not yet implemented for real mode — fall back.
+        # voice not yet implemented for real mode — fall back.
         log.info("canvas real-mode fallback to stub for block_type=%s", bt)
         return await _run_stub(body, started)
     except HTTPException:
@@ -692,3 +710,89 @@ async def _real_stitcher(body: CanvasRunBlockRequest, started: float) -> CanvasR
             shutil.rmtree(tmp, ignore_errors=True)
         except Exception:
             pass
+
+
+async def _real_imagegen(body: CanvasRunBlockRequest, started: float) -> CanvasRunBlockResponse:
+    """Text-to-image via WaveSpeed (gpt-image-2 default).
+
+    Same poll-based pattern as _real_videogen but resolves to
+    output_kind='image'. Idempotency / rate-limit / audit happen at
+    the outer run_block layer, so this just wraps the WaveSpeed call.
+    """
+    from apps.web.ai.wave import WaveApiInstance
+    config = body.config or {}
+    inputs = body.inputs or {}
+    prompt = (inputs.get("prompt") or config.get("text") or "").strip()
+    if not prompt:
+        return CanvasRunBlockResponse(
+            block_id=body.block_id, status="failed",
+            error="imagegen block: empty prompt (no upstream prompt block, no config.text)",
+            elapsed_s=round(time.monotonic() - started, 2), mode="real",
+        )
+    model_slug = config.get("model") or DEFAULT_IMAGEGEN_MODEL
+    cfg = IMAGEGEN_REGISTRY.get(model_slug)
+    if cfg is None:
+        return CanvasRunBlockResponse(
+            block_id=body.block_id, status="failed",
+            error=f"imagegen block: unknown model {model_slug!r}",
+            elapsed_s=round(time.monotonic() - started, 2), mode="real",
+        )
+    aspect = config.get("aspect") or config.get("aspect_ratio") or "16:9"
+    resolution = config.get("resolution") or "1k"
+    quality = config.get("quality") or "medium"
+
+    create_resp = await asyncio.to_thread(
+        WaveApiInstance.x402create_t2i,
+        cfg["vendor"], cfg["model"], prompt, aspect, resolution, quality,
+    )
+    if not create_resp or create_resp.get("code") != 200:
+        return CanvasRunBlockResponse(
+            block_id=body.block_id, status="failed",
+            error=f"imagegen create failed: {create_resp}",
+            elapsed_s=round(time.monotonic() - started, 2), mode="real",
+        )
+    request_id = create_resp.get("data", {}).get("id")
+    if not request_id:
+        return CanvasRunBlockResponse(
+            block_id=body.block_id, status="failed",
+            error="imagegen create returned no request_id",
+            elapsed_s=round(time.monotonic() - started, 2), mode="real",
+        )
+
+    deadline = time.monotonic() + IMAGEGEN_POLL_TIMEOUT_S
+    last_status = "unknown"
+    while time.monotonic() < deadline:
+        await asyncio.sleep(IMAGEGEN_POLL_INTERVAL_S)
+        poll = await asyncio.to_thread(WaveApiInstance.get_prediction_result, request_id)
+        if not poll.get("success"):
+            continue
+        data = poll.get("data") or {}
+        inner = data.get("data") if isinstance(data.get("data"), dict) else data
+        last_status = (inner.get("status") or "").lower()
+        if last_status in ("completed", "succeeded", "success"):
+            outputs = inner.get("outputs") or []
+            output_url = outputs[0] if outputs else inner.get("output") or inner.get("output_url")
+            if not output_url:
+                return CanvasRunBlockResponse(
+                    block_id=body.block_id, status="failed",
+                    error=f"imagegen completed but no output_url; raw: {inner}",
+                    elapsed_s=round(time.monotonic() - started, 2), mode="real",
+                )
+            return CanvasRunBlockResponse(
+                block_id=body.block_id, status="ok", output_kind="image",
+                output_url=output_url,
+                cost_cr=int(config.get("cost_cr") or 100),
+                elapsed_s=round(time.monotonic() - started, 2), mode="real",
+            )
+        if last_status in ("failed", "error", "cancelled", "canceled"):
+            err = inner.get("error") or inner.get("message") or "unknown failure"
+            return CanvasRunBlockResponse(
+                block_id=body.block_id, status="failed",
+                error=f"imagegen {last_status}: {err}",
+                elapsed_s=round(time.monotonic() - started, 2), mode="real",
+            )
+    return CanvasRunBlockResponse(
+        block_id=body.block_id, status="failed",
+        error=f"imagegen poll timeout after {IMAGEGEN_POLL_TIMEOUT_S}s (last status={last_status})",
+        elapsed_s=round(time.monotonic() - started, 2), mode="real",
+    )
