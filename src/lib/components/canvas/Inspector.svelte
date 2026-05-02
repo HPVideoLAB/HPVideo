@@ -117,10 +117,10 @@
 						value={config.model ?? 'gpt-image-2'}
 						on:change={(e) => onImagegenChange({ model: valueOf(e) })}
 					>
-						<option value="gpt-image-2">GPT Image 2 (default)</option>
-						<option value="nano-banana-2">Nano Banana 2 — 4K capable</option>
-						<option value="seedream-v5-lite">Seedream V5 Lite — cheap</option>
-						<option value="flux-dev">Flux Dev (legacy stub)</option>
+						<option value="gpt-image-2">{$i18n.t('GPT Image 2 (default)')}</option>
+						<option value="nano-banana-2">{$i18n.t('Nano Banana 2 — 4K capable')}</option>
+						<option value="seedream-v5-lite">{$i18n.t('Seedream V5 Lite — cheap')}</option>
+						<option value="flux-dev">{$i18n.t('Flux Dev (legacy stub)')}</option>
 					</select>
 				</div>
 				<div class="field-group">
@@ -162,44 +162,36 @@
 
 				{#if (config.model ?? 'happyhorse-1.0') === 'happyhorse-1.0'}
 					<details class="tip-card" open>
-						<summary>💡 Pro tips for HappyHorse 1.0</summary>
+						<summary>{$i18n.t('💡 Pro tips for HappyHorse 1.0')}</summary>
 						<div class="tip-body">
 							<p>
-								<strong>6-layer prompt structure</strong> (in the upstream Prompt block):
+								<strong>{$i18n.t('6-layer prompt structure')}</strong> {$i18n.t('(in the upstream Prompt block):')}
 							</p>
 							<ol>
-								<li><b>Subject</b>: who/what (be specific — age, hair, wardrobe)</li>
-								<li><b>Action</b>: what they do, observable behavior</li>
-								<li><b>Environment</b>: where, lighting, background props</li>
-								<li><b>Style/Composition</b>: shot type, depth of field, grade</li>
-								<li><b>Camera Motion</b>: <i>slow dolly in / lateral tracking / push-in</i></li>
-								<li><b>Audio</b>: foreground (dialogue) → mid (footsteps) → background (ambient)</li>
+								<li><b>{$i18n.t('Subject')}</b>: {$i18n.t('who/what (be specific — age, hair, wardrobe)')}</li>
+								<li><b>{$i18n.t('Action')}</b>: {$i18n.t('what they do, observable behavior')}</li>
+								<li><b>{$i18n.t('Environment')}</b>: {$i18n.t('where, lighting, background props')}</li>
+								<li><b>{$i18n.t('Style/Composition')}</b>: {$i18n.t('shot type, depth of field, grade')}</li>
+								<li><b>{$i18n.t('Camera Motion')}</b>: <i>{$i18n.t('slow dolly in / lateral tracking / push-in')}</i></li>
+								<li><b>{$i18n.t('Audio')}</b>: {$i18n.t('foreground (dialogue) → mid (footsteps) → background (ambient)')}</li>
 							</ol>
 							<p>
-								<strong>Dialogue</strong>: don't use quotes. Write
-								<i>“speaks clearly in Korean with accurate lip-sync: 안녕하세요…”</i>
+								<strong>{$i18n.t('Dialogue')}</strong>: {$i18n.t("don't use quotes. Write")}
+								<i>“{$i18n.t('speaks clearly in Korean with accurate lip-sync')}: 안녕하세요…”</i>
 							</p>
 							<p class="tip-warn">
-								<strong>⚠ Talking heads: prefer single 8–12s takes over chained shots.</strong>
-								Frame-by-frame inspection of i2v chains showed character identity drifts
-								between cuts (face/hair changes) — the model preserves motion, not face DNA.
-								HappyHorse natively supports up to 15s in one shot. The 🎙 Talking Head
-								template uses a single 8s take.
+								<strong>⚠ {$i18n.t('Talking heads: prefer single 8–12s takes over chained shots.')}</strong>
+								{$i18n.t('i2v chaining preserves motion but not face identity — characters can drift between cuts. HappyHorse natively supports up to 15s in one shot. The Talking Head template uses a single 8s take.')}
 							</p>
 							<p class="tip-warn">
-								<strong>⚠ Don't put small/dense text on screens or signs.</strong> The model
-								scrambles letterforms over multi-second clips (e.g. "Cinematic AI on BNB
-								Chain" tagline degraded into "C... AI... B Chain" by 4s). Use one large
-								wordmark only — large logos like a giant 'HPVideo' stay readable.
+								<strong>⚠ {$i18n.t("Don't put small/dense text on screens or signs.")}</strong>
+								{$i18n.t('The model scrambles letterforms over multi-second clips. Use one large wordmark only — big logos stay readable across the take.')}
 							</p>
 							<p>
-								When you do need multi-shot, chain via videogen → next videogen edge (same
-								price as t2v, last-frame i2v under the hood) and re-state the character
-								description in each prompt — but expect some identity drift.
+								{$i18n.t('When you do need multi-shot, wire videogen → next videogen so the runtime chains the last frame as the next shot\'s first frame (i2v under the hood, same price). Restate the character description in each prompt to minimize drift.')}
 							</p>
 							<p class="tip-footnote">
-								Native lip-sync in 7 langs: en / zh / yue / ja / ko / de / fr · 14.6% WER ·
-								joint audio+video in one pass.
+								{$i18n.t('Native lip-sync in 7 languages: English / Mandarin / Cantonese / Japanese / Korean / German / French · 14.6% WER · joint audio + video in one pass.')}
 							</p>
 						</div>
 					</details>
@@ -256,18 +248,16 @@
 				<details class="tip-card">
 					<summary>{$i18n.t('💡 Prompt cheatsheet')}</summary>
 					<div class="tip-body">
-						<p><b>Dialogue (no quotes):</b></p>
-						<pre>speaks clearly in Korean with
-accurate lip-sync: 안녕하세요...</pre>
-						<p><b>Camera moves that work well:</b></p>
+						<p><b>{$i18n.t('Dialogue (no quotes):')}</b></p>
+						<pre>{$i18n.t('speaks clearly in Korean with accurate lip-sync')}: 안녕하세요...</pre>
+						<p><b>{$i18n.t('Camera moves that work well:')}</b></p>
 						<ul>
-							<li>slow dolly in / out</li>
-							<li>steady push-in</li>
-							<li>lateral tracking</li>
-							<li>handheld follow</li>
+							<li>{$i18n.t('slow dolly in / out')}</li>
+							<li>{$i18n.t('steady push-in')}</li>
+							<li>{$i18n.t('lateral tracking')}</li>
+							<li>{$i18n.t('handheld follow')}</li>
 						</ul>
-						<p><b>Avoid:</b> emotion words ("happy", "sad"). Replace with observable
-						behavior ("smiles warmly", "tilts head, looks down").</p>
+						<p><b>{$i18n.t('Avoid')}:</b> {$i18n.t('emotion words ("happy", "sad"). Replace with observable behavior ("smiles warmly", "tilts head, looks down").')}</p>
 					</div>
 				</details>
 			{:else if typeKey === 'imageref'}
