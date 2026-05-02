@@ -38,6 +38,8 @@
 	}
 
 	const VIDEO_MODELS = [
+		// HappyHorse-1.0 default — joint audio + lip-sync, #1 leaderboard.
+		{ key: 'happyhorse-1.0', label: 'HappyHorse 1.0 🥇 — audio+lip-sync · $0.75' },
 		{ key: 'wan-2.7', label: 'WAN 2.7 — photoreal · $1.50' },
 		{ key: 'seedance-2.0', label: 'Seedance 2.0 — fast · $0.60' },
 		{ key: 'ovi', label: 'OVI — characters · $0.45' },
@@ -117,7 +119,7 @@
 				<div class="field-group">
 					<label>Model</label>
 					<select
-						value={config.model ?? 'wan-2.7'}
+						value={config.model ?? 'happyhorse-1.0'}
 						on:change={(e) => update({ model: valueOf(e) })}
 					>
 						{#each VIDEO_MODELS as m (m.key)}

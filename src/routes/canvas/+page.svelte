@@ -57,7 +57,7 @@
 			id: 'videogen-1',
 			type: 'block',
 			position: { x: 640, y: 80 },
-			data: { title: 'Video Gen', num: 1, typeKey: 'videogen', icon: '🎬', state: 'queued', cost: 1500, hasIn: true, hasOut: true, config: { model: 'wan-2.7', duration: 5, resolution: '720p', seed: 'random' } }
+			data: { title: 'Video Gen', num: 1, typeKey: 'videogen', icon: '🎬', state: 'queued', cost: 1500, hasIn: true, hasOut: true, config: { model: 'happyhorse-1.0', duration: 5, resolution: '720p', seed: 'random' } }
 		},
 		{
 			id: 'stitcher-1',

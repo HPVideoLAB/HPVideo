@@ -34,7 +34,7 @@ export const defaultBackendConfig = async () => {
     "auth": true,
     "default_locale": "en-US",
     "images": false,
-    "default_models": "wan-2.7",
+    "default_models": "happyhorse-1.0",
     "default_prompt_suggestions": [
 				{
 					"title": [

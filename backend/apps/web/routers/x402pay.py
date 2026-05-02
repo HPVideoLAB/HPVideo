@@ -33,6 +33,11 @@ facilitator_config = create_facilitator_config(
 # All other models upgraded to latest versions supported by WaveSpeed docs
 # (wavespeed.ai/docs) as of 2026-04-22.
 MODEL_REGISTRY: Dict[str, Dict[str, str]] = {
+    # HappyHorse-1.0 — Alibaba's joint audio+video model. #1 on WaveSpeed
+    # leaderboard (T2V Elo 1333, I2V Elo 1392 as of 2026-04-08). Native
+    # 7-language lip-sync at 14.6% WER. This is now the default model for
+    # both the standalone /creator path and the Canvas DAG.
+    "happyhorse-1.0": {"vendor": "alibaba", "model": "happyhorse-1.0/text-to-video"},
     # Alibaba WAN 2.5 → 2.7 (latest; 2.5/2.6 still on WaveSpeed)
     "wan-2.7":    {"vendor": "alibaba",     "model": "wan-2.7/text-to-video"},
     # Character.ai OVI (still current)

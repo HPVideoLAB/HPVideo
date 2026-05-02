@@ -10,6 +10,28 @@ export const getDeModels = async (token: string = '') => {
       //             replaced by Luma Ray 2 + Vidu Q3.
       // 2026-04-26: Descriptions rewritten as strength pitches; verified
       //             every slug is the latest WaveSpeed version (Apr 2026).
+      // 2026-05-02: HappyHorse 1.0 added at the top + made default. Native
+      //             joint audio+video, 7-language lip-sync at 14.6% WER,
+      //             #1 on WaveSpeed leaderboard (T2V Elo 1333, I2V 1392).
+      {
+        name: 'HappyHorse 1.0',
+        source: 'alibaba',
+        model: 'happyhorse-1.0',
+        textmodel: 'happyhorse-1.0/text-to-video',
+        imagemodel: 'happyhorse-1.0/image-to-video',
+        audio: true,
+        duration: [5, 8],
+        amount: { '720': [0.75, 1.20], '1080': [1.50, 2.40] },
+        size: ['720*1280', '1280*720', '1080*1920', '1920*1080', '1024*1024'],
+        tip: '#1 leaderboard · native dialogue + lip-sync',
+        support: 'image',
+        type: 1,
+        desc: 'Currently #1 on WaveSpeed video leaderboard. Joint audio+video in a single pass — phoneme-level lip-sync across English / Mandarin / Cantonese / Japanese / Korean / German / French at 14.6% WER. Cinematic 1080p with synced dialogue, ambient sound, and Foley out of the box.',
+        modelicon: '/creator/static/icon/qwen.png',
+        modelinfo: '',
+        badge: '🥇 #1',
+        featured: true,
+      },
       {
         name: 'WAN 2.7',
         source: 'alibaba',

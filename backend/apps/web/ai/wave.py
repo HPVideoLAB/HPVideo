@@ -11,6 +11,13 @@ wave_key = os.getenv("WAVESPEED_KEY")
 # Updated 2026-04-22: Sora 2 removed (OpenAI API shutting down 2026-09-24),
 # replaced by Luma Ray 2 + Vidu Q3. All models upgraded to latest WaveSpeed versions.
 amounts = {
+  # HappyHorse-1.0 (Alibaba, native joint audio+video, 7-lang lip-sync).
+  # Listed at $0.7/run on WaveSpeed; we set 720p/5s = $0.75 to match the
+  # canonical clip price tier across the rest of the registry.
+  "happyhorse-1.0": {
+    "720":  {"5": 0.75, "8": 1.20},
+    "1080": {"5": 1.50, "8": 2.40}
+  },
   "wan-2.7": {
     "480": {"5": 0.375, "10": 0.75},
     "720": {"5": 0.75, "10": 1.5},
@@ -52,6 +59,7 @@ class WaveApi:
 	def check_model(self, model: str):
 		# Keep in sync with MODEL_REGISTRY in x402pay.py and `amounts` above.
 		models = [
+			"happyhorse-1.0",
 			"wan-2.7",
 			"ovi",
 			"veo3.1",

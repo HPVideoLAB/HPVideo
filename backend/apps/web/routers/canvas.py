@@ -68,7 +68,7 @@ VIDEOGEN_REGISTRY: Dict[str, Dict[str, str]] = {
     "vidu-q3":        {"vendor": "vidu",         "model": "q3/text-to-video"},
 }
 
-DEFAULT_VIDEOGEN_MODEL = "wan-2.7"
+DEFAULT_VIDEOGEN_MODEL = "happyhorse-1.0"
 VIDEOGEN_POLL_TIMEOUT_S = 240.0
 VIDEOGEN_POLL_INTERVAL_S = 5.0
 

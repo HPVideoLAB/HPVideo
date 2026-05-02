@@ -121,7 +121,7 @@ export function defaultConfig(typeKey: TypeKey): Record<string, any> {
 		case 'imagegen':
 			return { model: 'flux-dev', aspect: '16:9', seed: 'random' };
 		case 'videogen':
-			return { model: 'wan-2.7', duration: 5, resolution: '720p', seed: 'random' };
+			return { model: 'happyhorse-1.0', duration: 5, resolution: '720p', seed: 'random' };
 		case 'prompt':
 			return { text: '' };
 		case 'voice':
