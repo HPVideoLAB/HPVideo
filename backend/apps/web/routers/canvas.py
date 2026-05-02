@@ -115,7 +115,7 @@ class CanvasRunBlockResponse(BaseModel):
 
 
 @router.post("/run-block", response_model=CanvasRunBlockResponse)
-@limiter.limit("60/minute")
+@limiter.limit("60/minute")  # Per-IP slowapi gate (NAT-shared); per-user gate below.
 async def run_block(
     request: Request,
     body: CanvasRunBlockRequest,
@@ -127,15 +127,53 @@ async def run_block(
     once per block, in dependency order, threading each block's
     `output_url` into the next block's `inputs`. Wire-protocol stays
     flat (no SSE / WebSocket) so v0.3 can ship without new infra.
+
+    Hardening layers:
+      - Per-IP slowapi limiter (60/min) — `@limiter.limit` decorator above.
+      - Per-user Redis sliding-window limit (60/min/user) — defends
+        corporate NAT users from each other.
+      - Idempotency-Key header → Redis cache (15min TTL). Replays return
+        the cached response with mode="cached" so a network retry can't
+        double-bill or double-generate.
+      - Successful real-mode generations write a PayTable audit row so
+        future billing reconciliation has a paper trail (currpay=False
+        because Canvas doesn't yet flow through the x402 gate).
     """
     started = time.monotonic()
 
-    # Resolve effective mode for this request:
-    #   1. global CANVAS_RUN_MODE (env)
-    #   2. per-request header `X-Canvas-Mode: real` overrides to real,
-    #      but only if the user is admin (MVP gate — real-mode is not
-    #      yet hardened with per-user rate limits, idempotency, or
-    #      cost deduction, so we don't expose it broadly yet).
+    # ----- Per-user rate limit (Redis sliding window) -----
+    user_id = getattr(user, "id", None)
+    if user_id:
+        from apps.redis.redis_client import RedisClientInstance
+        rate_key = f"canvas:ratelimit:user:{user_id}:{int(time.time()) // 60}"
+        try:
+            r = RedisClientInstance.redis_client
+            if r is not None:
+                cnt = r.incr(rate_key)
+                if cnt == 1:
+                    r.expire(rate_key, 65)
+                if cnt > 60:
+                    raise HTTPException(
+                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                        detail="Per-user rate limit: 60 requests/minute. Slow down.",
+                    )
+        except HTTPException:
+            raise
+        except Exception as e:
+            log.warning("canvas per-user rate-limit redis error: %s — failing open", e)
+
+    # ----- Idempotency replay -----
+    idem_key = (request.headers.get("idempotency-key") or "").strip()
+    if idem_key and user_id:
+        from apps.redis.redis_client import RedisClientInstance
+        cache_key = f"canvas:idem:{user_id}:{idem_key}"
+        cached = RedisClientInstance.get_value_by_key(cache_key)
+        if cached:
+            cached["mode"] = "cached"
+            cached["elapsed_s"] = round(time.monotonic() - started, 3)
+            return CanvasRunBlockResponse(**cached)
+
+    # ----- Mode resolution: stub vs real-admin -----
     mode = CANVAS_RUN_MODE
     header_mode = (request.headers.get("x-canvas-mode") or "").lower().strip()
     if header_mode == "real":
@@ -144,15 +182,47 @@ async def run_block(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=(
                     "X-Canvas-Mode: real is admin-only during the v0.4 MVP. "
-                    "Real per-block dispatch ships broadly once pointpay / "
-                    "idempotency / per-user rate limits are wired up."
+                    "Real per-block dispatch ships broadly once pointpay "
+                    "charging is wired up."
                 ),
             )
         mode = "real"
 
     if mode == "real":
-        return await _run_real(body, started)
-    return await _run_stub(body, started)
+        resp = await _run_real(body, started)
+    else:
+        resp = await _run_stub(body, started)
+
+    # ----- Audit row + idempotency cache for successful results -----
+    if resp.status == "ok" and mode == "real" and resp.cost_cr > 0:
+        try:
+            from apps.web.models.pay import PayTableInstall
+            PayTableInstall.insert_pay(
+                wallet_addr=str(user_id or "")[:128],
+                model=(body.config or {}).get("model") or body.block_type,
+                size=str((body.config or {}).get("resolution") or ""),
+                duration=int((body.config or {}).get("duration") or 0),
+                amount=str(resp.cost_cr),
+                messageid=f"canvas:{body.block_id}:{int(time.time())}",
+                hash="",
+                status=False,   # Not yet billed; future pointpay sweep will reconcile.
+                currpay=False,
+            )
+        except Exception as e:
+            log.warning("canvas PayTable audit insert failed: %s", e)
+
+    if idem_key and user_id and resp.status == "ok":
+        try:
+            from apps.redis.redis_client import RedisClientInstance
+            RedisClientInstance.add_key_value(
+                f"canvas:idem:{user_id}:{idem_key}",
+                resp.model_dump(),
+                ttl=900,  # 15 min — long enough for retries, short enough to not stale-replay.
+            )
+        except Exception as e:
+            log.warning("canvas idem cache write failed: %s", e)
+
+    return resp
 
 
 async def _run_stub(body: CanvasRunBlockRequest, started: float) -> CanvasRunBlockResponse:

@@ -227,6 +227,15 @@ export async function runCanvas(opts: ExecOptions): Promise<RunSummary> {
 	// Non-admins get 403 even if they set the localStorage value.
 	const canvasMode = (typeof localStorage !== 'undefined' && localStorage.getItem('canvas_mode')) || '';
 
+	// Stable per-Run-All UUID. The runtime sends `Idempotency-Key:
+	// <runId>:<node.id>` for every block fetch. If the user clicks Run
+	// All again with the same id (network retry, refresh-mid-run), the
+	// backend's Redis-cached response is returned with mode="cached"
+	// instead of re-billing / re-generating. Cleared per fresh Run All.
+	const runId =
+		(typeof crypto !== 'undefined' && (crypto as any).randomUUID?.()) ||
+		`run_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+
 	for (const node of ordered) {
 		if (signal?.aborted) {
 			onLog?.('Run aborted');
@@ -260,7 +269,8 @@ export async function runCanvas(opts: ExecOptions): Promise<RunSummary> {
 				headers: {
 					'Content-Type': 'application/json',
 					...(token ? { Authorization: `Bearer ${token}` } : {}),
-					...(canvasMode ? { 'X-Canvas-Mode': canvasMode } : {})
+					...(canvasMode ? { 'X-Canvas-Mode': canvasMode } : {}),
+					'Idempotency-Key': `${runId}:${node.id}`
 				},
 				body: JSON.stringify({
 					block_id: node.id,
