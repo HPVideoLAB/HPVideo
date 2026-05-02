@@ -113,18 +113,45 @@ class WaveApi:
 			print(f"Request Err: {e}, {response.json()}")
 			return None
 		
-	# Create X402 Video ID      
+	# Create X402 Video ID
 	def x402create(self, source: str, model: str, prompt: str, duration: int, size: str):
 		headers = {
 			"Authorization": f'Bearer {wave_key}',
 			"Content-Type": "application/json"
 		}
+		# Map a Canvas-style resolution token ("720p" / "480p" / "1080p")
+		# to a 16:9 aspect ratio when the model wants aspect_ratio instead
+		# of size. This lets Canvas pass `resolution` through unchanged
+		# and the wave client figures out per-vendor format.
+		def _to_aspect_ratio(s: str) -> str:
+			# If caller already gave us an aspect ratio, keep it.
+			if s and ":" in s:
+				return s
+			return "16:9"
+
 		if source == 'pixverse':
 			data = {
 				"duration": duration,
 				"prompt": prompt,
-				"aspect_ratio": size,
+				"aspect_ratio": _to_aspect_ratio(size),
 				"resolution": "720p"
+			}
+		elif source == 'google':
+			# Veo 3.1: aspect_ratio (not size), generate_audio for in-video
+			# dialogue + ambient audio. Without these the API 400s.
+			data = {
+				"duration": duration,
+				"prompt": prompt,
+				"aspect_ratio": _to_aspect_ratio(size),
+				"generate_audio": True,
+				"resolution": "720p"
+			}
+		elif source == 'bytedance' or source == 'kwaivgi':
+			# Seedance / Kling: aspect_ratio (no resolution).
+			data = {
+				"duration": duration,
+				"prompt": prompt,
+				"aspect_ratio": _to_aspect_ratio(size)
 			}
 		else:
 			data = {
@@ -139,7 +166,12 @@ class WaveApi:
 			response.raise_for_status()
 			return response.json()
 		except Exception as e:
-			print(f"Request Err: {e}")
+			body = ""
+			try:
+				body = response.text[:400] if 'response' in locals() else ""
+			except Exception:
+				pass
+			print(f"Request Err: {e} body={body!r}")
 			return None
 
 	# Get Video By Video ID	
