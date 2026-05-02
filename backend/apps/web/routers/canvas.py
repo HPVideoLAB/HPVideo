@@ -796,3 +796,185 @@ async def _real_imagegen(body: CanvasRunBlockRequest, started: float) -> CanvasR
         error=f"imagegen poll timeout after {IMAGEGEN_POLL_TIMEOUT_S}s (last status={last_status})",
         elapsed_s=round(time.monotonic() - started, 2), mode="real",
     )
+
+
+# ===========================================================================
+# Workspace persistence (Canvas v0.4 batch 11)
+# ===========================================================================
+
+class CanvasSaveRequest(BaseModel):
+    id: Optional[str] = None              # If set, update existing; else create new.
+    name: Optional[str] = None             # Friendly name; default "Untitled canvas".
+    nodes: List[Dict[str, Any]] = []
+    edges: List[Dict[str, Any]] = []
+    viewport: Optional[Dict[str, Any]] = None
+
+
+class CanvasSaveResponse(BaseModel):
+    id: str
+    name: str
+    share_token: Optional[str] = None
+    created_at: int
+    updated_at: int
+
+
+@router.post("/save", response_model=CanvasSaveResponse)
+async def canvas_save(body: CanvasSaveRequest, user=Depends(get_current_user)):
+    """Save (or create) a canvas workspace. Returns the canonical id.
+
+    Frontend pattern: on Save click, POST with `id=null` for first save
+    (backend mints a UUID), POST with `id=<existing>` for subsequent
+    saves (backend updates in place).
+    """
+    from apps.web.models.canvas_workspace import CanvasWorkspaceInstall
+    import json as _json
+
+    nodes_json = _json.dumps(body.nodes or [])
+    edges_json = _json.dumps(body.edges or [])
+    viewport_json = _json.dumps(body.viewport) if body.viewport else None
+
+    if body.id:
+        ws = CanvasWorkspaceInstall.update(
+            id=body.id,
+            user_id=user.id,
+            name=body.name,
+            nodes_json=nodes_json,
+            edges_json=edges_json,
+            viewport_json=viewport_json,
+        )
+        if ws is None:
+            raise HTTPException(status_code=404, detail="workspace not found")
+    else:
+        ws = CanvasWorkspaceInstall.insert(
+            user_id=user.id,
+            name=body.name or "Untitled canvas",
+            nodes_json=nodes_json,
+            edges_json=edges_json,
+            viewport_json=viewport_json,
+        )
+    return CanvasSaveResponse(
+        id=ws.id,
+        name=ws.name,
+        share_token=ws.share_token,
+        created_at=ws.created_at,
+        updated_at=ws.updated_at,
+    )
+
+
+class CanvasLoadResponse(BaseModel):
+    id: str
+    name: str
+    nodes: List[Dict[str, Any]]
+    edges: List[Dict[str, Any]]
+    viewport: Optional[Dict[str, Any]] = None
+    share_token: Optional[str] = None
+    created_at: int
+    updated_at: int
+    read_only: bool = False
+
+
+@router.get("/load/{ws_id}", response_model=CanvasLoadResponse)
+async def canvas_load(ws_id: str, user=Depends(get_current_user)):
+    """Load a workspace by id — owner only."""
+    from apps.web.models.canvas_workspace import CanvasWorkspaceInstall
+    import json as _json
+
+    ws = CanvasWorkspaceInstall.get_by_id(ws_id, user.id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="workspace not found")
+    return CanvasLoadResponse(
+        id=ws.id,
+        name=ws.name,
+        nodes=_json.loads(ws.nodes or "[]"),
+        edges=_json.loads(ws.edges or "[]"),
+        viewport=_json.loads(ws.viewport) if ws.viewport else None,
+        share_token=ws.share_token,
+        created_at=ws.created_at,
+        updated_at=ws.updated_at,
+        read_only=False,
+    )
+
+
+@router.get("/share/{token}", response_model=CanvasLoadResponse)
+async def canvas_load_share(token: str):
+    """Public read-only load by share token. No auth required.
+
+    Token is opaque (UUID), 32 chars, infeasible to enumerate. Anyone
+    with the link can clone the workflow into their own canvas; the
+    backend simply returns the JSON. The owner's name is intentionally
+    not revealed.
+    """
+    from apps.web.models.canvas_workspace import CanvasWorkspaceInstall
+    import json as _json
+
+    ws = CanvasWorkspaceInstall.get_by_share_token(token)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="shared workspace not found")
+    return CanvasLoadResponse(
+        id=ws.id,
+        name=ws.name,
+        nodes=_json.loads(ws.nodes or "[]"),
+        edges=_json.loads(ws.edges or "[]"),
+        viewport=_json.loads(ws.viewport) if ws.viewport else None,
+        share_token=ws.share_token,
+        created_at=ws.created_at,
+        updated_at=ws.updated_at,
+        read_only=True,
+    )
+
+
+class CanvasListItem(BaseModel):
+    id: str
+    name: str
+    archived: bool
+    has_share_token: bool
+    created_at: int
+    updated_at: int
+
+
+@router.get("/list", response_model=List[CanvasListItem])
+async def canvas_list(user=Depends(get_current_user)):
+    """List the current user's workspaces, newest first."""
+    from apps.web.models.canvas_workspace import CanvasWorkspaceInstall
+    items = CanvasWorkspaceInstall.list_by_user(user.id)
+    return [
+        CanvasListItem(
+            id=item.id, name=item.name, archived=item.archived,
+            has_share_token=item.has_share_token,
+            created_at=item.created_at, updated_at=item.updated_at,
+        )
+        for item in items
+    ]
+
+
+@router.delete("/{ws_id}")
+async def canvas_delete(ws_id: str, user=Depends(get_current_user)):
+    from apps.web.models.canvas_workspace import CanvasWorkspaceInstall
+    ok = CanvasWorkspaceInstall.delete(ws_id, user.id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="workspace not found")
+    return {"ok": True}
+
+
+class CanvasShareRequest(BaseModel):
+    enable: bool
+
+
+class CanvasShareResponse(BaseModel):
+    share_token: Optional[str] = None
+    share_url: Optional[str] = None
+
+
+@router.post("/{ws_id}/share", response_model=CanvasShareResponse)
+async def canvas_share(ws_id: str, body: CanvasShareRequest, user=Depends(get_current_user)):
+    """Mint or revoke a share token for a workspace."""
+    from apps.web.models.canvas_workspace import CanvasWorkspaceInstall
+    token = CanvasWorkspaceInstall.set_share_token(ws_id, user.id, body.enable)
+    if body.enable and token is None:
+        raise HTTPException(status_code=404, detail="workspace not found")
+    if not body.enable:
+        return CanvasShareResponse(share_token=None, share_url=None)
+    return CanvasShareResponse(
+        share_token=token,
+        share_url=f"/creator/canvas?share={token}",
+    )

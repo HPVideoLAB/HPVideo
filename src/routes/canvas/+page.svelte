@@ -26,6 +26,14 @@
 	import { TEMPLATES } from '$lib/components/canvas/templates';
 	import { runCanvas, type RunSummary } from '$lib/components/canvas/runner';
 	import { pendingAction, type CanvasAction } from '$lib/components/canvas/canvasActions';
+	import {
+		saveWorkspace,
+		loadWorkspace,
+		loadShared,
+		listWorkspaces,
+		setShare,
+		type WorkspaceListItem
+	} from '$lib/components/canvas/workspaceApi';
 	import { toast } from 'svelte-sonner';
 	import { WEBUI_NAME, initPageFlag } from '$lib/stores';
 
@@ -228,6 +236,116 @@
 		void $edges;
 		scheduleSave();
 	}
+
+	// ---- Server-side workspace persistence (Canvas v0.4 batch 11) ----
+	// `currentWorkspaceId` ties the in-memory canvas to a server row when
+	// the user has clicked Save / Load. localStorage continues to work as
+	// a per-tab autosave below; Save explicitly pushes to the backend.
+	let currentWorkspaceId: string | null = null;
+	let currentShareToken: string | null = null;
+	let canvasName: string = '';
+	let isSaving = false;
+	let showLoadDialog = false;
+	let workspaceList: WorkspaceListItem[] = [];
+
+	$: savedLabel = currentWorkspaceId
+		? $i18n.t('Saved · cloud')
+		: $i18n.t('Auto-saved (local)');
+
+	async function handleSave(promptForName: boolean) {
+		if (isSaving) return;
+		const ns = get(nodes);
+		const es = get(edges);
+		// First save: ask for a name unless one's already typed in.
+		let name = (canvasName || '').trim();
+		if (promptForName && !currentWorkspaceId && !name) {
+			const guess =
+				typeof window !== 'undefined'
+					? window.prompt($i18n.t('Name this canvas'), $i18n.t('Untitled canvas'))
+					: '';
+			if (!guess) return;
+			name = guess.trim();
+			canvasName = name;
+		}
+		isSaving = true;
+		try {
+			const r = await saveWorkspace({
+				id: currentWorkspaceId,
+				name: name || ($i18n.t('Untitled canvas') as string),
+				nodes: ns,
+				edges: es
+			});
+			currentWorkspaceId = r.id;
+			currentShareToken = r.share_token;
+			canvasName = r.name;
+			savedFlash = true;
+			setTimeout(() => (savedFlash = false), 1500);
+			toast.success($i18n.t('Canvas saved.'));
+		} catch (e: any) {
+			toast.error(e?.message || ($i18n.t('Save failed.') as string));
+		} finally {
+			isSaving = false;
+		}
+	}
+
+	async function openLoadDialog() {
+		try {
+			workspaceList = await listWorkspaces();
+			showLoadDialog = true;
+		} catch (e: any) {
+			toast.error(e?.message || ($i18n.t('Could not load list.') as string));
+		}
+	}
+
+	async function loadById(id: string) {
+		try {
+			const ws = await loadWorkspace(id);
+			nodes.set(ws.nodes);
+			edges.set(ws.edges);
+			currentWorkspaceId = ws.id;
+			currentShareToken = ws.share_token;
+			canvasName = ws.name;
+			showLoadDialog = false;
+			toast.success($i18n.t('Loaded "{{name}}"', { name: ws.name }));
+		} catch (e: any) {
+			toast.error(e?.message || ($i18n.t('Load failed.') as string));
+		}
+	}
+
+	async function handleShare() {
+		if (!currentWorkspaceId) return;
+		try {
+			const enable = !currentShareToken;
+			const r = await setShare(currentWorkspaceId, enable);
+			currentShareToken = r.share_token;
+			if (enable && r.share_url && typeof navigator !== 'undefined' && navigator.clipboard) {
+				const fullUrl = window.location.origin + r.share_url;
+				await navigator.clipboard.writeText(fullUrl);
+				toast.success($i18n.t('Share link copied: {{url}}', { url: fullUrl }));
+			} else if (!enable) {
+				toast.info($i18n.t('Sharing disabled.'));
+			}
+		} catch (e: any) {
+			toast.error(e?.message || ($i18n.t('Share failed.') as string));
+		}
+	}
+
+	// On mount, if URL has ?share=<token>, load it read-only into the canvas.
+	onMount(async () => {
+		const url = typeof window !== 'undefined' ? new URL(window.location.href) : null;
+		const token = url?.searchParams?.get('share') || '';
+		if (token) {
+			try {
+				const ws = await loadShared(token);
+				nodes.set(ws.nodes);
+				edges.set(ws.edges);
+				canvasName = ws.name + ' (shared)';
+				toast.info($i18n.t('Loaded shared canvas: "{{name}}". Save As to fork it.', { name: ws.name }));
+			} catch (e: any) {
+				toast.error(e?.message || ($i18n.t('Could not load shared canvas.') as string));
+			}
+		}
+	});
 
 	function loadFromStorage() {
 		try {
@@ -491,12 +609,27 @@
 		</a>
 		<div class="breadcrumb">
 			<span style="opacity:0.4;">/</span>
-			<span class="current">{$i18n.t('Untitled canvas')}</span>
-			<span class="saved" class:flash={savedFlash}>● {$i18n.t('Auto-saved (local)')}</span>
+			<input
+				class="canvas-name"
+				type="text"
+				bind:value={canvasName}
+				on:blur={() => { if (currentWorkspaceId) handleSave(false); }}
+				placeholder={$i18n.t('Untitled canvas')}
+			/>
+			<span class="saved" class:flash={savedFlash}>● {savedLabel}</span>
 		</div>
 		<div class="topbar-right">
 			<button class="btn" on:click={resetCanvas}>{$i18n.t('Reset')}</button>
 			<TemplatesMenu on:load={loadTemplate} />
+			<button class="btn" on:click={() => handleSave(true)} disabled={isSaving}>
+				{isSaving ? '…' : '💾'} {currentWorkspaceId ? $i18n.t('Save') : $i18n.t('Save As')}
+			</button>
+			<button class="btn" on:click={openLoadDialog}>📂 {$i18n.t('Load')}</button>
+			{#if currentWorkspaceId}
+				<button class="btn" on:click={handleShare}>
+					{currentShareToken ? '🔗 ' + $i18n.t('Shared') : '🔗 ' + $i18n.t('Share')}
+				</button>
+			{/if}
 			<button class="btn primary" on:click={handleRunAll}>
 				{#if isRunning}
 					⏸ {$i18n.t('Cancel')}
@@ -552,6 +685,32 @@
 			on:delete={handleDelete}
 		/>
 	</div>
+
+	{#if showLoadDialog}
+		<div class="dialog-backdrop" on:click={() => (showLoadDialog = false)}>
+			<div class="dialog" on:click|stopPropagation>
+				<div class="dialog-head">
+					<span>{$i18n.t('Your saved canvases')}</span>
+					<button class="dialog-close" on:click={() => (showLoadDialog = false)}>×</button>
+				</div>
+				<div class="dialog-body">
+					{#if workspaceList.length === 0}
+						<p class="dialog-empty">{$i18n.t('No saved canvases yet. Click Save to make one.')}</p>
+					{:else}
+						{#each workspaceList as ws (ws.id)}
+							<button class="ws-item" on:click={() => loadById(ws.id)}>
+								<span class="ws-name">{ws.name}</span>
+								<span class="ws-meta">
+									{new Date(ws.updated_at * 1000).toLocaleString()}
+									{#if ws.has_share_token}<span class="ws-shared">🔗</span>{/if}
+								</span>
+							</button>
+						{/each}
+					{/if}
+				</div>
+			</div>
+		</div>
+	{/if}
 
 	<!--
 		Mobile interstitial. Canvas is structurally desktop-only — Palette + canvas
@@ -698,6 +857,116 @@
 	.breadcrumb .current {
 		color: #e5e3f0;
 		font-weight: 600;
+	}
+	.canvas-name {
+		background: transparent;
+		border: 1px solid transparent;
+		color: #e5e3f0;
+		font-weight: 600;
+		font-size: 13px;
+		font-family: inherit;
+		padding: 4px 8px;
+		border-radius: 6px;
+		min-width: 140px;
+		max-width: 280px;
+	}
+	.canvas-name:hover {
+		border-color: rgba(255, 255, 255, 0.15);
+	}
+	.canvas-name:focus {
+		outline: none;
+		border-color: rgba(194, 19, 242, 0.5);
+		background: rgba(194, 19, 242, 0.06);
+	}
+	.canvas-name::placeholder {
+		color: #6b6884;
+	}
+	.dialog-backdrop {
+		position: fixed;
+		inset: 0;
+		background: rgba(7, 6, 14, 0.7);
+		backdrop-filter: blur(6px);
+		z-index: 1000;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	.dialog {
+		width: min(560px, 90vw);
+		max-height: 78vh;
+		background: linear-gradient(180deg, rgba(28, 21, 56, 0.97) 0%, rgba(21, 16, 42, 0.97) 100%);
+		border: 1px solid rgba(194, 19, 242, 0.3);
+		border-radius: 14px;
+		box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+	}
+	.dialog-head {
+		padding: 14px 18px;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+		font-weight: 600;
+		font-size: 14px;
+		color: #fff;
+	}
+	.dialog-close {
+		font-size: 22px;
+		line-height: 1;
+		padding: 2px 8px;
+		background: transparent;
+		border: 0;
+		color: #a6a2bc;
+		cursor: pointer;
+		border-radius: 6px;
+	}
+	.dialog-close:hover {
+		background: rgba(255, 255, 255, 0.06);
+		color: #fff;
+	}
+	.dialog-body {
+		padding: 8px 0;
+		overflow-y: auto;
+	}
+	.dialog-empty {
+		padding: 30px 24px;
+		text-align: center;
+		color: #8d89a6;
+		font-size: 13px;
+	}
+	.ws-item {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 4px;
+		width: 100%;
+		padding: 12px 18px;
+		background: transparent;
+		border: 0;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+		text-align: left;
+		cursor: pointer;
+		font-family: inherit;
+		color: #e5e3f0;
+	}
+	.ws-item:hover {
+		background: rgba(194, 19, 242, 0.08);
+	}
+	.ws-item .ws-name {
+		font-size: 14px;
+		font-weight: 600;
+	}
+	.ws-item .ws-meta {
+		font-size: 11px;
+		color: #8d89a6;
+		display: flex;
+		align-items: center;
+		gap: 6px;
+	}
+	.ws-shared {
+		color: #c213f2;
 	}
 	.breadcrumb .saved {
 		background: rgba(54, 196, 123, 0.12);
