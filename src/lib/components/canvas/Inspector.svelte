@@ -127,6 +127,38 @@
 						{/each}
 					</select>
 				</div>
+
+				{#if (config.model ?? 'happyhorse-1.0') === 'happyhorse-1.0'}
+					<details class="tip-card" open>
+						<summary>💡 Pro tips for HappyHorse 1.0</summary>
+						<div class="tip-body">
+							<p>
+								<strong>6-layer prompt structure</strong> (in the upstream Prompt block):
+							</p>
+							<ol>
+								<li><b>Subject</b>: who/what (be specific — age, hair, wardrobe)</li>
+								<li><b>Action</b>: what they do, observable behavior</li>
+								<li><b>Environment</b>: where, lighting, background props</li>
+								<li><b>Style/Composition</b>: shot type, depth of field, grade</li>
+								<li><b>Camera Motion</b>: <i>slow dolly in / lateral tracking / push-in</i></li>
+								<li><b>Audio</b>: foreground (dialogue) → mid (footsteps) → background (ambient)</li>
+							</ol>
+							<p>
+								<strong>Dialogue</strong>: don't use quotes. Write
+								<i>“speaks clearly in Korean with accurate lip-sync: 안녕하세요…”</i>
+							</p>
+							<p>
+								<strong>Multi-shot consistency</strong>: re-state the character description
+								(hair / wardrobe / age) in every shot's prompt. For perfect continuity, future
+								v0.5 will support last-frame chaining.
+							</p>
+							<p class="tip-footnote">
+								Native lip-sync in 7 langs: en / zh / yue / ja / ko / de / fr · 14.6% WER ·
+								joint audio+video in one pass.
+							</p>
+						</div>
+					</details>
+				{/if}
 				<div class="field-group">
 					<label>Duration</label>
 					<input
@@ -167,13 +199,33 @@
 				<div class="field-group">
 					<label>Prompt text</label>
 					<textarea
-						rows="6"
+						rows="8"
 						value={config.text ?? ''}
 						on:input={(e) => update({ text: valueOf(e) })}
-						placeholder="Cinematic product hero shot of __, dramatic side lighting, shallow depth of field, ultra-realistic"
+						placeholder={`Cinematic medium shot, shallow depth of field. [SUBJECT: who, age, hair, wardrobe]. Background: [ENVIRONMENT — props, lighting, brand elements]. They speak clearly in [LANGUAGE] with accurate lip-sync: [DIALOGUE]. Camera: [slow dolly in / push-in / lateral tracking]. Audio: their natural [LANGUAGE] voice in foreground, [room tone / ambient]. Polished broadcast quality.`}
 					></textarea>
-					<div class="hint">Wired to any block whose Prompt source is "From wire".</div>
+					<div class="hint">
+						6-layer structure: Subject → Action → Environment → Style → Camera → Audio.
+						Wired to any downstream videogen / imagegen block.
+					</div>
 				</div>
+				<details class="tip-card">
+					<summary>💡 Prompt cheatsheet</summary>
+					<div class="tip-body">
+						<p><b>Dialogue (no quotes):</b></p>
+						<pre>speaks clearly in Korean with
+accurate lip-sync: 안녕하세요...</pre>
+						<p><b>Camera moves that work well:</b></p>
+						<ul>
+							<li>slow dolly in / out</li>
+							<li>steady push-in</li>
+							<li>lateral tracking</li>
+							<li>handheld follow</li>
+						</ul>
+						<p><b>Avoid:</b> emotion words ("happy", "sad"). Replace with observable
+						behavior ("smiles warmly", "tilts head, looks down").</p>
+					</div>
+				</details>
 			{:else if typeKey === 'imageref'}
 				<div class="field-group">
 					<label>Reference image</label>
@@ -393,5 +445,69 @@
 	}
 	.btn.danger:hover {
 		background: rgba(239, 68, 68, 0.1);
+	}
+	.tip-card {
+		margin: 8px 0 14px;
+		border-radius: 8px;
+		border: 1px solid rgba(194, 19, 242, 0.25);
+		background: linear-gradient(180deg, rgba(194, 19, 242, 0.08) 0%, rgba(138, 44, 230, 0.04) 100%);
+		font-size: 12px;
+		line-height: 1.5;
+		color: #c8c4dc;
+	}
+	.tip-card > summary {
+		padding: 9px 12px;
+		cursor: pointer;
+		font-weight: 600;
+		color: #e5e3f0;
+		list-style: none;
+		user-select: none;
+	}
+	.tip-card > summary::-webkit-details-marker {
+		display: none;
+	}
+	.tip-card[open] > summary {
+		border-bottom: 1px solid rgba(194, 19, 242, 0.18);
+	}
+	.tip-body {
+		padding: 8px 12px 12px;
+	}
+	.tip-body p {
+		margin: 6px 0;
+	}
+	.tip-body ol,
+	.tip-body ul {
+		margin: 6px 0 6px 18px;
+		padding: 0;
+	}
+	.tip-body li {
+		margin: 3px 0;
+	}
+	.tip-body b,
+	.tip-body strong {
+		color: #e5e3f0;
+	}
+	.tip-body i {
+		color: #c213f2;
+		font-style: normal;
+		font-family: ui-monospace, monospace;
+		font-size: 11px;
+	}
+	.tip-body pre {
+		background: rgba(0, 0, 0, 0.3);
+		border-radius: 4px;
+		padding: 6px 8px;
+		font-size: 10px;
+		color: #a6a2bc;
+		white-space: pre-wrap;
+		margin: 4px 0;
+	}
+	.tip-footnote {
+		font-size: 11px;
+		color: #8d89a6;
+		font-style: italic;
+		border-top: 1px solid rgba(255, 255, 255, 0.06);
+		padding-top: 8px;
+		margin-top: 10px !important;
 	}
 </style>

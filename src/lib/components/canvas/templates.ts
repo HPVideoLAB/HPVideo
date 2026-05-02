@@ -73,6 +73,49 @@ function edge(id: string, source: string, target: string): Edge {
 
 export const TEMPLATES: CanvasTemplate[] = [
 	{
+		id: 'tpl-talking-head-10s',
+		name: '🎙 Talking Head 10s (Korean)',
+		description:
+			'2 HappyHorse 1.0 shots with native Korean dialogue + lip-sync. Same presenter, branded background. Battle-tested 6-layer prompt structure baked in.',
+		icon: '🎙',
+		estimatedCostCr: 1_500,
+		tag: 'popular',
+		build: () => {
+			const sharedCharacter =
+				'A 27-year-old Korean female presenter with shoulder-length straight black hair, light makeup, friendly warm smile, wearing a clean tailored navy blazer over a white blouse, looking directly at camera';
+			const nodes: Node[] = [
+				block('prompt-1', 0, 80, 'prompt', 1, {
+					text:
+						`Cinematic medium shot, shallow depth of field. ${sharedCharacter}. ` +
+						'Background: a sleek modern AI studio with a massive glowing purple LED video wall behind her ' +
+						"clearly displaying 'HPVideo' wordmark and 'Cinematic AI Video on BNB Chain' tagline. " +
+						'She speaks clearly in Korean with accurate lip-sync: ' +
+						'안녕하세요! HPVideo입니다. 11개의 최첨단 AI 비디오 모델로 시네마급 영상을 만들 수 있어요. ' +
+						'Camera: slow dolly in. Audio: her natural Korean voice in foreground, faint studio room tone, no music. ' +
+						'Polished broadcast quality.'
+				}),
+				block('prompt-2', 0, 320, 'prompt', 2, {
+					text:
+						`Cinematic close-up, golden-hour warm bokeh. ${sharedCharacter} (same person, same wardrobe as previous shot). ` +
+						'Behind her on a softly out-of-focus wall: a small minimalist purple HPVideo wordmark sign and ' +
+						"a clean 'Start Now →' button graphic. She speaks clearly in Korean with accurate lip-sync: " +
+						'지갑만 연결하면 클립당 0.45달러부터. 이메일도 구독도 없어요. 지금 바로 시작하세요! ' +
+						'Camera: gentle slow push-in. Audio: her natural Korean voice in foreground, slight room tone, no music.'
+				}),
+				block('videogen-1', 320, 80, 'videogen', 1, { model: 'happyhorse-1.0' }),
+				block('videogen-2', 320, 320, 'videogen', 2, { model: 'happyhorse-1.0' }),
+				block('stitcher-1', 640, 200, 'stitcher', 1, { transitions: 'crossfade' })
+			];
+			const edges: Edge[] = [
+				edge('e1', 'prompt-1', 'videogen-1'),
+				edge('e2', 'prompt-2', 'videogen-2'),
+				edge('e3', 'videogen-1', 'stitcher-1'),
+				edge('e4', 'videogen-2', 'stitcher-1')
+			];
+			return { nodes, edges };
+		}
+	},
+	{
 		id: 'tpl-product-ad-15s',
 		name: '15s Product Ad',
 		description: 'Reference image → 3 hero shots → 3 video clips → stitched',
