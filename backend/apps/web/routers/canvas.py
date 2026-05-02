@@ -189,25 +189,51 @@ async def run_block(
             cached["elapsed_s"] = round(time.monotonic() - started, 3)
             return CanvasRunBlockResponse(**cached)
 
-    # ----- Mode resolution: stub vs real-admin -----
+    # ----- Mode resolution: stub / real-admin / real-paid -----
     mode = CANVAS_RUN_MODE
     header_mode = (request.headers.get("x-canvas-mode") or "").lower().strip()
+    run_id_header = (request.headers.get("x-canvas-run-id") or "").strip()
     if header_mode == "real":
-        if getattr(user, "role", None) != "admin":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=(
-                    "X-Canvas-Mode: real is admin-only during the v0.4 MVP. "
-                    "Real per-block dispatch ships broadly once pointpay "
-                    "charging is wired up."
-                ),
-            )
-        mode = "real"
+        is_admin = getattr(user, "role", None) == "admin"
+        if is_admin:
+            mode = "real"
+        else:
+            # Non-admin real-mode requires a paid Redis bucket for this run.
+            block_cost = int((body.config or {}).get("cost_cr") or 0)
+            if block_cost <= 0:
+                # Fall back to model defaults so users can't dodge billing
+                # by sending cost_cr=0 from the client.
+                if body.block_type == "videogen":
+                    res = (body.config or {}).get("resolution", "720p")
+                    block_cost = {"480p": 750, "720p": 1500, "1080p": 4500}.get(res, 1500)
+                elif body.block_type == "imagegen":
+                    block_cost = 100
+            ok, _remaining, err = _canvas_paid_check(user_id, run_id_header, block_cost)
+            if not ok:
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail=(
+                        f"Canvas real-mode requires DLCP payment: {err}. "
+                        "POST /canvas/charge with the tx hash before Run All."
+                    ),
+                )
+            mode = "real"
 
     if mode == "real":
         resp = await _run_real(body, started)
     else:
         resp = await _run_stub(body, started)
+
+    # On successful non-admin real-mode generation, decrement the paid
+    # bucket so the next block in the run can't over-spend.
+    if (
+        resp.status == "ok"
+        and mode == "real"
+        and run_id_header
+        and getattr(user, "role", None) != "admin"
+        and resp.cost_cr > 0
+    ):
+        _canvas_paid_consume(user_id, run_id_header, resp.cost_cr)
 
     # ----- Audit row + idempotency cache for successful results -----
     if resp.status == "ok" and mode == "real" and resp.cost_cr > 0:
@@ -978,3 +1004,193 @@ async def canvas_share(ws_id: str, body: CanvasShareRequest, user=Depends(get_cu
         share_token=token,
         share_url=f"/creator/canvas?share={token}",
     )
+
+
+# ===========================================================================
+# DLCP charging (Canvas v0.4 batch 12 — option A: on-chain per Run All)
+# ===========================================================================
+#
+# Flow:
+#   1. Frontend computes total cost for the DAG (sum of cost_cr across
+#      blocks), generates a runId UUID.
+#   2. User signs a single DLCP transfer on DBC Chain for that total
+#      amount -> DLCP_RECEIVE_ADDRESS.
+#   3. Frontend POSTs /canvas/charge {run_id, hash, address, amount} ->
+#      backend verifies the on-chain transfer (same logic as pointpay)
+#      and writes Redis `canvas:paid:<user>:<run_id>` = amount_paid
+#      with 1h TTL.
+#   4. /canvas/run-block requires that Redis flag for non-admin
+#      real-mode requests; the runner sends `X-Canvas-Run-Id: <runId>`
+#      on every block fetch in that run, and the backend checks the
+#      paid bucket has enough remaining credit before dispatching.
+
+class CanvasChargeRequest(BaseModel):
+    run_id: str
+    hash: str
+    address: str
+    amount: str
+
+
+class CanvasChargeResponse(BaseModel):
+    ok: bool
+    run_id: str
+    paid_amount: str
+    message: Optional[str] = None
+
+
+@router.post("/charge", response_model=CanvasChargeResponse)
+@limiter.limit("30/minute")
+async def canvas_charge(
+    request: Request,
+    body: CanvasChargeRequest,
+    user=Depends(get_current_user),
+):
+    from apps.web.routers.pointpay import (
+        DLCP_TOKEN_ADDRESS,
+        DLCP_RECEIVE_ADDRESS,
+        TOKEN_DECIMALS,
+        w3_dbc,
+    )
+    from apps.web.models.pay import PayTableInstall
+    from apps.redis.redis_client import RedisClientInstance
+
+    if not body.run_id or not body.hash or not body.address or not body.amount:
+        raise HTTPException(status_code=400, detail="missing required fields")
+
+    try:
+        if PayTableInstall.is_hash_used(body.hash):
+            return CanvasChargeResponse(
+                ok=False, run_id=body.run_id, paid_amount="0",
+                message="tx hash already used",
+            )
+    except Exception:
+        pass
+
+    try:
+        tx_receipt = await asyncio.to_thread(
+            w3_dbc.eth.wait_for_transaction_receipt, body.hash, timeout=30,
+        )
+    except Exception as e:
+        log.info("canvas charge wait_for_transaction_receipt error: %s", e)
+        return CanvasChargeResponse(
+            ok=False, run_id=body.run_id, paid_amount="0",
+            message=f"tx not confirmed: {e}",
+        )
+
+    if tx_receipt.status != 1:
+        return CanvasChargeResponse(
+            ok=False, run_id=body.run_id, paid_amount="0",
+            message="tx failed on chain",
+        )
+
+    try:
+        expected_wei = int(float(body.amount) * (10 ** TOKEN_DECIMALS))
+    except (ValueError, TypeError):
+        return CanvasChargeResponse(
+            ok=False, run_id=body.run_id, paid_amount="0",
+            message="invalid amount",
+        )
+
+    transfer_sig = w3_dbc.keccak(text="Transfer(address,address,uint256)").hex()
+
+    matched = False
+    for evt in tx_receipt["logs"]:
+        if evt["topics"][0].hex() != transfer_sig:
+            continue
+        from_hex = evt["topics"][1].hex()[24:]
+        to_hex = evt["topics"][2].hex()[24:]
+        from_addr = w3_dbc.to_checksum_address("0x" + from_hex)
+        to_addr = w3_dbc.to_checksum_address("0x" + to_hex)
+        if from_addr.lower() != body.address.lower():
+            continue
+        if to_addr.lower() != DLCP_RECEIVE_ADDRESS.lower():
+            continue
+        if evt["address"].lower() != DLCP_TOKEN_ADDRESS.lower():
+            continue
+        try:
+            actual_wei = int(evt["data"].hex(), 16)
+        except (ValueError, AttributeError):
+            try:
+                actual_wei = int(evt["data"], 16)
+            except (ValueError, TypeError):
+                continue
+        if actual_wei < expected_wei:
+            continue
+        matched = True
+        break
+
+    if not matched:
+        return CanvasChargeResponse(
+            ok=False, run_id=body.run_id, paid_amount="0",
+            message="no matching DLCP Transfer log",
+        )
+
+    try:
+        PayTableInstall.insert_pay(
+            wallet_addr=body.address,
+            model=f"canvas:run:{body.run_id}",
+            size="",
+            duration=0,
+            amount=body.amount,
+            messageid=f"canvas:charge:{body.run_id}",
+            hash=body.hash,
+            status=True,
+            currpay=True,
+        )
+    except Exception as e:
+        log.warning("canvas charge audit insert failed: %s", e)
+
+    paid_key = f"canvas:paid:{user.id}:{body.run_id}"
+    try:
+        RedisClientInstance.add_key_value(
+            paid_key,
+            {
+                "amount_dlcp": body.amount,
+                "tx_hash": body.hash,
+                "wallet": body.address,
+                "spent_cr": 0,
+            },
+            ttl=3600,
+        )
+    except Exception as e:
+        log.warning("canvas charge redis flag write failed: %s", e)
+
+    return CanvasChargeResponse(
+        ok=True, run_id=body.run_id, paid_amount=body.amount,
+        message="payment verified",
+    )
+
+
+def _canvas_paid_check(user_id: str, run_id: str, block_cost_cr: int):
+    """Returns (ok: bool, remaining_dlcp: float, error_msg: str)."""
+    if not run_id or not user_id:
+        return (False, 0.0, "missing run_id or user")
+    from apps.redis.redis_client import RedisClientInstance
+    paid_key = f"canvas:paid:{user_id}:{run_id}"
+    paid = RedisClientInstance.get_value_by_key(paid_key)
+    if not paid:
+        return (False, 0.0, f"no payment for run_id={run_id} (POST /canvas/charge first)")
+    try:
+        remaining_dlcp = float(paid.get("amount_dlcp", "0")) - (paid.get("spent_cr", 0) / 1000.0)
+    except Exception:
+        return (False, 0.0, "corrupt payment record")
+    block_dlcp = block_cost_cr / 1000.0
+    if remaining_dlcp + 1e-9 < block_dlcp:
+        return (False, remaining_dlcp,
+                f"insufficient DLCP: need {block_dlcp:.3f}, have {remaining_dlcp:.3f}")
+    return (True, remaining_dlcp, "")
+
+
+def _canvas_paid_consume(user_id: str, run_id: str, block_cost_cr: int) -> None:
+    if not run_id or not user_id or block_cost_cr <= 0:
+        return
+    from apps.redis.redis_client import RedisClientInstance
+    paid_key = f"canvas:paid:{user_id}:{run_id}"
+    paid = RedisClientInstance.get_value_by_key(paid_key)
+    if not paid:
+        return
+    paid["spent_cr"] = int(paid.get("spent_cr", 0)) + int(block_cost_cr)
+    try:
+        RedisClientInstance.add_key_value(paid_key, paid, ttl=3600)
+    except Exception as e:
+        log.warning("canvas spent_cr update failed: %s", e)

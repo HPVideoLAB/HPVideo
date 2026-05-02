@@ -123,3 +123,31 @@ export async function setShare(id: string, enable: boolean): Promise<{
 	}
 	return r.json();
 }
+
+export type ChargeArgs = {
+	run_id: string;
+	hash: string;        // DBC chain tx hash, 0x-prefixed
+	address: string;     // user's wallet
+	amount: string;      // DLCP amount, decimal string (e.g. "1.5")
+};
+
+/** Verify an on-chain DLCP transfer for a Run All and mint the
+ *  paid-bucket Redis flag. Frontend should call this AFTER the
+ *  user signs the DLCP transfer in their wallet, BEFORE runCanvas. */
+export async function chargeRun(args: ChargeArgs): Promise<{
+	ok: boolean;
+	run_id: string;
+	paid_amount: string;
+	message: string | null;
+}> {
+	const r = await fetch(`${WEBUI_API_BASE_URL}/canvas/charge`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json', ...authHeaders() },
+		body: JSON.stringify(args)
+	});
+	if (!r.ok) {
+		const txt = await r.text().catch(() => '');
+		throw new Error(`Charge failed: HTTP ${r.status} ${txt.slice(0, 200)}`);
+	}
+	return r.json();
+}

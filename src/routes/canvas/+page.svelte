@@ -24,7 +24,7 @@
 	import TemplatesMenu from '$lib/components/canvas/TemplatesMenu.svelte';
 	import { BLOCK_TYPE_BY_KEY, makeNodeData, type TypeKey } from '$lib/components/canvas/blockTypes';
 	import { TEMPLATES } from '$lib/components/canvas/templates';
-	import { runCanvas, type RunSummary } from '$lib/components/canvas/runner';
+	import { runCanvas, newRunId, type RunSummary } from '$lib/components/canvas/runner';
 	import { pendingAction, type CanvasAction } from '$lib/components/canvas/canvasActions';
 	import {
 		saveWorkspace,
@@ -34,6 +34,7 @@
 		setShare,
 		type WorkspaceListItem
 	} from '$lib/components/canvas/workspaceApi';
+	import { chargeForRun } from '$lib/components/canvas/dlcpCharge';
 	import { toast } from 'svelte-sonner';
 	import { WEBUI_NAME, initPageFlag } from '$lib/stores';
 
@@ -418,8 +419,35 @@
 			toast.info($i18n.t('Drag some blocks onto the canvas first.'));
 			return;
 		}
+
+		// DLCP charging: only required when real-mode is on AND the user
+		// isn't an admin. Admin / stub-mode keep the old free path.
+		// We mint the runId here so /canvas/charge and runCanvas share it.
+		const canvasMode =
+			(typeof localStorage !== 'undefined' && localStorage.getItem('canvas_mode')) || '';
+		const runId = newRunId();
+		if (canvasMode === 'real' && totalCost > 0) {
+			runLog = [
+				$i18n.t('💰 Real mode: paying {{cr}} cr ({{dlcp}} DLCP)…', {
+					cr: totalCost,
+					dlcp: (totalCost / 1000).toFixed(3)
+				})
+			];
+			showRunLog = true;
+			const charge = await chargeForRun({
+				runId,
+				totalCostCr: totalCost,
+				t: (k, v) => $i18n.t(k, v) as string
+			});
+			if (!charge.success) {
+				return; // Toasts already surfaced inside chargeForRun.
+			}
+		}
+
 		isRunning = true;
-		runLog = [];
+		runLog = canvasMode === 'real' && totalCost > 0
+			? [...runLog, $i18n.t('✓ Payment confirmed. Starting Run All…')]
+			: [];
 		showRunLog = true;
 		runAbort = new AbortController();
 		const localAbort = runAbort;
@@ -427,6 +455,7 @@
 			nodes,
 			edges,
 			signal: localAbort.signal,
+			runId,
 			onLog: (line) => {
 				runLog = [...runLog, line];
 			}

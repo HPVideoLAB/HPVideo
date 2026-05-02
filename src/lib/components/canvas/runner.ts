@@ -150,7 +150,20 @@ export type ExecOptions = {
 	// Used by Retry/Skip flows so users don't pay to re-run successful
 	// upstream blocks just to take another swing at one failed block.
 	mode?: 'all' | 'resume';
+	// Caller-supplied runId. Required when payment was made up front via
+	// /canvas/charge — the runId ties the on-chain DLCP receipt to the
+	// generation requests. If omitted, runner generates a fresh UUID
+	// (idempotency only, no payment binding — used by admin real-mode).
+	runId?: string;
 };
+
+/** Mint a fresh canvas runId (UUID). Use this before `/canvas/charge`. */
+export function newRunId(): string {
+	return (
+		(typeof crypto !== 'undefined' && (crypto as any).randomUUID?.()) ||
+		`run_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
+	);
+}
 
 export async function runCanvas(opts: ExecOptions): Promise<RunSummary> {
 	const { nodes: nodesStore, edges: edgesStore, onLog, signal, mode = 'all' } = opts;
@@ -232,9 +245,9 @@ export async function runCanvas(opts: ExecOptions): Promise<RunSummary> {
 	// All again with the same id (network retry, refresh-mid-run), the
 	// backend's Redis-cached response is returned with mode="cached"
 	// instead of re-billing / re-generating. Cleared per fresh Run All.
-	const runId =
-		(typeof crypto !== 'undefined' && (crypto as any).randomUUID?.()) ||
-		`run_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+	// Caller can pre-mint via newRunId() and pass through opts.runId
+	// so the same id is used by /canvas/charge for DLCP payment.
+	const runId = opts.runId || newRunId();
 
 	for (const node of ordered) {
 		if (signal?.aborted) {
@@ -270,7 +283,12 @@ export async function runCanvas(opts: ExecOptions): Promise<RunSummary> {
 					'Content-Type': 'application/json',
 					...(token ? { Authorization: `Bearer ${token}` } : {}),
 					...(canvasMode ? { 'X-Canvas-Mode': canvasMode } : {}),
-					'Idempotency-Key': `${runId}:${node.id}`
+					'Idempotency-Key': `${runId}:${node.id}`,
+					// Same runId doubles as the DLCP paid-bucket key so a
+					// non-admin real-mode user only signs one DBC transfer
+					// per Run All. Backend looks up canvas:paid:<user>:<runId>
+					// in Redis to gate each block.
+					'X-Canvas-Run-Id': runId
 				},
 				body: JSON.stringify({
 					block_id: node.id,
