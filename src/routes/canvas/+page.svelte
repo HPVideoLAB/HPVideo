@@ -750,11 +750,18 @@
 					<span class="real-balance">· {dlcpDisplay} {$i18n.t('cr')}</span>
 				{/if}
 			</button>
-			<button class="btn primary" on:click={handleRunAll}>
+			<button
+				class="btn primary"
+				class:insufficient={realMode && walletConnected && totalCost > 0 && Number(dlcpDisplay) < totalCost && !isRunning}
+				on:click={handleRunAll}
+				title={realMode && walletConnected && totalCost > 0 && Number(dlcpDisplay) < totalCost && !isRunning
+					? $i18n.t('Insufficient credits — top up to run.')
+					: ''}
+			>
 				{#if isRunning}
 					⏸ {$i18n.t('Cancel')}
-				{:else if realMode && totalCost > 0}
-					▶ {$i18n.t('Run All')} · {totalCost.toLocaleString()} {$i18n.t('cr')}
+				{:else if realMode && walletConnected && totalCost > 0 && Number(dlcpDisplay) < totalCost}
+					⚠ {$i18n.t('Top up')} · {totalCost.toLocaleString()} {$i18n.t('cr')}
 				{:else}
 					▶ {$i18n.t('Run All')} · {totalCost.toLocaleString()} {$i18n.t('cr')}
 				{/if}
@@ -1144,6 +1151,11 @@
 		color: white;
 		font-weight: 600;
 		box-shadow: 0 4px 12px rgba(194, 19, 242, 0.3);
+	}
+	.btn.primary.insufficient {
+		background: linear-gradient(90deg, #f59e0b, #d97706);
+		box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+		cursor: help;
 	}
 	.banner {
 		background: linear-gradient(90deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.04));
