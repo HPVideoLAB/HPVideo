@@ -151,7 +151,7 @@ export type ExecOptions = {
 	// upstream blocks just to take another swing at one failed block.
 	mode?: 'all' | 'resume';
 	// Caller-supplied runId. Required when payment was made up front via
-	// /canvas/charge — the runId ties the on-chain DLCP receipt to the
+	// /canvas/charge — the runId ties the on-chain DLP receipt to the
 	// generation requests. If omitted, runner generates a fresh UUID
 	// (idempotency only, no payment binding — used by admin real-mode).
 	runId?: string;
@@ -246,7 +246,7 @@ export async function runCanvas(opts: ExecOptions): Promise<RunSummary> {
 	// backend's Redis-cached response is returned with mode="cached"
 	// instead of re-billing / re-generating. Cleared per fresh Run All.
 	// Caller can pre-mint via newRunId() and pass through opts.runId
-	// so the same id is used by /canvas/charge for DLCP payment.
+	// so the same id is used by /canvas/charge for DLP payment.
 	const runId = opts.runId || newRunId();
 
 	for (const node of ordered) {
@@ -284,7 +284,7 @@ export async function runCanvas(opts: ExecOptions): Promise<RunSummary> {
 					...(token ? { Authorization: `Bearer ${token}` } : {}),
 					...(canvasMode ? { 'X-Canvas-Mode': canvasMode } : {}),
 					'Idempotency-Key': `${runId}:${node.id}`,
-					// Same runId doubles as the DLCP paid-bucket key so a
+					// Same runId doubles as the DLP paid-bucket key so a
 					// non-admin real-mode user only signs one DBC transfer
 					// per Run All. Backend looks up canvas:paid:<user>:<runId>
 					// in Redis to gate each block.

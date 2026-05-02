@@ -208,7 +208,7 @@ async def run_block(
                 raise HTTPException(
                     status_code=status.HTTP_402_PAYMENT_REQUIRED,
                     detail=(
-                        f"Canvas real-mode requires DLP payment: {err}. "
+                        f"Canvas real-mode requires payment: {err}. "
                         "POST /canvas/charge with the tx hash before Run All."
                     ),
                 )
@@ -1002,14 +1002,15 @@ async def canvas_share(ws_id: str, body: CanvasShareRequest, user=Depends(get_cu
 
 
 # ===========================================================================
-# DLCP charging (Canvas v0.4 batch 12 — option A: on-chain per Run All)
+# DLP charging (Canvas v0.4 batch 12 — option A: on-chain per Run All)
 # ===========================================================================
 #
 # Flow:
 #   1. Frontend computes total cost for the DAG (sum of cost_cr across
 #      blocks), generates a runId UUID.
-#   2. User signs a single DLCP transfer on DBC Chain for that total
-#      amount -> DLCP_RECEIVE_ADDRESS.
+#   2. User signs a single DLP transfer on DBC Chain for that total
+#      amount -> DLP_RECEIVE_ADDRESS (named DLCP_RECEIVE_ADDRESS in
+#      pointpay.py — pre-DLP rename, will be unified in a separate cleanup).
 #   3. Frontend POSTs /canvas/charge {run_id, hash, address, amount} ->
 #      backend verifies the on-chain transfer (same logic as pointpay)
 #      and writes Redis `canvas:paid:<user>:<run_id>` = amount_paid
@@ -1156,7 +1157,7 @@ async def canvas_charge(
     )
 
 
-# Per-block cost in cr (1 cr = 1 DLCP whole token = $0.001).
+# Per-block cost in cr (1 cr = 1 DLP whole token = $0.001).
 # Mirrors `src/lib/components/canvas/pricing.ts` blockCostCr — keep in
 # sync. Source numbers come from `wave.py amounts` × 2 (100% markup) ×
 # 1000 (USD → cr).
@@ -1230,11 +1231,12 @@ def _canvas_block_cost(block_type: str, config: Dict[str, Any]) -> int:
 def _canvas_paid_check(user_id: str, run_id: str, block_cost_cr: int):
     """Returns (ok: bool, remaining_dlcp: float, error_msg: str).
 
-    Convention: 1 cr = 1 DLCP whole token = $0.001 USD.
-    `amount_dlcp` is stored as a decimal-string DLCP count (e.g. "1500"
-    for $1.50 worth). `spent_cr` is in cr units, which equal DLCP units
-    one-to-one. So `remaining = amount_dlcp - spent_cr` and a block of
-    cost N cr requires N DLCP free in the bucket.
+    Convention: 1 cr = 1 DLP whole token = $0.001 USD.
+    `amount_dlcp` (Redis field name kept for back-compat) is a
+    decimal-string DLP count (e.g. "1500" for $1.50 worth). `spent_cr`
+    is in cr units, which equal DLP units one-to-one. So
+    `remaining = amount_dlcp - spent_cr` and a block of cost N cr
+    requires N DLP free in the bucket.
     """
     if not run_id or not user_id:
         return (False, 0.0, "missing run_id or user")
@@ -1249,7 +1251,7 @@ def _canvas_paid_check(user_id: str, run_id: str, block_cost_cr: int):
         return (False, 0.0, "corrupt payment record")
     if remaining_dlcp + 1e-6 < float(block_cost_cr):
         return (False, remaining_dlcp,
-                f"insufficient DLP: need {block_cost_cr}, have {remaining_dlcp:.0f}")
+                f"insufficient credits: need {block_cost_cr}, have {remaining_dlcp:.0f}")
     return (True, remaining_dlcp, "")
 
 

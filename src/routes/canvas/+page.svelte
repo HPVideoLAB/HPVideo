@@ -420,7 +420,7 @@
 		if (on && !walletConnected) {
 			toast.error(
 				$i18n.t(
-					'Connect a points wallet first — real mode pays in DLP for each run.'
+					'Connect a points wallet first — real mode pays in credits for each run.'
 				)
 			);
 			return;
@@ -432,7 +432,7 @@
 		} catch {}
 		toast.info(
 			on
-				? $i18n.t('Real Mode ON — generations charge from your DLP balance.')
+				? $i18n.t('Real Mode ON — generations charge from your credit balance.')
 				: $i18n.t('Real Mode OFF — outputs are demo placeholders.')
 		);
 	}
@@ -487,9 +487,10 @@
 		const runId = newRunId();
 		if (realMode && totalCost > 0) {
 			runLog = [
-				// 1 cr = 1 DLP. 1000 DLP = $1.
-				$i18n.t('💰 Real mode: paying {{dlcp}} DLP (≈ ${{usd}})…', {
-					dlcp: totalCost.toLocaleString(),
+				// Internally these are DLP whole tokens, but users see "credits"
+				// (en) / "积分" (zh). 1000 credits = $1.
+				$i18n.t('💰 Real mode: paying {{cr}} credits (≈ ${{usd}})…', {
+					cr: totalCost.toLocaleString(),
 					usd: (totalCost / 1000).toFixed(2)
 				})
 			];
@@ -741,19 +742,19 @@
 				class:on={realMode}
 				on:click={() => setRealMode(!realMode)}
 				title={walletConnected
-					? $i18n.t('Toggle real generation (DLP-charged)')
+					? $i18n.t('Toggle real generation (credit-charged)')
 					: $i18n.t('Connect a points wallet to enable real mode')}
 			>
 				{realMode ? '🟢' : '⚪'} {realMode ? $i18n.t('Real') : $i18n.t('Demo')}
 				{#if walletConnected && realMode}
-					<span class="real-balance">· {dlcpDisplay} DLP</span>
+					<span class="real-balance">· {dlcpDisplay} {$i18n.t('cr')}</span>
 				{/if}
 			</button>
 			<button class="btn primary" on:click={handleRunAll}>
 				{#if isRunning}
 					⏸ {$i18n.t('Cancel')}
 				{:else if realMode && totalCost > 0}
-					▶ {$i18n.t('Run All')} · {totalCost.toLocaleString()} DLP
+					▶ {$i18n.t('Run All')} · {totalCost.toLocaleString()} {$i18n.t('cr')}
 				{:else}
 					▶ {$i18n.t('Run All')} · {totalCost.toLocaleString()} {$i18n.t('cr')}
 				{/if}
@@ -765,8 +766,8 @@
 		<div class="banner banner-real">
 			<div class="icon">🟢</div>
 			<div class="text">
-				<strong>{$i18n.t('REAL MODE — generations charge from your DLP balance.')}</strong>
-				{$i18n.t('Each Run All triggers one DBC-chain DLP transfer for the total cost (1000 cr = 1 DLP). Output is real, not a placeholder.')}
+				<strong>{$i18n.t('REAL MODE — generations charge from your credit balance.')}</strong>
+				{$i18n.t('Each Run All triggers one on-chain transfer for the total cost (1000 credits ≈ $1). Output is real, not a placeholder.')}
 			</div>
 		</div>
 	{:else}
@@ -774,7 +775,7 @@
 			<div class="icon">⚠</div>
 			<div class="text">
 				<strong>{$i18n.t('DEMO MODE — outputs are placeholders.')}</strong>
-				{$i18n.t('Run All works end-to-end, but every output is the same demo image / demo MP4. Toggle Real Mode in the topbar to charge DLP and get real generation.')}
+				{$i18n.t('Run All works end-to-end, but every output is the same demo image / demo MP4. Toggle Real Mode in the topbar to spend credits and get real generation.')}
 				<a href="https://github.com/HPVideoLAB/HPVideoBNB/blob/main/docs/INFINITE_CANVAS_PRD.md" target="_blank">{$i18n.t('PRD')}</a>
 			</div>
 		</div>

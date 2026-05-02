@@ -1,8 +1,8 @@
 /**
  * Canvas pricing — per-block, per-model, with 2× markup over WaveSpeed.
  *
- * Convention: 1 cr = 1 DLCP whole token = $0.001 USD.
- * So 1 USDT = 1000 cr = 1000 DLCP.
+ * Convention: 1 cr = 1 DLP whole token = $0.001 USD.
+ * So 1 USDT = 1000 cr = 1000 DLP.
  *
  * All numbers below are derived from `backend/apps/web/ai/wave.py` `amounts`
  * × 2 (100% markup) × 1000 (USD → cr). When wave.py changes, this file

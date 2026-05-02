@@ -128,12 +128,12 @@ export type ChargeArgs = {
 	run_id: string;
 	hash: string;        // DBC chain tx hash, 0x-prefixed
 	address: string;     // user's wallet
-	amount: string;      // DLCP amount, decimal string (e.g. "1.5")
+	amount: string;      // DLP amount, decimal string (e.g. "1.5")
 };
 
-/** Verify an on-chain DLCP transfer for a Run All and mint the
+/** Verify an on-chain DLP transfer for a Run All and mint the
  *  paid-bucket Redis flag. Frontend should call this AFTER the
- *  user signs the DLCP transfer in their wallet, BEFORE runCanvas. */
+ *  user signs the DLP transfer in their wallet, BEFORE runCanvas. */
 export async function chargeRun(args: ChargeArgs): Promise<{
 	ok: boolean;
 	run_id: string;

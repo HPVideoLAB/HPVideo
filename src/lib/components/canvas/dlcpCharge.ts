@@ -1,5 +1,5 @@
 /**
- * Canvas DLCP charge — sign a single DBC-chain transfer for the whole
+ * Canvas DLP charge — sign a single DBC-chain transfer for the whole
  * Run All, then verify with the backend so the run's paid bucket is
  * minted in Redis.
  *
@@ -10,12 +10,14 @@ import { ethers } from 'ethers';
 import { toast } from 'svelte-sonner';
 import { getStoredAddress, getStoredPassword } from '$lib/utils/wallet/dlcp/wallet';
 import { dlcpBalance } from '$lib/stores';
-import { getDLCPBalance } from '$lib/utils/wallet/dlcp/wallet';
+// Existing wallet util is still named getDLCPBalance — pre-DLP rename.
+// Aliasing to the new name keeps the rest of this file consistent.
+import { getDLCPBalance as getDLPBalance } from '$lib/utils/wallet/dlcp/wallet';
 import { chargeRun } from './workspaceApi';
 
 const DBC_RPC_URL = 'https://rpc1.dbcwallet.io';
-const DLCP_CONTRACT = '0x9b09b4B7a748079DAd5c280dCf66428e48E38Cd6';
-const DLCP_RECEIVE_ADDRESS = '0xeAc67D1B54730FF65D322aA21F2C3c8A8202Be0C';
+const DLP_CONTRACT = '0x9b09b4B7a748079DAd5c280dCf66428e48E38Cd6';
+const DLP_RECEIVE_ADDRESS = '0xeAc67D1B54730FF65D322aA21F2C3c8A8202Be0C';
 const KEYSTORE_KEY = 'hpv_points_keystore';
 
 const ERC20_ABI = [
@@ -23,11 +25,11 @@ const ERC20_ABI = [
 	'function balanceOf(address owner) view returns (uint256)'
 ];
 
-/** Convert credits → DLCP wei. The convention (matching the existing
+/** Convert credits → DLP wei. The convention (matching the existing
  *  chat-completion path / usePointsPayment.ts) is:
- *      1 USDT = 1000 DLCP whole tokens
- *      1 cr   = 1 DLCP whole token = $0.001
- *  So 1500 cr → 1500 DLCP → $1.50, and the on-chain transfer is
+ *      1 USDT = 1000 DLP whole tokens
+ *      1 cr   = 1 DLP whole token = $0.001
+ *  So 1500 cr → 1500 DLP → $1.50, and the on-chain transfer is
  *  parseEther("1500") = 1500 × 10^18 wei. */
 function creditsToWei(credits: number): bigint {
 	return ethers.parseEther(String(credits));
@@ -45,7 +47,7 @@ export type ChargeArgs = {
 	t: (key: string, vars?: Record<string, any>) => string;
 };
 
-/** Run the DLCP transfer + backend verification for one Run All. */
+/** Run the DLP transfer + backend verification for one Run All. */
 export async function chargeForRun({ runId, totalCostCr, t }: ChargeArgs): Promise<ChargeResult> {
 	if (totalCostCr <= 0) {
 		// Free run (e.g. all prompt + imageref blocks). Skip the wallet step.
@@ -66,7 +68,7 @@ export async function chargeForRun({ runId, totalCostCr, t }: ChargeArgs): Promi
 		toast.loading(t('Checking points balance...'));
 
 		const provider = new ethers.JsonRpcProvider(DBC_RPC_URL);
-		const readonly = new ethers.Contract(DLCP_CONTRACT, ERC20_ABI, provider);
+		const readonly = new ethers.Contract(DLP_CONTRACT, ERC20_ABI, provider);
 		const balance: bigint = await readonly.balanceOf(address);
 		const pointsWei = creditsToWei(totalCostCr);
 		if (balance < pointsWei) {
@@ -99,12 +101,12 @@ export async function chargeForRun({ runId, totalCostCr, t }: ChargeArgs): Promi
 			}
 		}
 		const signer = wallet.connect(provider);
-		const writeContract = new ethers.Contract(DLCP_CONTRACT, ERC20_ABI, signer);
+		const writeContract = new ethers.Contract(DLP_CONTRACT, ERC20_ABI, signer);
 
 		toast.dismiss();
-		toast.loading(t('Sending DLP payment...'));
+		toast.loading(t('Sending payment on chain...'));
 
-		const tx = await writeContract.transfer(DLCP_RECEIVE_ADDRESS, pointsWei);
+		const tx = await writeContract.transfer(DLP_RECEIVE_ADDRESS, pointsWei);
 		const receipt = await tx.wait();
 		if (!receipt || receipt.status !== 1) {
 			throw new Error(t('Transaction failed'));
@@ -113,8 +115,8 @@ export async function chargeForRun({ runId, totalCostCr, t }: ChargeArgs): Promi
 		// Verify with backend (mints Redis paid flag for runId).
 		toast.dismiss();
 		toast.loading(t('Verifying payment...'));
-		// 1 cr = 1 DLCP whole token (matches the existing chat-completion
-		// path: usdtToPoints(amount) × 10^18 wei → amount × 1000 DLCP).
+		// 1 cr = 1 DLP whole token (matches the existing chat-completion
+		// path: usdtToPoints(amount) × 10^18 wei → amount × 1000 DLP).
 		const dlcpAmount = String(totalCostCr);
 		const verify = await chargeRun({
 			run_id: runId,
@@ -139,7 +141,7 @@ export async function chargeForRun({ runId, totalCostCr, t }: ChargeArgs): Promi
 		}
 
 		try {
-			const newBal = await getDLCPBalance(address);
+			const newBal = await getDLPBalance(address);
 			dlcpBalance.set(newBal);
 		} catch {}
 
