@@ -5,7 +5,7 @@
   "(e.g. sh webui.sh --api)": "（例えば sh webui.sh --api）",
   "(latest)": "（最新版）",
   "1,000 credits = $1. No subscription.": "1,000クレジット = $1、サブスク不要。",
-  "12 frontier video models · 1 prompt": "12のトップ動画モデル · 1つのプロンプト",
+  "11 frontier video models · 1 prompt": "11のトップ動画モデル · 1つのプロンプト",
   "12 models powering it": "12のモデルが駆動",
   "<span style='color: rgba(184, 142, 86, 1);'>{{clockin}}</span> DGC rewards requires completing KYC, and it must be claimed on the same day; it will expire if not claimed.": "<span style='color: rgba(184, 142, 86, 1);'>{{clockin}}</span> DGC の報酬は、顧客の身元確認 KYC を完了する必要があり、それは同日に請求しなければなりません。請求しない場合は失効します。",
   "A single IP address can be used for a maximum of two KYC verifications": "単一の IP アドレスは、最大で 2 回の KYC 認証に使用できます。",

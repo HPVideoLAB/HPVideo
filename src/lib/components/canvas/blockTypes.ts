@@ -60,7 +60,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
 	{
 		key: 'videogen',
 		name: 'Video Gen',
-		desc: '9 models · 450+ cr',
+		desc: '11 models · 450+ cr',
 		icon: '🎬',
 		color: '#c213f2',
 		costEstimate: 1500,

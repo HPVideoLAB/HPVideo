@@ -56,7 +56,7 @@
   <title>HPVideo Studio · Pro AI video, pay-as-you-go</title>
   <meta
     name="description"
-    content="Cinematic AI video on BNB Chain. 12 frontier models, pay-per-clip with credits, no subscription, no signup gate."
+    content="Cinematic AI video on BNB Chain. 11 frontier models, pay-per-clip with credits, no subscription, no signup gate."
   />
 </svelte:head>
 
@@ -81,7 +81,7 @@
         class="inline-block px-3 py-1 rounded-full text-[11px] uppercase tracking-wider mb-4
         bg-primary-500/10 text-primary-600 dark:text-primary-300 border border-primary-500/20"
       >
-        {$i18n.t('12 frontier video models · 1 prompt')}
+        {$i18n.t('11 frontier video models · 1 prompt')}
       </span>
       <h1
         class="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight
