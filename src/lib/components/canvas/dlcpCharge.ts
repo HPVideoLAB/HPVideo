@@ -23,10 +23,14 @@ const ERC20_ABI = [
 	'function balanceOf(address owner) view returns (uint256)'
 ];
 
-/** Convert credits (1000 cr = 1 DLCP point) → wei (DLCP has 18 decimals). */
+/** Convert credits → DLCP wei. The convention (matching the existing
+ *  chat-completion path / usePointsPayment.ts) is:
+ *      1 USDT = 1000 DLCP whole tokens
+ *      1 cr   = 1 DLCP whole token = $0.001
+ *  So 1500 cr → 1500 DLCP → $1.50, and the on-chain transfer is
+ *  parseEther("1500") = 1500 × 10^18 wei. */
 function creditsToWei(credits: number): bigint {
-	const points = credits / 1000;
-	return ethers.parseEther(String(points));
+	return ethers.parseEther(String(credits));
 }
 
 export type ChargeResult = {
@@ -109,7 +113,9 @@ export async function chargeForRun({ runId, totalCostCr, t }: ChargeArgs): Promi
 		// Verify with backend (mints Redis paid flag for runId).
 		toast.dismiss();
 		toast.loading(t('Verifying payment...'));
-		const dlcpAmount = (totalCostCr / 1000).toString();
+		// 1 cr = 1 DLCP whole token (matches the existing chat-completion
+		// path: usdtToPoints(amount) × 10^18 wei → amount × 1000 DLCP).
+		const dlcpAmount = String(totalCostCr);
 		const verify = await chargeRun({
 			run_id: runId,
 			hash: receipt.hash,

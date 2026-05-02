@@ -97,22 +97,30 @@ export const BLOCK_TYPE_BY_KEY = Object.fromEntries(
 /**
  * Build a fresh node-data object for a given type. The numbering is
  * deduped against existing nodes so the second imagegen becomes #2.
+ *
+ * `cost` comes from the centralized pricing function (per-model 2x
+ * markup) so a freshly-dragged videogen block already shows its real
+ * price before the user touches Inspector. costEstimate on the
+ * BlockTypeDef is now just a coarse "what category this block lives
+ * in" hint for the palette.
  */
+import { blockCostCr } from './pricing';
+
 export function makeNodeData(typeKey: TypeKey, existingNodes: Array<any>) {
 	const def = BLOCK_TYPE_BY_KEY[typeKey];
 	const num =
 		existingNodes.filter((n) => n.data?.typeKey === typeKey).length + 1;
+	const config = defaultConfig(typeKey);
 	return {
 		title: def.name,
 		num,
 		typeKey,
 		icon: def.icon,
 		state: 'ready' as const,
-		cost: def.costEstimate,
+		cost: blockCostCr(typeKey, config),
 		hasIn: def.hasIn,
 		hasOut: def.hasOut,
-		// Per-type config defaults (filled out as Inspector handles each type).
-		config: defaultConfig(typeKey),
+		config,
 	};
 }
 

@@ -487,9 +487,10 @@
 		const runId = newRunId();
 		if (realMode && totalCost > 0) {
 			runLog = [
-				$i18n.t('💰 Real mode: paying {{cr}} cr ({{dlcp}} DLCP)…', {
-					cr: totalCost,
-					dlcp: (totalCost / 1000).toFixed(3)
+				// 1 cr = 1 DLCP. 1000 DLCP = $1.
+				$i18n.t('💰 Real mode: paying {{dlcp}} DLCP (≈ ${{usd}})…', {
+					dlcp: totalCost.toLocaleString(),
+					usd: (totalCost / 1000).toFixed(2)
 				})
 			];
 			showRunLog = true;
@@ -752,7 +753,7 @@
 				{#if isRunning}
 					⏸ {$i18n.t('Cancel')}
 				{:else if realMode && totalCost > 0}
-					▶ {$i18n.t('Run All')} · {(totalCost / 1000).toFixed(2)} DLCP
+					▶ {$i18n.t('Run All')} · {totalCost.toLocaleString()} DLCP
 				{:else}
 					▶ {$i18n.t('Run All')} · {totalCost.toLocaleString()} {$i18n.t('cr')}
 				{/if}

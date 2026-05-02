@@ -199,15 +199,10 @@ async def run_block(
             mode = "real"
         else:
             # Non-admin real-mode requires a paid Redis bucket for this run.
-            block_cost = int((body.config or {}).get("cost_cr") or 0)
-            if block_cost <= 0:
-                # Fall back to model defaults so users can't dodge billing
-                # by sending cost_cr=0 from the client.
-                if body.block_type == "videogen":
-                    res = (body.config or {}).get("resolution", "720p")
-                    block_cost = {"480p": 750, "720p": 1500, "1080p": 4500}.get(res, 1500)
-                elif body.block_type == "imagegen":
-                    block_cost = 100
+            # Always recompute cost server-side from the canonical pricing
+            # function — never trust client-supplied cost_cr (a malicious
+            # client could send 0 and dodge billing).
+            block_cost = _canvas_block_cost(body.block_type, body.config or {})
             ok, _remaining, err = _canvas_paid_check(user_id, run_id_header, block_cost)
             if not ok:
                 raise HTTPException(
@@ -1161,8 +1156,86 @@ async def canvas_charge(
     )
 
 
+# Per-block cost in cr (1 cr = 1 DLCP whole token = $0.001).
+# Mirrors `src/lib/components/canvas/pricing.ts` blockCostCr — keep in
+# sync. Source numbers come from `wave.py amounts` × 2 (100% markup) ×
+# 1000 (USD → cr).
+def _canvas_block_cost(block_type: str, config: Dict[str, Any]) -> int:
+    if block_type in ("imageref", "prompt", "stitcher"):
+        return 0
+    if block_type == "voice":
+        return 200
+    if block_type == "videogen":
+        model = config.get("model") or "happyhorse-1.0"
+        res = (config.get("resolution") or "720p").lower()
+        try:
+            duration = int(config.get("duration") or 5)
+        except Exception:
+            duration = 5
+        if model == "happyhorse-1.0":
+            if res.startswith("1080"):
+                return 4800 if duration >= 7 else 3000
+            return 2400 if duration >= 7 else 1500
+        if model == "wan-2.7":
+            if res.startswith("480"):
+                return 1500 if duration >= 8 else 750
+            if res.startswith("1080"):
+                return 4500 if duration >= 8 else 2250
+            return 3000 if duration >= 8 else 1500
+        if model == "ovi":
+            return 450
+        if model == "veo3.1":
+            if duration >= 8:
+                return 9600
+            if duration >= 6:
+                return 7200
+            return 4800
+        if model == "ltx-2.3":
+            if duration >= 10:
+                return 1800
+            if duration >= 8:
+                return 1440
+            return 1080
+        if model == "hailuo-2.3":
+            return 1680 if duration >= 10 else 690
+        if model == "seedance-2.0":
+            if duration >= 12:
+                return 1200
+            if duration >= 9:
+                return 900
+            return 600
+        if model == "kling-3.0":
+            return 8400 if duration >= 10 else 4200
+        if model == "pixverse-v6":
+            return 2400 if duration >= 8 else 1200
+        if model == "luma-ray-2":
+            return 3000 if duration >= 10 else 1500
+        if model == "vidu-q3":
+            return 1600 if duration >= 8 else 800
+        return 1500  # unknown model fallback
+    if block_type == "imagegen":
+        model = config.get("model") or "gpt-image-2"
+        r = (config.get("resolution") or "1k").lower()
+        q = (config.get("quality") or "medium").lower()
+        if model == "flux-dev":
+            return 100
+        base_usd = 0.04 if model == "seedream-v5-lite" else 0.06
+        if model == "gpt-image-2":
+            base_usd = 0.01 if q == "low" else 0.22 if q == "high" else 0.06
+        mult = 3 if r == "4k" else 2 if r == "2k" else 1
+        return round(base_usd * mult * 2 * 1000)
+    return 0
+
+
 def _canvas_paid_check(user_id: str, run_id: str, block_cost_cr: int):
-    """Returns (ok: bool, remaining_dlcp: float, error_msg: str)."""
+    """Returns (ok: bool, remaining_dlcp: float, error_msg: str).
+
+    Convention: 1 cr = 1 DLCP whole token = $0.001 USD.
+    `amount_dlcp` is stored as a decimal-string DLCP count (e.g. "1500"
+    for $1.50 worth). `spent_cr` is in cr units, which equal DLCP units
+    one-to-one. So `remaining = amount_dlcp - spent_cr` and a block of
+    cost N cr requires N DLCP free in the bucket.
+    """
     if not run_id or not user_id:
         return (False, 0.0, "missing run_id or user")
     from apps.redis.redis_client import RedisClientInstance
@@ -1171,13 +1244,12 @@ def _canvas_paid_check(user_id: str, run_id: str, block_cost_cr: int):
     if not paid:
         return (False, 0.0, f"no payment for run_id={run_id} (POST /canvas/charge first)")
     try:
-        remaining_dlcp = float(paid.get("amount_dlcp", "0")) - (paid.get("spent_cr", 0) / 1000.0)
+        remaining_dlcp = float(paid.get("amount_dlcp", "0")) - float(paid.get("spent_cr", 0))
     except Exception:
         return (False, 0.0, "corrupt payment record")
-    block_dlcp = block_cost_cr / 1000.0
-    if remaining_dlcp + 1e-9 < block_dlcp:
+    if remaining_dlcp + 1e-6 < float(block_cost_cr):
         return (False, remaining_dlcp,
-                f"insufficient DLCP: need {block_dlcp:.3f}, have {remaining_dlcp:.3f}")
+                f"insufficient DLCP: need {block_cost_cr}, have {remaining_dlcp:.0f}")
     return (True, remaining_dlcp, "")
 
 

@@ -49,30 +49,46 @@
 		{ key: 'kling-3.0', label: 'Kling 3.0 — cinematic · $8.40' }
 	];
 
-	const VIDEO_RES_OPTIONS = [
-		{ key: '480p', label: '480p — 750 cr' },
-		{ key: '720p', label: '720p — 1,500 cr' },
-		{ key: '1080p', label: '1080p — 4,500 cr' }
+	// Resolution options. Per-model pricing means cr varies by selected
+	// model — we show the 720p price for the current model on the buttons
+	// since that's the most-used tier and gives the user a sense of scale.
+	$: VIDEO_RES_OPTIONS = [
+		{ key: '480p', label: `480p — ${blockCostCr('videogen', { ...config, resolution: '480p' }).toLocaleString()} cr` },
+		{ key: '720p', label: `720p — ${blockCostCr('videogen', { ...config, resolution: '720p' }).toLocaleString()} cr` },
+		{ key: '1080p', label: `1080p — ${blockCostCr('videogen', { ...config, resolution: '1080p' }).toLocaleString()} cr` }
 	];
 
-	const VIDEO_RES_COSTS: Record<string, number> = {
-		'480p': 750,
-		'720p': 1500,
-		'1080p': 4500
-	};
+	import { blockCostCr } from './pricing';
 
-	// When videogen resolution changes, also propagate the new cost up.
-	// Single dispatch so the parent peels off `_newCost` from config and
-	// persists in one Svelte tick — previous double-dispatch was a race
-	// waiting to fire when Svelte's reactivity batching changes (e.g.
-	// Svelte 5 migration). Parent (+page.svelte:147) destructures
-	// `_newCost` out of the config patch.
+	// When videogen resolution OR model changes, recompute the per-block
+	// cost using the centralized pricing function (per-model 2x markup
+	// over WaveSpeed). Single dispatch so the parent peels off
+	// `_newCost` from config and persists in one Svelte tick.
 	function onResolutionChange(newRes: string) {
 		if (!node) return;
-		const newCost = VIDEO_RES_COSTS[newRes] || 1500;
+		const newConfig = { ...config, resolution: newRes };
+		const newCost = blockCostCr('videogen', newConfig);
 		dispatch('update', {
 			id: node.id,
-			config: { ...config, resolution: newRes, _newCost: newCost }
+			config: { ...newConfig, _newCost: newCost }
+		} as any);
+	}
+	function onVideogenModelChange(newModel: string) {
+		if (!node) return;
+		const newConfig = { ...config, model: newModel };
+		const newCost = blockCostCr('videogen', newConfig);
+		dispatch('update', {
+			id: node.id,
+			config: { ...newConfig, _newCost: newCost }
+		} as any);
+	}
+	function onImagegenChange(patch: Record<string, any>) {
+		if (!node) return;
+		const newConfig = { ...config, ...patch };
+		const newCost = blockCostCr('imagegen', newConfig);
+		dispatch('update', {
+			id: node.id,
+			config: { ...newConfig, _newCost: newCost }
 		} as any);
 	}
 </script>
@@ -96,12 +112,12 @@
 		<div class="body">
 			{#if typeKey === 'imagegen'}
 				<div class="field-group">
-					<label>Model</label>
+					<label>Model — current cost: {blockCostCr('imagegen', config).toLocaleString()} cr</label>
 					<select
 						value={config.model ?? 'gpt-image-2'}
-						on:change={(e) => update({ model: valueOf(e) })}
+						on:change={(e) => onImagegenChange({ model: valueOf(e) })}
 					>
-						<option value="gpt-image-2">GPT Image 2 — $0.06 (default)</option>
+						<option value="gpt-image-2">GPT Image 2 (default)</option>
 						<option value="nano-banana-2">Nano Banana 2 — 4K capable</option>
 						<option value="seedream-v5-lite">Seedream V5 Lite — cheap</option>
 						<option value="flux-dev">Flux Dev (legacy stub)</option>
@@ -111,7 +127,7 @@
 					<label>Aspect</label>
 					<select
 						value={config.aspect ?? '16:9'}
-						on:change={(e) => update({ aspect: valueOf(e) })}
+						on:change={(e) => onImagegenChange({ aspect: valueOf(e) })}
 					>
 						<option>16:9</option>
 						<option>9:16</option>
@@ -124,7 +140,7 @@
 					<label>Resolution</label>
 					<select
 						value={config.resolution ?? '1k'}
-						on:change={(e) => update({ resolution: valueOf(e) })}
+						on:change={(e) => onImagegenChange({ resolution: valueOf(e) })}
 					>
 						<option value="1k">1K (default)</option>
 						<option value="2k">2K</option>
@@ -136,7 +152,7 @@
 					<label>Model</label>
 					<select
 						value={config.model ?? 'happyhorse-1.0'}
-						on:change={(e) => update({ model: valueOf(e) })}
+						on:change={(e) => onVideogenModelChange(valueOf(e))}
 					>
 						{#each VIDEO_MODELS as m (m.key)}
 							<option value={m.key}>{m.label}</option>
