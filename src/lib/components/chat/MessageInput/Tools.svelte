@@ -18,8 +18,24 @@
   export let videosize = "720*1280";
   export let videomoney = "$0.001";
   export let selectedModel: any = [];
+  // Bound back up to MessageInput. When the picked model is HappyHorse
+  // (joint audio+video), users hit "rap-song" output because the model
+  // reads the entire scene-description prompt as TTS dialogue. The
+  // dialogue field lets the user separate scene from speech; the
+  // noVoiceover toggle suppresses speech entirely.
+  export let dialogue = "";
+  export let noVoiceover = false;
   let videodura_index = 0;
   let modelObj: any = [];
+
+  // Surface the audio controls only when the selected model can produce
+  // voice. Today HappyHorse-1.0 and Veo 3.1 are the audio-capable models;
+  // everything else generates silent video so the toggle would be a
+  // no-op there.
+  $: hasAudio = modelObj.length > 0 && (
+    String(modelObj[0].id).includes("happyhorse") ||
+    String(modelObj[0].id).includes("veo")
+  );
 
   $: if (selectedModel && selectedModel.length > 0) {
     if (modelObj.length > 0) {
@@ -226,3 +242,18 @@
     </slot>
   </DropdownMenu.Content>
 </DropdownMenu.Root>
+
+{#if hasAudio}
+  <button
+    type="button"
+    title={noVoiceover
+      ? $i18n.t("Voiceover OFF — model will produce ambient sound only")
+      : $i18n.t("Voiceover ON — provide a Dialogue line in the field below, or the model will read your whole prompt aloud")}
+    class="flex flex-row items-center bg-gray-50 dark:bg-gray-800 rounded-lg px-2 py-0.5 ml-1"
+    on:click={(e) => { e.preventDefault(); noVoiceover = !noVoiceover; }}
+  >
+    <span class="text-xs ml-1 py-0.5">
+      {noVoiceover ? "🔇" : "🔊"} {noVoiceover ? $i18n.t("No voice") : $i18n.t("Voice")}
+    </span>
+  </button>
+{/if}

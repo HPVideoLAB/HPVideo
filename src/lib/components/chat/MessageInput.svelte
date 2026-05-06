@@ -41,7 +41,20 @@
   let videodura = 8;
   let videosize = '720*1280';
   let videomoney = '$0.01';
+  let noVoiceover = false;
   export let messages: any[] = [];
+
+  // Tack on a "no spoken dialogue" instruction when the user toggles
+  // voiceover off, so audio-capable models (HappyHorse, Veo 3.1) don't
+  // narrate the scene-description prompt as TTS — the user reported
+  // the model was reading the whole prompt aloud at rap speed.
+  const composedPrompt = (): string => {
+    let p = prompt || '';
+    if (noVoiceover) {
+      p = p + '\n\n[Audio: ambient sound and music only. No spoken dialogue, no voiceover, no narration.]';
+    }
+    return p;
+  };
 
   const getVideoInfo = () => {
     return { duration: videodura, size: videosize, amount: videomoney };
@@ -305,7 +318,7 @@
             class=" flex flex-col relative w-full rounded-3xl bg-gray-100 dark:bg-gray-850 dark:text-gray-100 button-select-none p-3 border border-gray-300 dark:border-gray-800"
             on:submit|preventDefault={() => {
               if ($threesideAccount?.address) {
-                submitPrompt(prompt, getVideoInfo(), user);
+                submitPrompt(composedPrompt(), getVideoInfo(), user);
               } else {
                 document.getElementById('connect-wallet-btn')?.click();
               }
@@ -359,7 +372,7 @@
                     if (prompt !== '' && e.keyCode == 13 && !e.shiftKey) {
                       // 🔥 修复：回车发送前检查钱包连接状态
                       if ($threesideAccount?.address) {
-                        submitPrompt(prompt, getVideoInfo(), user);
+                        submitPrompt(composedPrompt(), getVideoInfo(), user);
                       } else {
                         document.getElementById('connect-wallet-btn')?.click();
                       }
@@ -498,7 +511,7 @@
 
                   <!-- Video Resolution -->
                   <div class="self-star flex gap-x-1 mb-2 ml-1 mr-1">
-                    <Tools bind:videosize bind:videodura bind:videomoney bind:selectedModel={currentModel} />
+                    <Tools bind:videosize bind:videodura bind:videomoney bind:noVoiceover bind:selectedModel={currentModel} />
                   </div>
                 </div>
 
