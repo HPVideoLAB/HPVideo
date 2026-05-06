@@ -27,45 +27,65 @@
         modelObj = $models.filter((item) => selectedModel.includes(item.id));
         if (modelObj.length > 0) {
           videodura = modelObj[0].duration[0];
+          videodura_index = 0;
           videosize = modelObj[0].size[0];
           if (modelObj[0].duration.length > 2) {
             seldura = ["Short", "Medium", "Long"];
           } else {
             seldura = ["Short", "Long"];
           }
-          checkmoney(modelObj[0].amount);
         }
       }
     } else {
       modelObj = $models.filter((item) => selectedModel.includes(item.id));
       if (modelObj.length > 0) {
         videodura = modelObj[0].duration[0];
+        videodura_index = 0;
         videosize = modelObj[0].size[0];
         if (modelObj[0].duration.length > 2) {
           seldura = ["Short", "Medium", "Long"];
         } else {
           seldura = ["Short", "Long"];
         }
-        checkmoney(modelObj[0].amount);
       }
     }
-    
   } else {
     modelObj = [];
   }
 
-  const checkmoney = (amounts: any) => {
-    const keys = Object.keys(amounts);
-    if (keys.length == 1) {
-      amount = amounts[keys[0]];
-    } else {
-      keys.forEach((item: string) => {
-        if (videosize.includes(item)) {
-          amount = amounts[item];
+  // Derived price — recomputes on every (videodura, videosize, modelObj) change.
+  // Replaces the imperative checkmoney() that had to be called from every
+  // mutation site; one missed call left the user staring at a stale price.
+  // The size-agnostic '*' key is checked first so models like veo3.1
+  // (sizes: ['9:16','16:9'], amount key '*') never fall through to the
+  // empty-default `amount` array.
+  $: {
+    if (modelObj && modelObj.length > 0) {
+      const amounts = modelObj[0].amount || {};
+      const keys = Object.keys(amounts);
+      const idx = modelObj[0].duration.indexOf(videodura);
+      let priceArr: any[] = [];
+      if (amounts['*']) {
+        priceArr = amounts['*'];
+      } else if (keys.length === 1) {
+        priceArr = amounts[keys[0]];
+      } else {
+        for (const k of keys) {
+          if (videosize.includes(k)) {
+            priceArr = amounts[k];
+            break;
+          }
         }
-      })
+        if (!priceArr.length) priceArr = amounts[keys[0]] || [];
+      }
+      amount = priceArr;
+      const safeIdx = idx >= 0 && idx < priceArr.length ? idx : 0;
+      const v = priceArr[safeIdx];
+      videomoney = v != null ? '$' + v : '$0.00';
+    } else {
+      amount = [];
+      videomoney = '$0.00';
     }
-    videomoney = amount[videodura_index];
   }
 
   onMount(() => {
@@ -112,7 +132,6 @@
               on:click={(e) => {
                 e.preventDefault();
                 videosize = item;
-                checkmoney(modelObj[0].amount);
                 sizeshow = false;
               }}
             >
@@ -187,7 +206,6 @@
                 e.preventDefault();
                 videodura = item;
                 videodura_index = index;
-                checkmoney(modelObj[0].amount);
                 durashow = false;
               }}
             >
