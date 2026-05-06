@@ -257,6 +257,10 @@
         user: _user ?? undefined,
         imageinfo: '',
         content: userPrompt,
+        // Wire-only prompt override (e.g. with "no voiceover" suffix
+        // injected by MessageInput); sendPromptDeOpenAI's wire build
+        // already prefers raContent over content for the last message.
+        raContent: videoInfo?._wirePrompt ?? userPrompt,
         files: files.length > 0 ? files : undefined,
         toolInfo: videoInfo, // video param
         models: selectedModels.filter((m, mIdx) => selectedModels.indexOf(m) === mIdx),
@@ -404,7 +408,11 @@
     }
 
     try {
-      let paymoney = messageinfo?.paymoney.toString();
+      // Defensive: legacy DB rows store "$0.75" (string with $) while new
+      // rows store "0.75" (numeric string). Both flow into ethers.parseUnits
+      // and Number(); strip the $ here so neither path NaN-bypasses the
+      // balance check or throws "invalid decimal value".
+      let paymoney = String(messageinfo?.paymoney ?? '').replace(/^\$/, '');
 
       // 【新增】1. 预检查：支付前先问后端，这单是不是已经付过了？
       // 防止用户刷新页面后，明明已付钱却因为前端超时显示未支付，导致重复付款

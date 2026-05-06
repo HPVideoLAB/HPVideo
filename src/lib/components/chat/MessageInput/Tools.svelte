@@ -32,10 +32,10 @@
   // voice. Today HappyHorse-1.0 and Veo 3.1 are the audio-capable models;
   // everything else generates silent video so the toggle would be a
   // no-op there.
-  $: hasAudio = modelObj.length > 0 && (
-    String(modelObj[0].id).includes("happyhorse") ||
-    String(modelObj[0].id).includes("veo")
-  );
+  $: hasAudio = modelObj.length > 0 && (() => {
+    const id = String(modelObj[0].id);
+    return id.startsWith("happyhorse") || id.startsWith("veo");
+  })();
 
   $: if (selectedModel && selectedModel.length > 0) {
     if (modelObj.length > 0) {
@@ -97,10 +97,15 @@
       amount = priceArr;
       const safeIdx = idx >= 0 && idx < priceArr.length ? idx : 0;
       const v = priceArr[safeIdx];
-      videomoney = v != null ? '$' + v : '$0.00';
+      // KEEP videomoney AS A NUMERIC STRING (e.g. "0.75"). Downstream
+      // pay code does `Number(paymoney)` for balance checks and
+      // `ethers.parseUnits(paymoney, 18)` for the on-chain transfer —
+      // both throw NaN / 'invalid decimal value' if `$` is included.
+      // The `$` prefix is added only at render sites below.
+      videomoney = v != null ? String(v) : '0.00';
     } else {
       amount = [];
-      videomoney = '$0.00';
+      videomoney = '0.00';
     }
   }
 

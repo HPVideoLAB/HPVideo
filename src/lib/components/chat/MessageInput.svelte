@@ -2,6 +2,7 @@
   import { toast } from 'svelte-sonner';
   import { onMount, tick, getContext } from 'svelte';
   import { mobile, modelfiles, settings, showSidebar, config, threesideAccount } from '$lib/stores';
+  import { walletAddress } from '$lib/stores/wallet';
   import { findWordIndices } from '$lib/utils';
 
   import { WEBUI_BASE_URL } from '$lib/constants';
@@ -44,20 +45,27 @@
   let noVoiceover = false;
   export let messages: any[] = [];
 
-  // Tack on a "no spoken dialogue" instruction when the user toggles
-  // voiceover off, so audio-capable models (HappyHorse, Veo 3.1) don't
-  // narrate the scene-description prompt as TTS — the user reported
-  // the model was reading the whole prompt aloud at rap speed.
-  const composedPrompt = (): string => {
+  const NO_VOICEOVER_SUFFIX =
+    '\n\n[Audio: ambient sound and music only. No spoken dialogue, no voiceover, no narration.]';
+
+  // Wire-only composition. Returned alongside the clean user prompt so
+  // the chat history bubble shows what the user typed (no leaked
+  // bracketed instrumentation) while the model still sees the directive.
+  const wirePrompt = (): string => {
     let p = prompt || '';
-    if (noVoiceover) {
-      p = p + '\n\n[Audio: ambient sound and music only. No spoken dialogue, no voiceover, no narration.]';
-    }
+    if (noVoiceover) p += NO_VOICEOVER_SUFFIX;
     return p;
   };
 
   const getVideoInfo = () => {
     return { duration: videodura, size: videosize, amount: videomoney };
+  };
+
+  // Reset session-level toggles after a send so a stale 🔇 doesn't
+  // leak into the next prompt (especially after switching to a
+  // non-audio model where the toggle is hidden but state lingered).
+  const resetSendState = () => {
+    noVoiceover = false;
   };
 
   $: if (prompt) {
@@ -317,8 +325,10 @@
             dir={$settings?.chatDirection ?? 'LTR'}
             class=" flex flex-col relative w-full rounded-3xl bg-gray-100 dark:bg-gray-850 dark:text-gray-100 button-select-none p-3 border border-gray-300 dark:border-gray-800"
             on:submit|preventDefault={() => {
-              if ($threesideAccount?.address) {
-                submitPrompt(composedPrompt(), getVideoInfo(), user);
+              if ($walletAddress) {
+                const info = { ...getVideoInfo(), _wirePrompt: wirePrompt() };
+                submitPrompt(prompt, info, user);
+                resetSendState();
               } else {
                 document.getElementById('connect-wallet-btn')?.click();
               }
@@ -371,7 +381,7 @@
                     }
                     if (prompt !== '' && e.keyCode == 13 && !e.shiftKey) {
                       // 🔥 修复：回车发送前检查钱包连接状态
-                      if ($threesideAccount?.address) {
+                      if ($walletAddress) {
                         submitPrompt(composedPrompt(), getVideoInfo(), user);
                       } else {
                         document.getElementById('connect-wallet-btn')?.click();

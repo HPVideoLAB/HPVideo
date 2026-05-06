@@ -245,6 +245,10 @@
         role: 'user',
         user: _user ?? undefined,
         content: userPrompt,
+        // Wire-only override: model sees the suffixed version
+        // (e.g. "[Audio: ambient sound only]") even though the
+        // chat bubble shows the user's clean prompt.
+        raContent: videoInfo?._wirePrompt ?? userPrompt,
         files: files.length > 0 ? files : undefined,
         toolInfo: videoInfo,
         timestamp: Math.floor(Date.now() / 1000), // Unix epoch
@@ -379,7 +383,9 @@
     }
 
     try {
-      let paymoney = messageinfo?.paymoney.toString();
+      // Strip $ prefix from legacy paymoney rows so Number()/parseUnits
+      // don't NaN/throw — same defensive guard as in chat/+page.svelte.
+      let paymoney = String(messageinfo?.paymoney ?? '').replace(/^\$/, '');
 
       // --- 1. 预检查：先问后端这笔订单是不是已经付过了 ---
       // (逻辑保持不变：防止刷新后重复扣款)

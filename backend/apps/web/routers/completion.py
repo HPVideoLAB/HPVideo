@@ -14,6 +14,9 @@ router = APIRouter()
 async def completion_video(param: AiModelReq, user=Depends(get_current_user)):
   def event_generator():
     pay = PayTableInstall.get_by_messageid(param.messageid)
+    if pay is None:
+      yield f"data: {json.dumps({'success': False, 'message': 'unknown messageid', 'status': 'error'})}\n\n"
+      return
     if pay.status:
       data = {
         "success": True,
