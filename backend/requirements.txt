@@ -96,3 +96,8 @@ google-auth==2.34.0
 # in .trivyignore to pass the CI security gate in the meantime.
 x402==0.2.1
 cdp-sdk==1.33.2
+
+# Transitive dep — pin >=12.2.0 to clear CVE-2026-42311 (PSD tile OOB
+# write / integer overflow). Several packages pull pillow as transitive
+# and the image lands at 12.1.1 without an explicit floor.
+pillow>=12.2.0
