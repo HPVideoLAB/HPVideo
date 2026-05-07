@@ -2,7 +2,8 @@ fastapi==0.115.12
 uvicorn[standard]==0.22.0
 pydantic==2.10.3
 # CVE-2026-24486: path traversal fixed in 0.0.22
-python-multipart==0.0.22
+# CVE-2026-42561: DoS via unbounded multipart part headers fixed in 0.0.27
+python-multipart==0.0.27
 slowapi==0.1.9
 python-json-logger==2.0.7
 prometheus-fastapi-instrumentator==7.0.0
