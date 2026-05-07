@@ -724,6 +724,11 @@ async def _real_stitcher(body: CanvasRunBlockRequest, started: float) -> CanvasR
                     "-filter_complex", filter_graph,
                     "-map", "[vout]", "-map", "[aout]",
                     "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+                    # Force 4:2:0 + faststart so consumer players (Telegram,
+                    # mobile browsers, QuickTime) can play it. HappyHorse-1.0
+                    # sources are yuv444p which most players reject.
+                    "-pix_fmt", "yuv420p",
+                    "-movflags", "+faststart",
                     "-c:a", "aac", "-b:a", "128k",
                     out_path,
                 ]
@@ -733,17 +738,39 @@ async def _real_stitcher(body: CanvasRunBlockRequest, started: float) -> CanvasR
                     transition = "cut"
 
         if transition == "cut":
-            # Fast concat (no re-encode), with re-encode fallback for codec mismatch.
-            rc, _so, se = await _ffmpeg([
-                "ffmpeg", "-y", "-f", "concat", "-safe", "0",
-                "-i", list_path, "-c", "copy", out_path,
-            ])
-            if rc != 0 or not os.path.exists(out_path) or os.path.getsize(out_path) == 0:
-                log.info("stitcher: -c copy failed (%s), falling back to re-encode", se[:300] if se else "")
+            # Probe each clip's pixel format. HappyHorse-1.0 outputs yuv444p
+            # which Telegram / mobile browsers / QuickTime refuse to play, so
+            # we can't take the `-c copy` fast path on those sources — must
+            # re-encode to yuv420p.
+            pix_fmts: List[str] = []
+            for p in local_files:
+                proc = await asyncio.create_subprocess_exec(
+                    "ffprobe", "-v", "error", "-select_streams", "v:0",
+                    "-show_entries", "stream=pix_fmt",
+                    "-of", "default=noprint_wrappers=1:nokey=1", p,
+                    stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+                )
+                so, _ = await proc.communicate()
+                pix_fmts.append((so.decode() or "").strip())
+            needs_reencode = any(pf and pf != "yuv420p" for pf in pix_fmts)
+
+            rc = -1
+            if not needs_reencode:
+                # Fast concat (no re-encode) when every source is already 4:2:0.
+                rc, _so, se = await _ffmpeg([
+                    "ffmpeg", "-y", "-f", "concat", "-safe", "0",
+                    "-i", list_path, "-c", "copy", out_path,
+                ])
+                if rc != 0 or not os.path.exists(out_path) or os.path.getsize(out_path) == 0:
+                    log.info("stitcher: -c copy failed (%s), falling back to re-encode", se[:300] if se else "")
+                    rc = -1
+            if rc != 0:
                 rc, _so, se = await _ffmpeg([
                     "ffmpeg", "-y", "-f", "concat", "-safe", "0",
                     "-i", list_path,
                     "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+                    "-pix_fmt", "yuv420p",
+                    "-movflags", "+faststart",
                     "-c:a", "aac", "-b:a", "128k",
                     out_path,
                 ])
