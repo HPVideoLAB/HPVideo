@@ -13,7 +13,7 @@
 
   const dispatch = createEventDispatcher();
 
-  import { config, settings, models, theme, paystatus } from '$lib/stores';
+  import { config, settings, models, theme, paystatus, paymentMode } from '$lib/stores';
   import { imageGenerations } from '$lib/apis/images';
   import { approximateToHumanReadable, sanitizeResponseContent } from '$lib/utils';
   import Name from './Name.svelte';
@@ -195,6 +195,26 @@
     return modelName;
   };
 
+  // Pay-card line. Token-mode: "consume 0.75 USDT". Points-mode:
+  // "consume 750 credits" (1 USDT = 1000 credits). Strips a possible
+  // legacy "$" prefix from paymoney before parsing.
+  const formatPayLine = (model: string, paymoney: any): string => {
+    const raw = String(paymoney ?? '').replace(/^\$/, '');
+    const usdt = Number(raw) || 0;
+    const modelLabel = formatModelName(model);
+    if ($paymentMode === 'points') {
+      const credits = Math.ceil(usdt * 1000);
+      return $i18n.t(
+        'This generation uses the {{model}} high-quality model, which will consume {{credits}} credits, The expected wait time is 1-5 minutes.',
+        { model: modelLabel, credits }
+      );
+    }
+    return $i18n.t(
+      'This generation uses the {{model}} high-quality model, which will consume {{paymoney}} USDT, The expected wait time is 1-5 minutes.',
+      { model: modelLabel, paymoney: raw }
+    );
+  };
+
   // 校验图片模型
   const checkModelImage = (model) => {
     // console.log("models", $models);
@@ -313,10 +333,7 @@
               {#if message?.error === true}
                 {#if message.paymoney}
                   <div class="max-w-[600px]">
-                    {$i18n.t(
-                      'This generation uses the {{model}} high-quality model, which will consume {{paymoney}} USDT, The expected wait time is 1-5 minutes.',
-                      { model: formatModelName(message.model), paymoney: message?.paymoney }
-                    )}
+                    {formatPayLine(message.model, message?.paymoney)}
                     {#if message.paystatus}
                       {$i18n.t('Paid')}
                     {:else}
@@ -346,10 +363,7 @@
               {:else if message.content === '' && !message?.done}
                 {#if message.paymoney}
                   <div class="max-w-[600px]">
-                    {$i18n.t(
-                      'This generation uses the {{model}} high-quality model, which will consume {{paymoney}} USDT, The expected wait time is 1-5 minutes.',
-                      { model: formatModelName(message.model), paymoney: message?.paymoney }
-                    )}
+                    {formatPayLine(message.model, message?.paymoney)}
                     {#if message.paystatus}
                       {$i18n.t('Paid')}
                     {:else}
@@ -374,10 +388,7 @@
                 {#each tokens as token, tokenIdx}
                   {#if !message?.paystatus}
                     <div class="max-w-[600px]">
-                      {$i18n.t(
-                        'This generation uses the {{model}} high-quality model, which will consume {{paymoney}} USDT, The expected wait time is 1-5 minutes.',
-                        { model: formatModelName(message.model), paymoney: message?.paymoney }
-                      )}
+                      {formatPayLine(message.model, message?.paymoney)}
                       {#if message.paystatus}
                         {$i18n.t('Paid')}
                       {:else}
@@ -397,10 +408,7 @@
                     </div>
                   {:else if message.status == 'completed'}
                     <div class="max-w-[600px]">
-                      {$i18n.t(
-                        'This generation uses the {{model}} high-quality model, which will consume {{paymoney}} USDT, The expected wait time is 1-5 minutes.',
-                        { model: formatModelName(message.model), paymoney: message?.paymoney }
-                      )}
+                      {formatPayLine(message.model, message?.paymoney)}
                       {#if message.paystatus}
                         {$i18n.t('Paid')}
                       {:else}
@@ -421,10 +429,7 @@
                     <VideoPlay bind:videourl={token.raw} bind:videosize={message.size} />
                   {:else if message.status == 'failed' || message.status == 'timeout'}
                     <div>
-                      {$i18n.t(
-                        'This generation uses the {{model}} high-quality model, which will consume {{paymoney}} USDT, The expected wait time is 1-5 minutes.',
-                        { model: formatModelName(message.model), paymoney: message?.paymoney }
-                      )}
+                      {formatPayLine(message.model, message?.paymoney)}
                       {#if message.paystatus}
                         {$i18n.t('Paid')}
                       {:else}
@@ -450,10 +455,7 @@
                     />
                   {:else}
                     <div class="max-w-[600px]">
-                      {$i18n.t(
-                        'This generation uses the {{model}} high-quality model, which will consume {{paymoney}} USDT, The expected wait time is 1-5 minutes.',
-                        { model: formatModelName(message.model), paymoney: message?.paymoney }
-                      )}
+                      {formatPayLine(message.model, message?.paymoney)}
                       {#if message.paystatus}
                         {$i18n.t('Paid')}
                       {:else}

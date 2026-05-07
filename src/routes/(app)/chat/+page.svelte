@@ -37,6 +37,9 @@
   import { config as wconfig, modal, getUSDTBalance, tranUsdt } from '$lib/utils/wallet/bnb/index';
   import { getAccount } from '@wagmi/core';
   import { bnbpaycheck } from '$lib/apis/pay';
+  import { paymentMode } from '$lib/stores';
+  import { get } from 'svelte/store';
+  import { usePointsPayment } from '$lib/hooks/usePointsPayment';
 
   const i18n: any = getContext('i18n');
 
@@ -399,7 +402,37 @@
 
   // 在第一个组件中找到 startPay 函数，替换为：
 
+  const pointsPay = usePointsPayment();
+
   const startPay = async (messageinfo: any) => {
+    let paymoney = String(messageinfo?.paymoney ?? '').replace(/^\$/, '');
+
+    // Points-mode: pay credits via the in-browser DLCP wallet, no
+    // wagmi popup, no USDT. Branch BEFORE the wagmi guard so a points
+    // user with credits but no MetaMask doesn't get stuck.
+    if (get(paymentMode) === 'points') {
+      $paystatus = true;
+      const result = await pointsPay.pay({
+        amount: Number(paymoney) || 0,
+        model: messageinfo?.model,
+        resolution: messageinfo?.size,
+        duration: Number(messageinfo?.duration) || 5,
+      });
+      if (!result.success) {
+        $paystatus = false;
+        return;
+      }
+      $paystatus = false;
+      await updatePayStatus(messageinfo, true, 'paying');
+      let currResponseMap: any = {};
+      currResponseMap[messageinfo?.model] = messageinfo;
+      let currmessage = messages.filter((item) => item.id == messageinfo?.parentId);
+      if (currmessage.length > 0) {
+        await sendPrompt(currmessage[0].content, currResponseMap);
+      }
+      return;
+    }
+
     const account = getAccount(wconfig);
     if (!account?.address) {
       connect();
@@ -412,7 +445,6 @@
       // rows store "0.75" (numeric string). Both flow into ethers.parseUnits
       // and Number(); strip the $ here so neither path NaN-bypasses the
       // balance check or throws "invalid decimal value".
-      let paymoney = String(messageinfo?.paymoney ?? '').replace(/^\$/, '');
 
       // 【新增】1. 预检查：支付前先问后端，这单是不是已经付过了？
       // 防止用户刷新页面后，明明已付钱却因为前端超时显示未支付，导致重复付款

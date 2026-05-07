@@ -34,6 +34,9 @@
 
   import { config as wconfig, modal, getUSDTBalance, tranUsdt } from '$lib/utils/wallet/bnb/index';
   import { bnbpaycheck } from '$lib/apis/pay';
+  import { paymentMode } from '$lib/stores';
+  import { get } from 'svelte/store';
+  import { usePointsPayment } from '$lib/hooks/usePointsPayment';
 
   const i18n: any = getContext('i18n');
 
@@ -374,7 +377,36 @@
       modal.setThemeMode('dark');
     }
   };
+  const pointsPay = usePointsPayment();
+
   const startPay = async (messageinfo: any) => {
+    let paymoney = String(messageinfo?.paymoney ?? '').replace(/^\$/, '');
+
+    // Points-mode: pay credits via the in-browser DLCP wallet (no
+    // wagmi popup, no USDT). Mirrors the branch in chat/+page.svelte.
+    if (get(paymentMode) === 'points') {
+      $paystatus = true;
+      const result = await pointsPay.pay({
+        amount: Number(paymoney) || 0,
+        model: messageinfo?.model,
+        resolution: messageinfo?.size,
+        duration: Number(messageinfo?.duration) || 5,
+      });
+      if (!result.success) {
+        $paystatus = false;
+        return;
+      }
+      $paystatus = false;
+      await updatePayStatus(messageinfo, true, 'paying');
+      let currResponseMap: any = {};
+      currResponseMap[messageinfo?.model] = messageinfo;
+      let currmessage = messages.filter((item) => item.id == messageinfo?.parentId);
+      if (currmessage.length > 0) {
+        await sendPrompt(currmessage[0].content, currResponseMap);
+      }
+      return;
+    }
+
     const account = getAccount(wconfig);
     if (!account?.address) {
       connect();
@@ -383,9 +415,6 @@
     }
 
     try {
-      // Strip $ prefix from legacy paymoney rows so Number()/parseUnits
-      // don't NaN/throw — same defensive guard as in chat/+page.svelte.
-      let paymoney = String(messageinfo?.paymoney ?? '').replace(/^\$/, '');
 
       // --- 1. 预检查：先问后端这笔订单是不是已经付过了 ---
       // (逻辑保持不变：防止刷新后重复扣款)
