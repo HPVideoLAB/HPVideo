@@ -31,19 +31,24 @@ TOKEN_DECIMALS = 18
 
 
 def verify_transfer_log(w3_instance, tx_receipt, sender_address, receive_address,
-                        expected_contract, expected_amount_str):
+                        expected_contract, expected_amount_str, unit_multiplier=1):
     """Verify ERC20 Transfer event in transaction receipt.
 
     Also verifies:
     - The emitting contract matches the expected token contract address.
     - The on-chain transferred amount is >= the expected amount.
+
+    `unit_multiplier` lets the caller adjust the expected amount before
+    converting to wei. Used for points-mode where amount is stored as a
+    USDT-denominated number ("0.75") but the actual on-chain DLP transfer
+    is 1000× that (1 USDT = 1000 DLP).
     """
     if tx_receipt.status != 1:
         return False
 
     # Parse expected amount to wei (18 decimals)
     try:
-        expected_amount_float = float(expected_amount_str)
+        expected_amount_float = float(expected_amount_str) * unit_multiplier
         expected_amount_wei = int(expected_amount_float * (10 ** TOKEN_DECIMALS))
     except (ValueError, TypeError):
         return False
@@ -132,8 +137,11 @@ async def bnbcheck(request: Request, user=Depends(get_current_user)):
             log.info(f"wait_for_transaction_receipt error: {e}")
             return {"ok": False, "message": "check Failed"}
 
+        # Points-mode: amount column stores USDT-denominated value but the
+        # on-chain DLP transfer is 1000× that, so scale before verifying.
+        multiplier = 1000 if pay_type == "points" else 1
         if verify_transfer_log(w3_chain, tx_receipt, address, receive_addr,
-                               expected_contract, amount):
+                               expected_contract, amount, unit_multiplier=multiplier):
             try:
                 if payinfo is None:
                     PayTableInstall.insert_pay(

@@ -58,9 +58,15 @@ export function usePointsPayment() {
       }
 
       const messageid = args.messageid || uuidv4();
-      const pointsAmount = (amount * 1000).toString(); // Convert USDT to points for display
 
-      // Phase 1: Create payment record
+      // Phase 1: Create payment record.
+      // IMPORTANT: keep `amount` in USDT units (e.g. "0.75") all the way
+      // through PayTable. The DB column is shared with token-mode rows,
+      // and downstream UI multiplies × 1000 for credit display. If we
+      // wrote the already-multiplied credit value here, SSE updates
+      // would round-trip "750" back to the frontend which would then
+      // render it as "750000 credits". Verification multiplies by 1000
+      // on the server side when pay_type === 'points'.
       toast.dismiss();
       toast.loading(t('Creating order...'));
 
@@ -71,7 +77,7 @@ export function usePointsPayment() {
         model,
         size: resolution,
         duration,
-        amount: pointsAmount,
+        amount: String(amount),
         pay_type: 'points',
       };
 
