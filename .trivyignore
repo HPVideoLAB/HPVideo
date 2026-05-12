@@ -103,3 +103,14 @@ CVE-2026-27904
 
 # picomatch RegEx DoS — same build-time-only exposure as minimatch
 CVE-2026-33671
+
+# pnpm 9.15.4 CVEs (Q2 2026, no immediate upgrade path):
+# - CVE-2025-69262 RCE via command injection in tokenHelper env var
+#   (fixed in 10.27.0): requires an attacker-controlled tokenHelper
+#   env var in our build environment, which we do not set.
+# - CVE-2025-69263 Lockfile Integrity Bypass (fixed in 10.26.0):
+#   requires a tampered lockfile; we own the lockfile in the repo.
+# pnpm 10 also has a different overrides schema vs the v9.0 lockfile,
+# so bumping requires regenerating the lockfile (next sprint).
+CVE-2025-69262
+CVE-2025-69263
