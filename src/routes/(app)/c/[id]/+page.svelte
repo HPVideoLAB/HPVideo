@@ -384,6 +384,9 @@
 
     // Points-mode: pay credits via the in-browser DLCP wallet (no
     // wagmi popup, no USDT). Mirrors the branch in chat/+page.svelte.
+    // Pass messageinfo.id so the pay row's messageid matches what
+    // /chat/completion/video later looks up — otherwise the lookup
+    // misses and the SSE yields success:false → "offline" toast.
     if (get(paymentMode) === 'points') {
       $paystatus = true;
       const result = await pointsPay.pay({
@@ -391,6 +394,7 @@
         model: messageinfo?.model,
         resolution: messageinfo?.size,
         duration: Number(messageinfo?.duration) || 5,
+        messageid: messageinfo?.id,
       });
       if (!result.success) {
         $paystatus = false;

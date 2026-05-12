@@ -37,6 +37,12 @@ export function usePointsPayment() {
     model: string;
     resolution?: string;
     duration?: number;
+    // Optional: caller-supplied messageid so the pay row is keyed to
+    // the same id the downstream chat/completion/video lookup uses.
+    // Without this the pay row's UUID and the assistant message's UUID
+    // diverge → completion.py's PayTable.get_by_messageid returns None
+    // → SSE yields {success: false} → user sees "offline" error.
+    messageid?: string;
   }): Promise<{ success: boolean; txHash?: string; error?: string }> => {
     const { amount = 0, model, resolution = '720p', duration = 5 } = args;
 
@@ -51,7 +57,7 @@ export function usePointsPayment() {
         throw new Error(t('Wallet keystore not found'));
       }
 
-      const messageid = uuidv4();
+      const messageid = args.messageid || uuidv4();
       const pointsAmount = (amount * 1000).toString(); // Convert USDT to points for display
 
       // Phase 1: Create payment record

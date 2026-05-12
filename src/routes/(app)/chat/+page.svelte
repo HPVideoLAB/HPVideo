@@ -410,6 +410,8 @@
     // Points-mode: pay credits via the in-browser DLCP wallet, no
     // wagmi popup, no USDT. Branch BEFORE the wagmi guard so a points
     // user with credits but no MetaMask doesn't get stuck.
+    // Pass messageinfo.id so the pay row's messageid lines up with
+    // what /chat/completion/video will look up afterwards.
     if (get(paymentMode) === 'points') {
       $paystatus = true;
       const result = await pointsPay.pay({
@@ -417,6 +419,7 @@
         model: messageinfo?.model,
         resolution: messageinfo?.size,
         duration: Number(messageinfo?.duration) || 5,
+        messageid: messageinfo?.id,
       });
       if (!result.success) {
         $paystatus = false;
