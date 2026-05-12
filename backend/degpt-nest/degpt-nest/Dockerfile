@@ -1,5 +1,5 @@
 # ---- build stage ----
-  FROM node:20-alpine AS build
+  FROM node:22-alpine AS build
   WORKDIR /app
   
   # 启用 pnpm（Node 20 推荐用 corepack）
@@ -19,7 +19,7 @@
   
   
   # ---- runtime stage ----
-  FROM node:20-alpine
+  FROM node:22-alpine
   WORKDIR /app
   
   ENV NODE_ENV=production
