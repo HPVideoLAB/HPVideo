@@ -39,6 +39,11 @@ CVE-2025-62727
 CVE-2025-66418
 CVE-2025-66471
 CVE-2026-21441
+# Same urllib3 / cdp-sdk pin — sensitive-headers-across-origins in
+# proxied low-level redirects (fixed in 2.7.0). Our outbound HTTP
+# does not use proxied redirects across origins; deferred with the
+# rest of the urllib3 chain.
+CVE-2026-44431
 
 # jaraco.context path traversal — transitive via setuptools/packaging;
 # upgrading the full setuptools chain is risky. The CVE needs attacker-
