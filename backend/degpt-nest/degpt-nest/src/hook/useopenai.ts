@@ -3,28 +3,60 @@ import OpenAI from 'openai';
 // 1. 引入代理库
 import { HttpsProxyAgent } from 'https-proxy-agent';
 
+/**
+ * UseOpenAI: routes LLM calls through ZenMux (https://zenmux.ai), an
+ * OpenAI-compatible aggregator, so we get gpt-5.2 without burning the
+ * direct OpenAI account's quota. Falls back to direct OpenAI if no
+ * ZENMUX_API_KEY is set.
+ *
+ * ZenMux exposes /api/v1/chat/completions (standard OpenAI shape), so
+ * we switched off the /responses endpoint the GPT-5.2-only flow used
+ * to call. The smart-enhancer prompts are short enough that
+ * chat/completions handles them without any quality loss.
+ */
 @Injectable()
 export class UseOpenAI {
   private readonly logger = new Logger(UseOpenAI.name);
-  private readonly openai: OpenAI;
+  private readonly client: OpenAI;
+  private readonly modelId: string;
+  private readonly provider: 'zenmux' | 'openai';
 
   constructor() {
-    // =========================================================
-    // 🔥 硬编码配置区域
-    // =========================================================
-    const PROXY_URL = 'http://127.0.0.1:7890'; // 你的本地梯子地址
+    const PROXY_URL = 'http://127.0.0.1:7890'; // local dev proxy
 
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-      timeout: 500000,
-      ...(process.env.NODE_ENV === 'production'
-        ? {}
-        : { httpAgent: new HttpsProxyAgent(PROXY_URL) }),
-    } as any);
+    const zenmuxKey = process.env.ZENMUX_API_KEY;
+    if (zenmuxKey) {
+      this.provider = 'zenmux';
+      // ZenMux's slug for OpenAI's flagship — see BoxHire's
+      // zenmuxModelMap. We default to gpt-5.2-pro for best quality;
+      // override with ZENMUX_MODEL env var if cost matters more.
+      this.modelId = process.env.ZENMUX_MODEL || 'openai/gpt-5.2';
+      this.client = new OpenAI({
+        apiKey: zenmuxKey,
+        baseURL: 'https://zenmux.ai/api/v1',
+        timeout: 500000,
+      } as any);
+      this.logger.log(`[LLM] Provider=ZenMux Model=${this.modelId}`);
+    } else {
+      this.provider = 'openai';
+      this.modelId = 'gpt-5.2';
+      this.client = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+        timeout: 500000,
+        ...(process.env.NODE_ENV === 'production'
+          ? {}
+          : { httpAgent: new HttpsProxyAgent(PROXY_URL) }),
+      } as any);
+      this.logger.warn(
+        '[LLM] ZENMUX_API_KEY not set, falling back to direct OpenAI (subject to that account quota)',
+      );
+    }
   }
 
   /**
-   * 调用 GPT-5.2 Responses API
+   * Call the LLM via chat completions. Uses ZenMux when available so
+   * we don't deplete the direct OpenAI account's quota (which 429'd
+   * during commercial-pipeline traffic on 2026-05-13).
    */
   async callGPT52(
     systemPrompt: string,
@@ -36,60 +68,46 @@ export class UseOpenAI {
       temperature?: number;
     },
   ): Promise<string> {
-    const {
-      reasoningEffort = 'none',
-      verbosity = 'medium',
-      maxTokens = 10000,
-      temperature = 0.85,
-    } = options || {};
+    const { maxTokens = 10000, temperature = 0.85 } = options || {};
 
     this.logger.log(
-      `[OpenAI] Calling GPT-5.2 | Reasoning: ${reasoningEffort} | Verbosity: ${verbosity}`,
+      `[LLM:${this.provider}] Calling ${this.modelId} maxTokens=${maxTokens}`,
     );
 
     try {
-      const fullInput = `${systemPrompt}\n\n${userPrompt}`;
+      const response: any = await this.client.chat.completions.create(
+        {
+          model: this.modelId,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          temperature,
+          max_tokens: maxTokens,
+        },
+        { timeout: 180000 },
+      );
 
-      const requestParams: any = {
-        model: 'gpt-5.2',
-        input: fullInput,
-        reasoning: { effort: reasoningEffort },
-        text: { verbosity: verbosity },
-        max_output_tokens: maxTokens,
-      };
+      const content: string | undefined =
+        response?.choices?.[0]?.message?.content?.toString();
 
-      if (reasoningEffort === 'none') {
-        requestParams.temperature = temperature;
-      }
-
-      // 强制传入 timeout
-      const response: any = await this.openai.responses.create(requestParams, {
-        timeout: 180000,
-      });
-
-      let content: any = '';
-
-      if (response?.output?.[0]) {
-        const outputItem = response.output[0];
-        if (outputItem.content?.[0]?.text) {
-          content = outputItem.content[0].text;
-        } else {
-          content = outputItem.text || outputItem.content || '';
-        }
-      }
-
-      if (!content || typeof content !== 'string') {
-        this.logger.error('[OpenAI] No valid content in response', response);
-        throw new Error('No content returned from OpenAI API');
+      if (!content) {
+        this.logger.error(
+          `[LLM:${this.provider}] No content in response`,
+          response,
+        );
+        throw new Error('No content returned from LLM API');
       }
 
       this.logger.log(
-        `[OpenAI] Response received | Length: ${content.length} chars`,
+        `[LLM:${this.provider}] Response | length=${content.length} chars`,
       );
 
       return content;
     } catch (error: any) {
-      this.logger.error(`[OpenAI] Request failed: ${error.message}`);
+      this.logger.error(
+        `[LLM:${this.provider}] Request failed: ${error.message}`,
+      );
       throw error;
     }
   }
