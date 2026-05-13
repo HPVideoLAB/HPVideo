@@ -241,21 +241,22 @@ export class SmartEnhancerService {
       // 强调：专业摄影、4k、影棚光、清晰聚焦
       const fallbackImagePrompt = `Professional product photography of ${originalPrompt}. High resolution, 4k, studio lighting, clean background, photorealistic, sharp focus, cinematic lighting, commercial quality.`;
 
-      // --- 2. 兜底视频提示词 (包含音色指令) ---
-      let dialoguePart = '';
-
-      // ⚠️ 关键：如果用户选了音色，必须手动拼接 @音色 指令，否则视频会哑巴
-      // 既然 GPT 挂了，就直接让人物念出“用户原始输入的 Prompt”作为临时台词
-      if (fixedVoiceDesc) {
-        // 格式严格遵守：角色 @音色是XXX 说：内容
-        dialoguePart = `\n\nNarrator, @Voice is ${fixedVoiceDesc}, says: "${originalPrompt}"`;
-      }
+      // --- 2. 兜底视频提示词 (默认无 voiceover) ---
+      // The previous fallback piped the user's raw prompt verbatim into a
+      // `Narrator says: "..."` block. Users reported the model reading
+      // their entire scene description aloud at rap speed (the prompt
+      // is a paragraph, not a sentence). When GPT enhancement fails we
+      // can't know the user's intended dialogue, so default to silent
+      // (ambient music only) and let users opt back into voiceover via
+      // the new noVoiceover=false UI toggle once they pass a real
+      // dialogue field.
+      const audioInstruction = `Sound: Background music is upbeat and modern commercial style. No spoken voiceover or dialogue — ambient music and natural sound only.`;
 
       const fallbackVideoPrompt = `Cinematic product commercial video for ${originalPrompt}.
     High quality, 4k, highly detailed.
     Camera movement: Slow dolly in, smooth pan, elegant transitions.
     Lighting: Soft studio lighting, professional color grading.
-    Sound: Background music is upbeat and modern commercial style.${dialoguePart}`;
+    ${audioInstruction}`;
 
       this.logger.warn('⚠️ 已使用兜底提示词生成', {
         fallbackImagePrompt,
