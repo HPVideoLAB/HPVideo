@@ -24,6 +24,7 @@ from apps.web.routers import (
     bnbpay,
     pointpay,
     canvas,
+    director,
 )
 
 from config import (
@@ -106,6 +107,7 @@ app.include_router(x402pay.router, prefix="/x402", tags=["x402pay"])
 app.include_router(bnbpay.router, prefix="/bnbpay", tags=["bnbpay"])
 app.include_router(pointpay.router, prefix="/pointpay", tags=["pointpay"])
 app.include_router(canvas.router, prefix="/canvas", tags=["canvas"])
+app.include_router(director.router, prefix="/director", tags=["director"])
 
 
 from apps.redis.redis_client import RedisClientInstance

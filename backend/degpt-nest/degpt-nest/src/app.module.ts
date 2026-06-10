@@ -6,6 +6,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { OssModule } from './oss/oss.module';
 import { SmartEnhancerModule } from './smart-enhancer/smart-enhancer.module';
+import { DirectorModule } from './director/director.module';
 // ✅ 1. 引入 ScheduleModule
 import { ScheduleModule } from '@nestjs/schedule';
 
@@ -28,6 +29,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     ),
     OssModule,
     SmartEnhancerModule, // 连接字符串
+    DirectorModule,
   ],
   controllers: [AppController],
   providers: [AppService],
