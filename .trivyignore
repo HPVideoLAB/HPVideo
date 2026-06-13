@@ -114,3 +114,19 @@ CVE-2026-33671
 # so bumping requires regenerating the lockfile (next sprint).
 CVE-2025-69262
 CVE-2025-69263
+
+# libgnutls30 CVEs in debian 12 base — fixed in deb12u7, currently
+# shipping deb12u6 because the python:3.11-slim tag hasn't rolled
+# yet. Tracked here until the next base bump (next sprint).
+# - CVE-2026-33845: DoS via DTLS zero-length fragment. We don't run
+#   any DTLS listener; gnutls only ships with the system for openssl
+#   compat. No code path touches DTLS.
+# - CVE-2026-33846: DoS via heap overflow during DTLS handshake.
+#   Same exposure: no DTLS surface.
+# - CVE-2026-42009 / 42010: NUL-character auth bypass in gnutls
+#   username paths. We don't use gnutls for any username-based auth;
+#   wallet sign-in and JWTs handle all auth.
+CVE-2026-33845
+CVE-2026-33846
+CVE-2026-42009
+CVE-2026-42010
