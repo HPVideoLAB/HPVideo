@@ -133,14 +133,20 @@ export type ChargeArgs = {
 
 /** Verify an on-chain DLP transfer for a Run All and mint the
  *  paid-bucket Redis flag. Frontend should call this AFTER the
- *  user signs the DLP transfer in their wallet, BEFORE runCanvas. */
-export async function chargeRun(args: ChargeArgs): Promise<{
+ *  user signs the DLP transfer in their wallet, BEFORE runCanvas.
+ *
+ *  `endpoint` defaults to canvas; Director Mode passes
+ *  '/director/charge' to mint its own namespaced bucket. */
+export async function chargeRun(
+	args: ChargeArgs,
+	endpoint: string = '/canvas/charge'
+): Promise<{
 	ok: boolean;
 	run_id: string;
 	paid_amount: string;
 	message: string | null;
 }> {
-	const r = await fetch(`${WEBUI_API_BASE_URL}/canvas/charge`, {
+	const r = await fetch(`${WEBUI_API_BASE_URL}${endpoint}`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json', ...authHeaders() },
 		body: JSON.stringify(args)

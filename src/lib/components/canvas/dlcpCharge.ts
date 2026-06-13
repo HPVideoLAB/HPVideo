@@ -45,10 +45,19 @@ export type ChargeArgs = {
 	runId: string;
 	totalCostCr: number;
 	t: (key: string, vars?: Record<string, any>) => string;
+	/** Backend verification endpoint. Defaults to /canvas/charge.
+	 *  Director Mode passes '/director/charge' to mint a separate
+	 *  paid bucket (director:paid:* vs canvas:paid:*). */
+	endpoint?: string;
 };
 
 /** Run the DLP transfer + backend verification for one Run All. */
-export async function chargeForRun({ runId, totalCostCr, t }: ChargeArgs): Promise<ChargeResult> {
+export async function chargeForRun({
+	runId,
+	totalCostCr,
+	t,
+	endpoint = '/canvas/charge'
+}: ChargeArgs): Promise<ChargeResult> {
 	if (totalCostCr <= 0) {
 		// Free run (e.g. all prompt + imageref blocks). Skip the wallet step.
 		return { success: true };
@@ -123,7 +132,7 @@ export async function chargeForRun({ runId, totalCostCr, t }: ChargeArgs): Promi
 			hash: receipt.hash,
 			address,
 			amount: dlcpAmount
-		});
+		}, endpoint);
 		if (!verify.ok) {
 			toast.dismiss();
 			toast.warning(t('Payment broadcast but verification slow, retrying once...'));
@@ -134,7 +143,7 @@ export async function chargeForRun({ runId, totalCostCr, t }: ChargeArgs): Promi
 				hash: receipt.hash,
 				address,
 				amount: dlcpAmount
-			});
+			}, endpoint);
 			if (!v2.ok) {
 				throw new Error(v2.message || t('Backend payment verification failed'));
 			}

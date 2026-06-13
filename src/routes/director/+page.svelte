@@ -37,11 +37,26 @@
     meta: { scene_count: number; shot_count: number; lang: string; cached: boolean };
   };
 
+  import { chargeForRun } from '$lib/components/canvas/dlcpCharge';
+
   let rawText = '';
   let lang: 'en' | 'zh' | 'ja' | 'ko' = 'en';
   let planning = false;
   let storyboard: Storyboard | null = null;
   let planError = '';
+
+  // Run state
+  type ShotStatus = 'idle' | 'running' | 'ok' | 'failed';
+  let running = false;
+  let shotStatus: Record<number, { status: ShotStatus; url?: string; error?: string; elapsed?: number }> = {};
+  let stitchStatus: { status: 'idle' | 'running' | 'ok' | 'failed'; url?: string; error?: string } = { status: 'idle' };
+  let finalUrl = '';
+  let runLog: string[] = [];
+
+  function makeRunId(): string {
+    // Cheap UUID; backend treats run_id as opaque.
+    return 'd-' + Math.random().toString(36).slice(2, 10) + '-' + Date.now().toString(36);
+  }
 
   $: charCount = rawText.length;
   $: walletConnected = !!$walletAddress;
@@ -85,13 +100,148 @@
     planError = '';
   }
 
-  function handleRunAll() {
-    // Phase 2 will wire DLP charge + per-shot dispatch here.
-    toast.info(
-      $i18n.t(
-        'Generation will land in Phase 2. The storyboard above is the plan that will run.'
-      )
-    );
+  function resetRunState() {
+    shotStatus = {};
+    stitchStatus = { status: 'idle' };
+    finalUrl = '';
+    runLog = [];
+  }
+
+  async function handleRunAll() {
+    if (!storyboard || running) return;
+    if (!$walletAddress) {
+      toast.error($i18n.t('Connect a points wallet to run.'));
+      return;
+    }
+    if (storyboard.total_cost_cr <= 0) {
+      toast.error($i18n.t('Storyboard has zero cost — nothing to pay for.'));
+      return;
+    }
+
+    resetRunState();
+    running = true;
+    const runId = makeRunId();
+    runLog = [...runLog, $i18n.t('💰 Charging {{cr}} credits…', { cr: storyboard.total_cost_cr.toLocaleString() })];
+
+    // Phase 1 — pay
+    let charge: Awaited<ReturnType<typeof chargeForRun>>;
+    try {
+      charge = await chargeForRun({
+        runId,
+        totalCostCr: storyboard.total_cost_cr,
+        t: (k, v) => $i18n.t(k, v) as string,
+        endpoint: '/director/charge'
+      });
+    } catch (e: any) {
+      running = false;
+      runLog = [...runLog, $i18n.t('✕ Charge failed: {{err}}', { err: e?.message || String(e) })];
+      toast.error(e?.message || String(e));
+      return;
+    }
+    if (!charge.success) {
+      running = false;
+      runLog = [...runLog, $i18n.t('✕ Charge failed')];
+      return;
+    }
+    runLog = [...runLog, $i18n.t('✓ Payment verified. Starting generation…')];
+
+    // Phase 2 — stream /director/run
+    const token = (typeof localStorage !== 'undefined' && localStorage.getItem('token')) || '';
+    let resp: Response;
+    try {
+      resp = await fetch(`${WEBUI_API_BASE_URL}/director/run`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          run_id: runId,
+          storyboard,
+          transitions: 'crossfade'
+        })
+      });
+    } catch (e: any) {
+      running = false;
+      runLog = [...runLog, $i18n.t('✕ Run failed: {{err}}', { err: e?.message || String(e) })];
+      toast.error(e?.message || String(e));
+      return;
+    }
+    if (!resp.ok || !resp.body) {
+      running = false;
+      const txt = await resp.text().catch(() => '');
+      runLog = [...runLog, $i18n.t('✕ HTTP {{s}}: {{t}}', { s: resp.status, t: txt.slice(0, 160) })];
+      toast.error(`HTTP ${resp.status}`);
+      return;
+    }
+
+    // SSE: read line-buffered, parse `data: {...}` events.
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        // Split on double newlines (SSE event boundary).
+        let idx: number;
+        while ((idx = buf.indexOf('\n\n')) >= 0) {
+          const chunk = buf.slice(0, idx).trim();
+          buf = buf.slice(idx + 2);
+          if (!chunk.startsWith('data:')) continue;
+          const data = chunk.slice(5).trim();
+          try {
+            const evt = JSON.parse(data);
+            handleEvent(evt);
+          } catch (_) {
+            // Tolerate non-JSON heartbeats.
+          }
+        }
+      }
+    } catch (e: any) {
+      runLog = [...runLog, $i18n.t('✕ Stream error: {{err}}', { err: e?.message || String(e) })];
+    }
+    running = false;
+  }
+
+  function handleEvent(evt: any) {
+    if (evt.type === 'start') {
+      runLog = [...runLog, $i18n.t('▶ Generating {{n}} shots…', { n: evt.shot_count })];
+    } else if (evt.type === 'shot') {
+      shotStatus = {
+        ...shotStatus,
+        [evt.idx]: {
+          status: evt.status,
+          url: evt.url,
+          error: evt.error,
+          elapsed: evt.elapsed_s
+        }
+      };
+      if (evt.status === 'running') {
+        runLog = [...runLog, $i18n.t('▶ Shot #{{n}}…', { n: evt.idx + 1 })];
+      } else if (evt.status === 'ok') {
+        runLog = [...runLog, $i18n.t('✓ Shot #{{n}} done ({{s}}s)', { n: evt.idx + 1, s: evt.elapsed_s })];
+      } else if (evt.status === 'failed') {
+        runLog = [...runLog, $i18n.t('✕ Shot #{{n}}: {{err}}', { n: evt.idx + 1, err: evt.error })];
+      }
+    } else if (evt.type === 'stitch') {
+      stitchStatus = { status: evt.status, url: evt.url, error: evt.error };
+      if (evt.status === 'running') {
+        runLog = [...runLog, $i18n.t('▶ Stitching with crossfade…')];
+      } else if (evt.status === 'ok') {
+        runLog = [...runLog, $i18n.t('✓ Stitch done')];
+      } else if (evt.status === 'failed') {
+        runLog = [...runLog, $i18n.t('✕ Stitch: {{err}}', { err: evt.error })];
+      }
+    } else if (evt.type === 'done') {
+      finalUrl = evt.final_url;
+      runLog = [...runLog, $i18n.t('🎬 Done in {{s}}s', { s: evt.total_elapsed_s })];
+      toast.success($i18n.t('Video ready.'));
+    } else if (evt.type === 'error') {
+      runLog = [...runLog, $i18n.t('✕ {{err}}', { err: evt.message })];
+      toast.error(evt.message || 'failed');
+    }
   }
 </script>
 
@@ -187,12 +337,20 @@
       </header>
       <ol class="shot-list">
         {#each storyboard.shots as s (s.idx)}
-          <li class="shot">
+          {@const st = shotStatus[s.idx]}
+          <li class="shot" class:running={st?.status === 'running'} class:ok={st?.status === 'ok'} class:failed={st?.status === 'failed'}>
             <header class="shot-head">
               <span class="shot-num">#{s.idx + 1}</span>
               <span class="shot-meta">
                 {s.duration_s}s · {s.model}
                 · {s.idx === 0 ? $i18n.t('t2v') : $i18n.t('i2v chained')}
+                {#if st?.status === 'running'}
+                  <span class="status-pill running">▶ {$i18n.t('running…')}</span>
+                {:else if st?.status === 'ok'}
+                  <span class="status-pill ok">✓ {st.elapsed}s</span>
+                {:else if st?.status === 'failed'}
+                  <span class="status-pill failed">✕ {$i18n.t('failed')}</span>
+                {/if}
               </span>
             </header>
             <p class="shot-prompt">{s.prompt}</p>
@@ -207,23 +365,57 @@
                 </div>
               {/if}
             </div>
+            {#if st?.status === 'ok' && st.url}
+              <!-- svelte-ignore a11y-media-has-caption -->
+              <video class="shot-clip" src={st.url} controls muted playsinline preload="metadata"></video>
+            {:else if st?.status === 'failed' && st.error}
+              <p class="shot-err">{st.error}</p>
+            {/if}
           </li>
         {/each}
       </ol>
     </section>
 
+    {#if finalUrl}
+      <section class="final-card">
+        <header class="card-head">
+          <strong>🎬 {$i18n.t('Final cut')}</strong>
+        </header>
+        <!-- svelte-ignore a11y-media-has-caption -->
+        <video class="final-video" src={finalUrl} controls playsinline preload="metadata"></video>
+        <p class="final-meta">
+          <a href={finalUrl} target="_blank" rel="noopener">{$i18n.t('Open / download MP4 ↗')}</a>
+        </p>
+      </section>
+    {/if}
+
+    {#if runLog.length}
+      <section class="log-card">
+        <header class="card-head">
+          <strong>{$i18n.t('Run log')}</strong>
+        </header>
+        <pre class="log-pre">{runLog.join('\n')}</pre>
+      </section>
+    {/if}
+
     <footer class="run-bar">
-      <button class="btn ghost" on:click={clearPlan}>↺ {$i18n.t('New plan')}</button>
+      <button class="btn ghost" on:click={clearPlan} disabled={running}>↺ {$i18n.t('New plan')}</button>
       <button
         class="btn primary big"
         on:click={handleRunAll}
-        disabled={!walletConnected || storyboard.total_cost_cr <= 0}
-        title={walletConnected
-          ? $i18n.t('Phase 2 wires this up; storyboard is the contract.')
-          : $i18n.t('Connect a points wallet to run.')}
+        disabled={running || !walletConnected || storyboard.total_cost_cr <= 0}
+        title={running
+          ? $i18n.t('Generation in progress…')
+          : walletConnected
+            ? $i18n.t('Sign one DLP transfer, then generate every shot.')
+            : $i18n.t('Connect a points wallet to run.')}
       >
-        ▶ {$i18n.t('Generate & Pay')} · {storyboard.total_cost_cr.toLocaleString()}
-        {$i18n.t('cr')}
+        {#if running}
+          ⏳ {$i18n.t('Generating…')}
+        {:else}
+          ▶ {$i18n.t('Generate & Pay')} · {storyboard.total_cost_cr.toLocaleString()}
+          {$i18n.t('cr')}
+        {/if}
       </button>
     </footer>
   {/if}
@@ -447,5 +639,103 @@
   }
   .btn.ghost {
     background: transparent;
+  }
+
+  /* Per-shot status pills + clips */
+  .status-pill {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    border: 1px solid currentColor;
+  }
+  .status-pill.running {
+    color: #f5a623;
+    animation: pulse 1.4s infinite ease-in-out;
+  }
+  .status-pill.ok {
+    color: #36c47b;
+  }
+  .status-pill.failed {
+    color: #ef4444;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+  .shot.running {
+    border-left-color: #f5a623;
+  }
+  .shot.ok {
+    border-left-color: #36c47b;
+  }
+  .shot.failed {
+    border-left-color: #ef4444;
+  }
+  .shot-clip {
+    display: block;
+    margin-top: 12px;
+    width: 100%;
+    max-height: 280px;
+    border-radius: 8px;
+    background: #0a0014;
+  }
+  .shot-err {
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    font-size: 12px;
+  }
+
+  /* Final cut card */
+  .final-card {
+    background: linear-gradient(180deg, rgba(54, 196, 123, 0.12), rgba(21, 16, 42, 0.9));
+    border: 1px solid rgba(54, 196, 123, 0.35);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .final-video {
+    display: block;
+    width: 100%;
+    max-height: 480px;
+    border-radius: 10px;
+    background: #0a0014;
+  }
+  .final-meta {
+    margin-top: 10px;
+    font-size: 13px;
+  }
+  .final-meta a {
+    color: #d090ff;
+    text-decoration: none;
+  }
+  .final-meta a:hover {
+    text-decoration: underline;
+  }
+
+  /* Run log */
+  .log-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+  }
+  .log-pre {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    color: #a6a2bc;
+    margin: 0;
+    white-space: pre-wrap;
+    max-height: 240px;
+    overflow-y: auto;
   }
 </style>
