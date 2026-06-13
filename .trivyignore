@@ -130,3 +130,10 @@ CVE-2026-33845
 CVE-2026-33846
 CVE-2026-42009
 CVE-2026-42010
+
+# libcrypto3 PKCS7_verify use-after-free in alpine 3.5.6 (fixed in
+# 3.5.7). Ships in the nest image's node:22-alpine base; the next
+# nest image bump will pick up the patched openssl. We never call
+# PKCS7_verify — outbound TLS is to known WaveSpeed/ZenMux endpoints
+# and Mongo, no user-supplied PKCS7/CMS material reaches openssl.
+CVE-2026-45447
