@@ -5,11 +5,18 @@
   and runs the generation end-to-end via canvas backend internals.
 -->
 <script lang="ts">
-  import { getContext } from 'svelte';
+  import { getContext, onMount } from 'svelte';
   import { toast } from 'svelte-sonner';
   import { WEBUI_API_BASE_URL } from '$lib/constants';
-  import { dlcpBalance } from '$lib/stores';
+  import { dlcpBalance, initPageFlag } from '$lib/stores';
   import { walletAddress } from '$lib/stores/wallet';
+
+  // Top-level routes (canvas, director) must signal the global layout
+  // so it dismisses the splash screen. (app) routes get this for free
+  // via their layout; director sits outside (app), same as canvas.
+  onMount(() => {
+    initPageFlag.set(true);
+  });
 
   const i18n: any = getContext('i18n');
 
