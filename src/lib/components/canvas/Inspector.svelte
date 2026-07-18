@@ -6,8 +6,14 @@
   like reference-image upload preview, prompt suggestions, etc.
 -->
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, getContext } from 'svelte';
 	import { BLOCK_TYPE_BY_KEY, type TypeKey } from './blockTypes';
+
+	// Inspector renders inside the canvas page which provides the i18n
+	// store via context. Without this the template's $i18n.t(...) calls
+	// throw "i18n is not defined" (a runtime ReferenceError on the live
+	// Canvas page).
+	const i18n: any = getContext('i18n');
 
 	export let node: any | null = null;
 

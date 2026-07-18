@@ -256,7 +256,8 @@
   <title>Director Mode · HPVideo</title>
 </svelte:head>
 
-<div class="director-root">
+<div class="director-page">
+  <div class="director-root">
   <header class="topbar">
     <div class="brand">
       <span class="badge">🎬</span>
@@ -426,9 +427,19 @@
       </button>
     </footer>
   {/if}
+  </div>
 </div>
 
 <style>
+  /* Full-page dark product background — Director sits outside the (app)
+     dark shell so without this the card floated on a bare white page. */
+  :global(body:has(.director-root)) {
+    background: #07060e;
+  }
+  .director-page {
+    min-height: 100vh;
+    background: radial-gradient(1200px 600px at 50% -10%, rgba(194, 19, 242, 0.12), transparent 60%), #07060e;
+  }
   .director-root {
     max-width: 960px;
     margin: 0 auto;

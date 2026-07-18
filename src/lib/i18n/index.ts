@@ -38,7 +38,13 @@ const createIsLoadingStore = (i18n: i18nType) => {
 };
 
 export const initI18n = (defaultLocale: string | undefined) => {
-  let detectionOrder = defaultLocale ? ['querystring', 'localStorage'] : ['querystring', 'localStorage', 'navigator'];
+  // Always let the browser language participate in detection so the Studio
+  // follows the visitor's browser like the marketing site does. Previously,
+  // when a default locale was configured we DROPPED 'navigator', so an
+  // English visitor coming from the English marketing site would land in a
+  // Chinese Studio (inconsistent). Order: explicit ?lang -> saved choice ->
+  // browser language -> configured fallback (en-US).
+  let detectionOrder = ['querystring', 'localStorage', 'navigator'];
   let fallbackDefaultLocale = defaultLocale ? [defaultLocale] : ['en-US'];
 
   const loadResource = (language: string, namespace: string) => import(`./locales/${language}/${namespace}.json`);
