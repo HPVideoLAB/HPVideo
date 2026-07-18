@@ -161,3 +161,27 @@ CVE-2026-54283
 #   from the open-webui fork and is not wired up in this deployment).
 CVE-2026-4372
 CVE-2026-5241
+
+# --- hpvideo-nest (Node) image build-tooling advisories (2026-07-18) ---
+# pnpm 9.15.4 additional advisories. Same class as CVE-2025-69262/69263
+# above: every one requires pnpm to process a MALICIOUS lockfile, package
+# source string, dependency alias, or config-dependency during install.
+# We own pnpm-lock.yaml and the package set, and pnpm is only run at
+# build/deploy time (corepack) — never at application runtime. The fixes
+# live in pnpm 10.x/11.x, whose lockfile/overrides schema differs from our
+# v9 lockfile, so the bump is deferred to the framework refresh with the
+# other pnpm CVEs.
+CVE-2026-50015
+CVE-2026-50016
+CVE-2026-55487
+CVE-2026-55697
+CVE-2026-55698
+GHSA-72r4-9c5j-mj57
+GHSA-fr4h-3cph-29xv
+GHSA-qrv3-253h-g69c
+# sigstore 3.1.0 — CVE-2026-48815: ignores the `certificateOIDs`
+# verification option, accepting some unauthorized certificates. sigstore
+# is a transitive part of the npm/build signing toolchain used only during
+# install; this app makes no runtime trust decision based on sigstore
+# verification. Fixed in 4.1.1; picked up on the next toolchain bump.
+CVE-2026-48815
