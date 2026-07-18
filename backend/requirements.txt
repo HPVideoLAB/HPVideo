@@ -3,7 +3,8 @@ uvicorn[standard]==0.22.0
 pydantic==2.10.3
 # CVE-2026-24486: path traversal fixed in 0.0.22
 # CVE-2026-42561: DoS via unbounded multipart part headers fixed in 0.0.27
-python-multipart==0.0.27
+# CVE-2026-53539: DoS via malformed multipart payload; fixed in 0.0.30
+python-multipart==0.0.30
 slowapi==0.1.9
 python-json-logger==2.0.7
 prometheus-fastapi-instrumentator==7.0.0
@@ -12,7 +13,8 @@ Flask==3.0.3
 # CVE-2024-6221: Access-Control-Allow-Private-Network default issue; fixed in 4.0.2
 Flask-Cors==4.0.2
 
-python-socketio==5.11.2
+# CVE-2026-48804: DoS via binary-attachment accumulation; fixed in 5.16.2
+python-socketio==5.16.2
 # CVE-2024-33663 (CRITICAL): ECDSA key algorithm confusion fixed in 3.4.0
 python-jose==3.4.0
 passlib[bcrypt]==1.7.4
@@ -60,7 +62,8 @@ rank-bm25==0.2.2
 # faster-whisper==1.0.1
 
 # CVE-2026-32597: accepts unknown `crit` header extensions; fixed in 2.12.0
-PyJWT[crypto]==2.12.0
+# CVE-2026-48526: authentication bypass via forged token; fixed in 2.13.0
+PyJWT[crypto]==2.13.0
 
 # CVE-2026-32274: arbitrary file writes from unsanitized cache input; fixed in 26.3.1
 # black is a dev formatter; major version bump is safe (no runtime behavior change)
@@ -88,8 +91,15 @@ google-auth==2.34.0
 # with the x402 v2 migration (same vendor, coupled API surface).
 # Tracked in .trivyignore for the Q2 2026 framework refresh.
 #
-# Starlette CVE-2025-62727: fastapi 0.115.12 gates starlette <0.47.
+# Starlette CVE-2025-62727 / CVE-2026-48818 (SSRF, Linux N/A) /
+# CVE-2026-54283 (form-limit regression): fastapi 0.115.12 gates
+# starlette <0.47, so the 1.x fixes need a coupled FastAPI bump.
 # Tracked in .trivyignore for the same refresh.
+#
+# transformers CVE-2026-4372 / CVE-2026-5241 (RCE via trust_remote_code):
+# pulled transitively by sentence-transformers 2.7.0 (requires
+# transformers <5). trust_remote_code defaults False + no untrusted
+# model loading, so not reachable. Tracked in .trivyignore.
 
 # x402 GHSA-qr2g-p6q7-w82m requires v2.x upgrade; v2 API differs
 # substantially (breaks create_facilitator_config / require_payment imports).

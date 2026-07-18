@@ -137,3 +137,27 @@ CVE-2026-42010
 # PKCS7_verify — outbound TLS is to known WaveSpeed/ZenMux endpoints
 # and Mongo, no user-supplied PKCS7/CMS material reaches openssl.
 CVE-2026-45447
+
+# --- Coupled major-version bumps deferred to the framework refresh (2026-07-18) ---
+# starlette CVEs — fastapi 0.115.12 gates starlette <0.47, so the 1.x
+# fixes require a coupled FastAPI major bump (re-test all routers/deps).
+# - CVE-2026-48818: SSRF + NTLM credential theft via UNC paths. UNC
+#   (\host\share) is a Windows concept; the backend runs in Linux
+#   containers with no StaticFiles serving from UNC/user-controlled
+#   paths — the vector is not reachable here.
+# - CVE-2026-54283: request.form() size limits silently ignored. A
+#   hardening regression; request body size is already bounded upstream
+#   by the nginx ingress limit and slowapi rate limiting.
+CVE-2026-48818
+CVE-2026-54283
+
+# transformers CVEs (pulled transitively by sentence-transformers 2.7.0,
+# which requires transformers <5 — a 5.x bump needs a sentence-transformers
+# major upgrade). Both are RCE via loading an UNTRUSTED model with
+# trust_remote_code=True.
+# - CVE-2026-4372 / CVE-2026-5241: not reachable here —
+#   RAG_EMBEDDING_MODEL_TRUST_REMOTE_CODE defaults to False and the app
+#   never loads user-supplied model repos (RAG/embeddings is inherited
+#   from the open-webui fork and is not wired up in this deployment).
+CVE-2026-4372
+CVE-2026-5241
