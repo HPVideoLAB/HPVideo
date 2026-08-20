@@ -404,9 +404,18 @@
 	// On mount, hydrate state from localStorage + wallet.
 	onMount(() => {
 		try {
-			realMode = localStorage.getItem('canvas_mode') === 'real';
 			walletAddress = getStoredAddress() || '';
 			walletConnected = hasPointsWallet();
+			// Real generation is now open to every wallet user by default.
+			// Stay in demo only if the user explicitly opted out, or has no
+			// points wallet (real mode needs a wallet to pay per run).
+			const stored = localStorage.getItem('canvas_mode');
+			realMode = walletConnected && stored !== 'demo';
+			// Keep localStorage in sync so runner.ts — which reads canvas_mode
+			// directly to set the X-Canvas-Mode header — agrees with the UI
+			// toggle. Without this a default-on toggle would still send stub
+			// requests and silently produce demo output.
+			if (realMode) localStorage.setItem('canvas_mode', 'real');
 		} catch {}
 		// Refresh DLP balance so the topbar pill reads accurately on load.
 		if (walletAddress) {
@@ -428,7 +437,7 @@
 		realMode = on;
 		try {
 			if (on) localStorage.setItem('canvas_mode', 'real');
-			else localStorage.removeItem('canvas_mode');
+			else localStorage.setItem('canvas_mode', 'demo');
 		} catch {}
 		toast.info(
 			on
