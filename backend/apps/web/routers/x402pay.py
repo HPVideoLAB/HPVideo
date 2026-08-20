@@ -37,21 +37,24 @@ MODEL_REGISTRY: Dict[str, Dict[str, str]] = {
     # leaderboard (T2V Elo 1333, I2V Elo 1392 as of 2026-04-08). Native
     # 7-language lip-sync at 14.6% WER. This is now the default model for
     # both the standalone /creator path and the Canvas DAG.
-    "happyhorse-1.0": {"vendor": "alibaba", "model": "happyhorse-1.0/text-to-video"},
-    # Alibaba WAN 2.5 → 2.7 (latest; 2.5/2.6 still on WaveSpeed)
+    # NOTE: registry KEYS are stable/legacy; "model" path = latest WaveSpeed
+    # version. 2026-08-20 bumped to latest (slugs verified on wavespeed.ai docs):
+    # HappyHorse 1.0→1.1, Hailuo 2.3→MiniMax H3, Seedance 2.0→2.5, Kling→O3-std.
+    "happyhorse-1.0": {"vendor": "alibaba", "model": "happyhorse-1.1/text-to-video"},
+    # Alibaba WAN 2.7 (Wan 3.0 exists but is image/reference-to-video only — no t2v endpoint)
     "wan-2.7":    {"vendor": "alibaba",     "model": "wan-2.7/text-to-video"},
     # Character.ai OVI (still current)
     "ovi":        {"vendor": "character-ai", "model": "ovi/text-to-video"},
     # Google Veo 3.1 (confirmed WaveSpeed path: google/veo3.1/text-to-video — no dash)
     "veo3.1":     {"vendor": "google",      "model": "veo3.1/text-to-video"},
-    # Lightricks LTX 2 Pro → 2.3 (hosted under wavespeed-ai vendor namespace on WaveSpeed)
+    # Lightricks LTX 2.3 (hosted under wavespeed-ai vendor namespace on WaveSpeed)
     "ltx-2.3":    {"vendor": "wavespeed-ai", "model": "ltx-2.3/text-to-video"},
-    # Minimax Hailuo 02 → 2.3 (t2v-pro is the text-to-video variant; i2v-standard is image-to-video)
-    "hailuo-2.3": {"vendor": "minimax",     "model": "hailuo-2.3/t2v-pro"},
-    # ByteDance Seedance V1 → 2.0 (confirmed WaveSpeed path: bytedance/seedance-2.0/text-to-video)
-    "seedance-2.0": {"vendor": "bytedance", "model": "seedance-2.0/text-to-video"},
-    # Kwaivgi Kling V2.0 → V3.0
-    "kling-3.0":  {"vendor": "kwaivgi",     "model": "kling-v3.0-std/text-to-video"},
+    # Minimax H3 (Hailuo successor; confirmed path minimax/h3/text-to-video)
+    "hailuo-2.3": {"vendor": "minimax",     "model": "h3/text-to-video"},
+    # ByteDance Seedance 2.5 (confirmed path bytedance/seedance-2.5/text-to-video)
+    "seedance-2.0": {"vendor": "bytedance", "model": "seedance-2.5/text-to-video"},
+    # Kwaivgi Kling O3 Std (confirmed path kwaivgi/kling-video-o3-std/text-to-video)
+    "kling-3.0":  {"vendor": "kwaivgi",     "model": "kling-video-o3-std/text-to-video"},
     # Pixverse V4.5 → V6
     "pixverse-v6": {"vendor": "pixverse",   "model": "pixverse-v6/text-to-video"},
     # NEW: Luma Ray 2 (confirmed WaveSpeed path: luma/ray-2-t2v — uses combined slug)

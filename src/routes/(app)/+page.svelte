@@ -121,9 +121,9 @@
         <span class="font-semibold uppercase tracking-wider">{$i18n.t('12 models powering it')}</span>
         <span>WAN 2.7</span><span>·</span>
         <span>Veo 3.1</span><span>·</span>
-        <span>Kling 3.0</span><span>·</span>
-        <span>Hailuo 2.3</span><span>·</span>
-        <span>Seedance 2.0</span><span>·</span>
+        <span>Kling O3</span><span>·</span>
+        <span>MiniMax H3</span><span>·</span>
+        <span>Seedance 2.5</span><span>·</span>
         <span>LTX 2.3</span><span>·</span>
         <span>Pixverse V6</span><span>·</span>
         <span>Luma Ray 2</span><span>·</span>

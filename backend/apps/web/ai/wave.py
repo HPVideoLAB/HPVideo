@@ -14,9 +14,10 @@ amounts = {
   # HappyHorse-1.0 (Alibaba, native joint audio+video, 7-lang lip-sync).
   # Listed at $0.7/run on WaveSpeed; we set 720p/5s = $0.75 to match the
   # canonical clip price tier across the rest of the registry.
+  # HappyHorse 1.1 (raw WaveSpeed: $0.14/s @720p, $0.189/s @1080p)
   "happyhorse-1.0": {
-    "720":  {"5": 0.75, "8": 1.20},
-    "1080": {"5": 1.50, "8": 2.40}
+    "720":  {"5": 0.70, "8": 1.12},
+    "1080": {"5": 0.945, "8": 1.512}
   },
   "wan-2.7": {
     "480": {"5": 0.375, "10": 0.75},
@@ -32,14 +33,17 @@ amounts = {
   "ltx-2.3": {
     "*": {"6": 0.54, "8": 0.72, "10": 0.9}
   },
+  # MiniMax H3 (raw WaveSpeed: $0.10/s @768p — the pinned resolution)
   "hailuo-2.3": {
-    "*": {"6": 0.345, "10": 0.84}
+    "*": {"6": 0.60, "10": 1.00}
   },
+  # Seedance 2.5 (raw WaveSpeed: $0.36/s @720p — the pinned resolution)
   "seedance-2.0": {
-    "*": {"6": 0.30, "9": 0.45, "12": 0.60}
+    "*": {"6": 2.16, "9": 3.24, "12": 4.32}
   },
+  # Kling O3 Std (raw WaveSpeed: $0.084/s, no sound)
   "kling-3.0": {
-    "*": {"5": 2.10, "10": 4.20}
+    "*": {"5": 0.42, "10": 0.84}
   },
   "pixverse-v6": {
     "*": {"5": 0.60, "8": 1.20}
@@ -168,12 +172,31 @@ class WaveApi:
 				"generate_audio": True,
 				"resolution": "720p"
 			}
-		elif source == 'bytedance' or source == 'kwaivgi':
-			# Seedance / Kling: aspect_ratio (no resolution).
+		elif source == 'bytedance':
+			# Seedance 2.5: pin resolution=720p so we bill the $0.36/s tier
+			# (its raw price in `amounts`), not the model's pricier default.
+			data = {
+				"duration": duration,
+				"prompt": prompt,
+				"aspect_ratio": _to_aspect_ratio(size),
+				"resolution": "720p"
+			}
+		elif source == 'kwaivgi':
+			# Kling O3 Std: aspect_ratio only. `sound` defaults off — leaving
+			# it out keeps the cheaper $0.084/s (no-audio) tier.
 			data = {
 				"duration": duration,
 				"prompt": prompt,
 				"aspect_ratio": _to_aspect_ratio(size)
+			}
+		elif source == 'minimax':
+			# MiniMax H3: aspect_ratio + resolution. Pin 768p ($0.10/s), the
+			# cheapest tier and the price recorded in `amounts`.
+			data = {
+				"duration": duration,
+				"prompt": prompt,
+				"aspect_ratio": _to_aspect_ratio(size),
+				"resolution": "768p"
 			}
 		else:
 			data = {

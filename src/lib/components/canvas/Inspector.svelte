@@ -44,15 +44,16 @@
 	}
 
 	const VIDEO_MODELS = [
-		// HappyHorse-1.0 default — joint audio + lip-sync, #1 leaderboard.
-		{ key: 'happyhorse-1.0', label: 'HappyHorse 1.0 🥇 — audio+lip-sync · $0.75' },
+		// HappyHorse 1.1 default — joint audio + lip-sync, #1 leaderboard.
+		// (keys are stable/legacy; labels track the latest WaveSpeed version.)
+		{ key: 'happyhorse-1.0', label: 'HappyHorse 1.1 🥇 — audio+lip-sync · $1.40' },
 		{ key: 'wan-2.7', label: 'WAN 2.7 — photoreal · $1.50' },
-		{ key: 'seedance-2.0', label: 'Seedance 2.0 — fast · $0.60' },
+		{ key: 'seedance-2.0', label: 'Seedance 2.5 — cinematic · $4.32' },
 		{ key: 'ovi', label: 'OVI — characters · $0.45' },
-		{ key: 'hailuo-2.3', label: 'Hailuo 2.3 — motion · $0.69' },
+		{ key: 'hailuo-2.3', label: 'MiniMax H3 — motion · $1.20' },
 		{ key: 'veo3.1', label: 'Veo 3.1 — flagship · $9.60' },
 		{ key: 'pixverse-v6', label: 'Pixverse V6 — stylized · $1.20' },
-		{ key: 'kling-3.0', label: 'Kling 3.0 — cinematic · $8.40' }
+		{ key: 'kling-3.0', label: 'Kling O3 — cinematic · $0.84' }
 	];
 
 	// Resolution options. Per-model pricing means cr varies by selected

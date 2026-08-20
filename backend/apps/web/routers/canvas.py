@@ -56,13 +56,17 @@ VIDEOGEN_REGISTRY: Dict[str, Dict[str, str]] = {
     # (en/zh/yue/ja/ko/de/fr) at 14.6% WER. Currently #1 on WaveSpeed
     # leaderboard. Speculated to be Alibaba's next WAN; vendor confirmed
     # alibaba on WaveSpeed.
-    "happyhorse-1.0": {"vendor": "alibaba",      "model": "happyhorse-1.0/text-to-video"},
+    # NOTE: registry KEYS are stable/legacy (saved canvas workspaces store
+    # them) — the "model" path is the actual (latest) WaveSpeed version.
+    # 2026-08-20: bumped HappyHorse 1.0→1.1, Hailuo 2.3→MiniMax H3,
+    # Seedance 2.0→2.5, Kling v3.0-std→O3-std. Wan stays 2.7 (no 3.0 t2v).
+    "happyhorse-1.0": {"vendor": "alibaba",      "model": "happyhorse-1.1/text-to-video"},
     "ovi":            {"vendor": "character-ai", "model": "ovi/text-to-video"},
     "veo3.1":         {"vendor": "google",       "model": "veo3.1/text-to-video"},
     "ltx-2.3":        {"vendor": "wavespeed-ai", "model": "ltx-2.3/text-to-video"},
-    "hailuo-2.3":     {"vendor": "minimax",      "model": "hailuo-2.3/t2v-pro"},
-    "seedance-2.0":   {"vendor": "bytedance",    "model": "seedance-2.0/text-to-video"},
-    "kling-3.0":      {"vendor": "kwaivgi",      "model": "kling-v3.0-std/text-to-video"},
+    "hailuo-2.3":     {"vendor": "minimax",      "model": "h3/text-to-video"},
+    "seedance-2.0":   {"vendor": "bytedance",    "model": "seedance-2.5/text-to-video"},
+    "kling-3.0":      {"vendor": "kwaivgi",      "model": "kling-video-o3-std/text-to-video"},
     "pixverse-v6":    {"vendor": "pixverse",     "model": "pixverse-v6/text-to-video"},
     "luma-ray-2":     {"vendor": "luma",         "model": "ray-2-t2v"},
     "vidu-q3":        {"vendor": "vidu",         "model": "q3/text-to-video"},
@@ -1254,10 +1258,9 @@ def _canvas_block_cost(block_type: str, config: Dict[str, Any]) -> int:
             duration = int(config.get("duration") or 5)
         except Exception:
             duration = 5
-        if model == "happyhorse-1.0":
-            if res.startswith("1080"):
-                return 4800 if duration >= 7 else 3000
-            return 2400 if duration >= 7 else 1500
+        if model == "happyhorse-1.0":  # HappyHorse 1.1: $0.14/s @720p, $0.189/s @1080p
+            rate = 378 if res.startswith("1080") else 280  # cr/s = raw$/s × 2000
+            return rate * duration
         if model == "wan-2.7":
             if res.startswith("480"):
                 return 1500 if duration >= 8 else 750
@@ -1278,16 +1281,12 @@ def _canvas_block_cost(block_type: str, config: Dict[str, Any]) -> int:
             if duration >= 8:
                 return 1440
             return 1080
-        if model == "hailuo-2.3":
-            return 1680 if duration >= 10 else 690
-        if model == "seedance-2.0":
-            if duration >= 12:
-                return 1200
-            if duration >= 9:
-                return 900
-            return 600
-        if model == "kling-3.0":
-            return 8400 if duration >= 10 else 4200
+        if model == "hailuo-2.3":  # MiniMax H3 768p: $0.10/s
+            return 200 * duration  # cr/s = raw$/s × 2000
+        if model == "seedance-2.0":  # Seedance 2.5 720p: $0.36/s
+            return 720 * duration
+        if model == "kling-3.0":  # Kling O3 Std: $0.084/s (no sound)
+            return 168 * duration
         if model == "pixverse-v6":
             return 2400 if duration >= 8 else 1200
         if model == "luma-ray-2":

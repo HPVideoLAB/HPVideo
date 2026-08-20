@@ -15,11 +15,10 @@ type BlockConfig = Record<string, any>;
 // We pick the closest available duration tier in the source price table.
 const VIDEOGEN_CR: Record<string, (cfg: BlockConfig) => number> = {
 	'happyhorse-1.0': (cfg) => {
+		// HappyHorse 1.1: $0.14/s @720p, $0.189/s @1080p → cr/s = raw$/s × 2000.
 		const r = cfg.resolution || '720p';
 		const d = Number(cfg.duration ?? 5);
-		// Source: 720p/5s = $0.75, 720p/8s = $1.20, 1080p/5s = $1.50, 1080p/8s = $2.40.
-		if (r.startsWith('1080')) return d >= 7 ? 4800 : 3000;
-		return d >= 7 ? 2400 : 1500;
+		return (r.startsWith('1080') ? 378 : 280) * d;
 	},
 	'wan-2.7': (cfg) => {
 		const r = cfg.resolution || '720p';
@@ -41,14 +40,9 @@ const VIDEOGEN_CR: Record<string, (cfg: BlockConfig) => number> = {
 		if (d >= 8) return 1440;
 		return 1080; // 6s
 	},
-	'hailuo-2.3': (cfg) => (Number(cfg.duration ?? 6) >= 10 ? 1680 : 690),
-	'seedance-2.0': (cfg) => {
-		const d = Number(cfg.duration ?? 6);
-		if (d >= 12) return 1200;
-		if (d >= 9) return 900;
-		return 600; // 6s
-	},
-	'kling-3.0': (cfg) => (Number(cfg.duration ?? 5) >= 10 ? 8400 : 4200),
+	'hailuo-2.3': (cfg) => 200 * Number(cfg.duration ?? 6),   // MiniMax H3 768p: $0.10/s
+	'seedance-2.0': (cfg) => 720 * Number(cfg.duration ?? 6), // Seedance 2.5 720p: $0.36/s
+	'kling-3.0': (cfg) => 168 * Number(cfg.duration ?? 5),    // Kling O3 Std: $0.084/s
 	'pixverse-v6': (cfg) => (Number(cfg.duration ?? 5) >= 8 ? 2400 : 1200),
 	'luma-ray-2': (cfg) => (Number(cfg.duration ?? 5) >= 10 ? 3000 : 1500),
 	'vidu-q3': (cfg) => (Number(cfg.duration ?? 4) >= 8 ? 1600 : 800)

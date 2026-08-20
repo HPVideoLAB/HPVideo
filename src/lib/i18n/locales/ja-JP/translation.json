@@ -1196,7 +1196,7 @@
   "model_desc_commercial-pipeline": "ワンクリックで広告完成パイプライン。AIディレクターが構図設計＋スマートエンハンス＋音素レベルのリップシンク＋4Kアップスケール。商品写真1枚から放送品質の30秒広告まで。",
   "model_desc_pika-v2.2-pikaframes": "Pikaのマルチキーフレーム・ストーリーボード。最大5枚の参考画像＋カスタム遷移で、商品ショットやアニメ変身、シネマティックな演出に最適。",
   "model_desc_sam3-video": "テキストで対象を切り抜き／置き換え。Meta SAM 3.1搭載──消したいものを言葉で指定するだけで、フレームごとに追跡＆インペイント。",
-  "model_desc_text-to-video": "10のトップT2Vモデルを一箇所に：WAN 2.7 / Veo 3.1 / Kling 3.0 / Hailuo 2.3 / Seedance 2.0 / LTX 2.3 / Pixverse V6 / Luma Ray 2 / Vidu Q3 / OVI。お好みのモデルとプロンプトでワンショット生成。",
+  "model_desc_text-to-video": "11のトップT2Vモデルを一箇所に：HappyHorse 1.1 / WAN 2.7 / Veo 3.1 / Kling O3 / MiniMax H3 / Seedance 2.5 / LTX 2.3 / Pixverse V6 / Luma Ray 2 / Vidu Q3 / OVI。お好みのモデルとプロンプトでワンショット生成。",
   "model_desc_wan-2.1-v2v": "元の動きを保ったまま映像スタイル変換。動画をアップして新しいスタイル（アニメ／サイバーパンク／油絵）を指示するだけ。音声とリップシンクも維持。",
   "name": "名前",
   "new_wallet": "ウォレットを作成",

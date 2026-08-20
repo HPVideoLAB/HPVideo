@@ -19,7 +19,7 @@ export const proModel: ProModelEntry[] = [
     model: 'text-to-video',
     modelicon: '/creator/static/icon/qwen.png',
     audio: true,
-    desc: '10 frontier T2V models in one place: WAN 2.7, Veo 3.1, Kling 3.0, Hailuo, Seedance, LTX, Pixverse, Luma Ray 2, Vidu Q3, OVI.',
+    desc: '11 frontier T2V models in one place: HappyHorse 1.1, WAN 2.7, Veo 3.1, Kling O3, MiniMax H3, Seedance 2.5, LTX, Pixverse, Luma Ray 2, Vidu Q3, OVI.',
     badges: ['10 models', 'T2V', 'I2V'],
     bestFor: 'best_for_t2v',
   },
