@@ -50,7 +50,7 @@ CANVAS_RUN_MODE = os.getenv("CANVAS_RUN_MODE", "stub")
 # WaveSpeed. Mirrors x402pay.MODEL_REGISTRY but kept local so canvas.py
 # doesn't take a hard import from the payment router.
 VIDEOGEN_REGISTRY: Dict[str, Dict[str, str]] = {
-    "wan-2.7":        {"vendor": "alibaba",      "model": "wan-2.7/text-to-video"},
+    "wan-2.7":        {"vendor": "alibaba",      "model": "wan-3.0/text-to-video"},
     # HappyHorse-1.0: native joint audio+video. Single forward pass produces
     # synced lip-sync dialogue, ambient sound, and Foley across 7 languages
     # (en/zh/yue/ja/ko/de/fr) at 14.6% WER. Currently #1 on WaveSpeed
@@ -1261,12 +1261,9 @@ def _canvas_block_cost(block_type: str, config: Dict[str, Any]) -> int:
         if model == "happyhorse-1.0":  # HappyHorse 1.1: $0.14/s @720p, $0.189/s @1080p
             rate = 378 if res.startswith("1080") else 280  # cr/s = raw$/s × 2000
             return rate * duration
-        if model == "wan-2.7":
-            if res.startswith("480"):
-                return 1500 if duration >= 8 else 750
-            if res.startswith("1080"):
-                return 4500 if duration >= 8 else 2250
-            return 3000 if duration >= 8 else 1500
+        if model == "wan-2.7":  # WAN 3.0: $0.05/s@480, $0.10/s@720, $0.20/s@1080
+            rate = 400 if res.startswith("1080") else 100 if res.startswith("480") else 200
+            return rate * duration
         if model == "ovi":
             return 450
         if model == "veo3.1":

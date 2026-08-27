@@ -21,11 +21,10 @@ const VIDEOGEN_CR: Record<string, (cfg: BlockConfig) => number> = {
 		return (r.startsWith('1080') ? 378 : 280) * d;
 	},
 	'wan-2.7': (cfg) => {
+		// WAN 3.0: $0.05/s@480, $0.10/s@720, $0.20/s@1080 → cr/s = raw$/s × 2000.
 		const r = cfg.resolution || '720p';
 		const d = Number(cfg.duration ?? 5);
-		if (r.startsWith('480')) return d >= 8 ? 1500 : 750;
-		if (r.startsWith('1080')) return d >= 8 ? 4500 : 2250;
-		return d >= 8 ? 3000 : 1500; // 720p
+		return (r.startsWith('1080') ? 400 : r.startsWith('480') ? 100 : 200) * d;
 	},
 	'ovi': () => 450,                                      // 540p/5s = $0.225
 	'veo3.1': (cfg) => {

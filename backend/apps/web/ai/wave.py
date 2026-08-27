@@ -19,10 +19,11 @@ amounts = {
     "720":  {"5": 0.70, "8": 1.12},
     "1080": {"5": 0.945, "8": 1.512}
   },
+  # WAN 3.0 (raw WaveSpeed: $0.05/s@480, $0.10/s@720, $0.20/s@1080)
   "wan-2.7": {
-    "480": {"5": 0.375, "10": 0.75},
-    "720": {"5": 0.75, "10": 1.5},
-    "1080": {"5": 1.125, "10": 2.25}
+    "480": {"5": 0.25, "10": 0.50},
+    "720": {"5": 0.50, "10": 1.00},
+    "1080": {"5": 1.00, "10": 2.00}
   },
   "ovi": {
     "540": {"5": 0.225}
@@ -144,11 +145,10 @@ class WaveApi:
 		# Resolution: prefer explicit "720p"/"1080p" tokens; otherwise default 720p.
 		resolution_token = "1080p" if (size and "1080" in size) else "720p"
 
-		if "happyhorse" in model:
-			# Alibaba HappyHorse-1.0 (joint audio+video model). Wants
-			# aspect_ratio + resolution; same vendor as wan-2.7 but different
-			# request shape — wan-2.7 takes plain `size` while happyhorse
-			# expects the modern aspect_ratio/resolution split.
+		if source == 'alibaba':
+			# Alibaba HappyHorse (joint audio+video) AND WAN 3.0 both use the
+			# modern aspect_ratio + resolution split (WAN 3.0 replaced 2.7's
+			# plain `size` shape as of 2026-08-27).
 			data = {
 				"duration": duration,
 				"prompt": prompt,

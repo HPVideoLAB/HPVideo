@@ -47,7 +47,7 @@
 		// HappyHorse 1.1 default — joint audio + lip-sync, #1 leaderboard.
 		// (keys are stable/legacy; labels track the latest WaveSpeed version.)
 		{ key: 'happyhorse-1.0', label: 'HappyHorse 1.1 🥇 — audio+lip-sync · $1.40' },
-		{ key: 'wan-2.7', label: 'WAN 2.7 — photoreal · $1.50' },
+		{ key: 'wan-2.7', label: 'WAN 3.0 — photoreal · $1.00' },
 		{ key: 'seedance-2.0', label: 'Seedance 2.5 — cinematic · $4.32' },
 		{ key: 'ovi', label: 'OVI — characters · $0.45' },
 		{ key: 'hailuo-2.3', label: 'MiniMax H3 — motion · $1.20' },

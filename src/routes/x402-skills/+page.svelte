@@ -6,7 +6,7 @@
   const models = [
     {
       id: "wan-2.7",
-      name: "WAN 2.7",
+      name: "WAN 3.0",
       provider: "Alibaba",
       type: "Text-to-Video / Image-to-Video",
       duration: "5-10s",

@@ -41,8 +41,9 @@ MODEL_REGISTRY: Dict[str, Dict[str, str]] = {
     # version. 2026-08-20 bumped to latest (slugs verified on wavespeed.ai docs):
     # HappyHorse 1.0→1.1, Hailuo 2.3→MiniMax H3, Seedance 2.0→2.5, Kling→O3-std.
     "happyhorse-1.0": {"vendor": "alibaba", "model": "happyhorse-1.1/text-to-video"},
-    # Alibaba WAN 2.7 (Wan 3.0 exists but is image/reference-to-video only — no t2v endpoint)
-    "wan-2.7":    {"vendor": "alibaba",     "model": "wan-2.7/text-to-video"},
+    # Alibaba WAN 3.0 — 2026-08-27: Wan 3.0 now HAS text-to-video (2-30s, aspect_ratio
+    # + resolution, $0.10/s@720p). Upgraded from 2.7. Key stays 'wan-2.7' for stability.
+    "wan-2.7":    {"vendor": "alibaba",     "model": "wan-3.0/text-to-video"},
     # Character.ai OVI (still current)
     "ovi":        {"vendor": "character-ai", "model": "ovi/text-to-video"},
     # Google Veo 3.1 (confirmed WaveSpeed path: google/veo3.1/text-to-video — no dash)

@@ -119,7 +119,7 @@
       <!-- 12-model strip — surfaces the depth that 'Open Studio' alone hides -->
       <div class="mt-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-gray-500 dark:text-gray-400">
         <span class="font-semibold uppercase tracking-wider">{$i18n.t('12 models powering it')}</span>
-        <span>WAN 2.7</span><span>·</span>
+        <span>WAN 3.0</span><span>·</span>
         <span>Veo 3.1</span><span>·</span>
         <span>Kling O3</span><span>·</span>
         <span>MiniMax H3</span><span>·</span>
