@@ -58,6 +58,41 @@ amounts = {
   }
 }
 
+# ---------------------------------------------------------------------------
+# Atlas Cloud — second video provider (cheaper on most models). Default source
+# per job = whichever provider is cheaper; WaveSpeed is the failover. The
+# provider that ran a job is encoded in the returned request id ("atlas:<id>"
+# vs a bare WaveSpeed id) so the separate poll call routes correctly.
+# Keyed by the WaveSpeed `model` path we pass into x402create.
+# Prices are raw $/second (verified 2026-08-28). Models NOT listed here have no
+# Atlas route and always use WaveSpeed (h3 flat-priced/duration-unverified,
+# ltx price suspicious, luma ray-2 absent).
+# ---------------------------------------------------------------------------
+atlas_url = os.getenv("ATLAS_URL", "https://api.atlascloud.ai").rstrip("/")
+atlas_key = os.getenv("ATLAS_KEY", "")
+ATLAS_ENABLED = bool(atlas_key) and os.getenv("ATLAS_ENABLED", "1") != "0"
+
+ATLAS_ROUTE = {
+    "happyhorse-1.1/text-to-video":     {"atlas": "alibaba/happyhorse-1.1/text-to-video",     "atlas_ps": 0.07},
+    "kling-video-o3-std/text-to-video": {"atlas": "kwaivgi/kling-video-o3-std/text-to-video", "atlas_ps": 0.071},
+    "seedance-2.5/text-to-video":       {"atlas": "bytedance/seedance-2.5/text-to-video",     "atlas_ps": 0.134},
+    "pixverse-v6/text-to-video":        {"atlas": "pixverse/v6/text-to-video",                "atlas_ps": 0.025},
+    "veo3.1/text-to-video":             {"atlas": "google/veo3.1/text-to-video",              "atlas_ps": 0.20},
+    "wan-3.0/text-to-video":            {"atlas": "alibaba/wan-3.0/text-to-video",            "atlas_ps": 0.04},
+    "q3/text-to-video":                 {"atlas": "vidu/q3-turbo/text-to-video",              "atlas_ps": 0.034},
+}
+# WaveSpeed raw $/second per model substring (from `amounts`) — for cost compare.
+WS_PS = {
+    "happyhorse-1.1": 0.14, "kling-video-o3-std": 0.084, "h3": 0.10, "seedance-2.5": 0.36,
+    "pixverse-v6": 0.12, "veo3.1": 0.60, "wan-3.0": 0.10, "ray-2": 0.15, "ltx-2.3": 0.09, "q3": 0.10,
+}
+
+def _ws_ps(model: str) -> float:
+    for k, v in WS_PS.items():
+        if k in model:
+            return v
+    return 0.0
+
 
 class WaveApi:
     
@@ -132,6 +167,19 @@ class WaveApi:
 			"Authorization": f'Bearer {wave_key}',
 			"Content-Type": "application/json"
 		}
+		# --- Provider routing: prefer Atlas Cloud when it's cheaper for this
+		# job; on any Atlas create error, fall through to WaveSpeed below.
+		# The provider is encoded in the returned id ("atlas:<id>") so the
+		# later get_prediction_result poll routes to the right API.
+		route = ATLAS_ROUTE.get(model)
+		if ATLAS_ENABLED and route:
+			atlas_cost = route["atlas_ps"] * (duration or 0)
+			ws_cost = _ws_ps(model) * (duration or 0)
+			if atlas_cost <= ws_cost:
+				aid = self._atlas_create(route["atlas"], prompt, duration, size)
+				if aid:
+					return {"code": 200, "data": {"id": "atlas:" + aid}}
+				print(f"[wave] atlas create failed for {model}; failing over to WaveSpeed")
 		# Map a Canvas-style resolution token ("720p" / "480p" / "1080p")
 		# to a 16:9 aspect ratio when the model wants aspect_ratio instead
 		# of size. This lets Canvas pass `resolution` through unchanged
@@ -302,8 +350,54 @@ class WaveApi:
 			print(f"t2i Request Err: {e} body={body!r}")
 			return None
 
+	# --- Atlas Cloud provider helpers -------------------------------------
+	def _atlas_create(self, atlas_model: str, prompt: str, duration: int, size: str):
+		"""Create an Atlas Cloud video job. Returns the request id or None."""
+		def _ratio(s):
+			if s and ":" in s:
+				return s
+			if s and "*" in s:
+				try:
+					w, h = s.split("*")
+					return "9:16" if int(h) > int(w) else "16:9"
+				except Exception:
+					return "16:9"
+			return "16:9"
+		body = {"model": atlas_model, "prompt": prompt, "duration": duration,
+		        "ratio": _ratio(size), "resolution": "720p"}
+		try:
+			r = requests.post(f"{atlas_url}/api/v1/model/generateVideo", json=body,
+			                  headers={"Authorization": f"Bearer {atlas_key}",
+			                           "Content-Type": "application/json"}, timeout=60)
+			if r.status_code != 200:
+				print(f"[atlas] create {r.status_code}: {r.text[:300]}")
+				return None
+			d = (r.json() or {}).get("data") or {}
+			return d.get("id") or d.get("request_id")
+		except Exception as e:
+			print(f"[atlas] create error: {e}")
+			return None
+
+	def _atlas_poll(self, rid: str):
+		"""Poll an Atlas job; normalize to the same shape WaveSpeed poll returns
+		so callers read data.status + data.outputs unchanged."""
+		try:
+			r = requests.get(f"{atlas_url}/api/v1/model/prediction/{rid}",
+			                 headers={"Authorization": f"Bearer {atlas_key}"}, timeout=30)
+			r.raise_for_status()
+			d = (r.json() or {}).get("data") or {}
+			outs = d.get("outputs") or ([d.get("output")] if d.get("output") else [])
+			return {"success": True, "data": {"status": d.get("status"),
+			                                  "outputs": outs, "error": d.get("error")}}
+		except requests.exceptions.HTTPError as e:
+			return {"success": False, "error": f"HTTP Err: {str(e)}"}
+		except requests.exceptions.RequestException as e:
+			return {"success": False, "error": f"Err: {str(e)}"}
+
 	# Get Video By Video ID
 	def get_prediction_result(self, requestId: str):
+		if requestId and requestId.startswith("atlas:"):
+			return self._atlas_poll(requestId[len("atlas:"):])
 		url = f"{wave_url}/predictions/{requestId}/result"
 		headers = {
 			"Authorization": f"Bearer {wave_key}"
@@ -356,7 +450,11 @@ class WaveApi:
 			if matched_tier is not None:
 				price = matched_tier.get(str(duration))
 				if price is not None:
-					amount = f"${price}"
+					# `amounts` are raw WaveSpeed cost; apply the 1.1× (10%)
+					# markup so the chat/creator x402 charge matches the rest
+					# of the site (unified 2026-08-28). de/index.ts `amount`
+					# on the frontend is bumped ×1.1 to match this.
+					amount = f"${round(price * 1.1, 4)}"
 
 			pay = PayTableInstall.get_by_messageid(messageid)
 			if pay is None:

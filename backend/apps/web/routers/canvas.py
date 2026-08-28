@@ -1244,13 +1244,14 @@ async def canvas_charge(
 
 # Per-block cost in cr (1 cr = 1 DLP whole token = $0.001).
 # Mirrors `src/lib/components/canvas/pricing.ts` blockCostCr — keep in
-# sync. Source numbers come from `wave.py amounts` × 2 (100% markup) ×
-# 1000 (USD → cr).
+# sync. Source numbers come from `wave.py amounts` × 1.1 (10% markup) ×
+# 1000 (USD → cr). (Markup unified 2×→1.1× on 2026-08-28; generation now
+# runs on the cheapest source (Atlas/WaveSpeed) so real margin exceeds 10%.)
 def _canvas_block_cost(block_type: str, config: Dict[str, Any]) -> int:
     if block_type in ("imageref", "prompt", "stitcher"):
         return 0
     if block_type == "voice":
-        return 200
+        return 200  # TTS flat (not in `amounts`; left as-is)
     if block_type == "videogen":
         model = config.get("model") or "happyhorse-1.0"
         res = (config.get("resolution") or "720p").lower()
@@ -1259,49 +1260,49 @@ def _canvas_block_cost(block_type: str, config: Dict[str, Any]) -> int:
         except Exception:
             duration = 5
         if model == "happyhorse-1.0":  # HappyHorse 1.1: $0.14/s @720p, $0.189/s @1080p
-            rate = 378 if res.startswith("1080") else 280  # cr/s = raw$/s × 2000
+            rate = 208 if res.startswith("1080") else 154  # cr/s = raw$/s × 1100
             return rate * duration
         if model == "wan-2.7":  # WAN 3.0: $0.05/s@480, $0.10/s@720, $0.20/s@1080
-            rate = 400 if res.startswith("1080") else 100 if res.startswith("480") else 200
+            rate = 220 if res.startswith("1080") else 55 if res.startswith("480") else 110
             return rate * duration
         if model == "ovi":
-            return 450
+            return 248
         if model == "veo3.1":
             if duration >= 8:
-                return 9600
+                return 5280
             if duration >= 6:
-                return 7200
-            return 4800
+                return 3960
+            return 2640
         if model == "ltx-2.3":
             if duration >= 10:
-                return 1800
+                return 990
             if duration >= 8:
-                return 1440
-            return 1080
+                return 792
+            return 594
         if model == "hailuo-2.3":  # MiniMax H3 768p: $0.10/s
-            return 200 * duration  # cr/s = raw$/s × 2000
+            return 110 * duration  # cr/s = raw$/s × 1100
         if model == "seedance-2.0":  # Seedance 2.5 720p: $0.36/s
-            return 720 * duration
+            return 396 * duration
         if model == "kling-3.0":  # Kling O3 Std: $0.084/s (no sound)
-            return 168 * duration
+            return 92 * duration
         if model == "pixverse-v6":
-            return 2400 if duration >= 8 else 1200
+            return 1320 if duration >= 8 else 660
         if model == "luma-ray-2":
-            return 3000 if duration >= 10 else 1500
+            return 1650 if duration >= 10 else 825
         if model == "vidu-q3":
-            return 1600 if duration >= 8 else 800
-        return 1500  # unknown model fallback
+            return 880 if duration >= 8 else 440
+        return 825  # unknown model fallback
     if block_type == "imagegen":
         model = config.get("model") or "gpt-image-2"
         r = (config.get("resolution") or "1k").lower()
         q = (config.get("quality") or "medium").lower()
         if model == "flux-dev":
-            return 100
+            return 55
         base_usd = 0.04 if model == "seedream-v5-lite" else 0.06
         if model == "gpt-image-2":
             base_usd = 0.01 if q == "low" else 0.22 if q == "high" else 0.06
         mult = 3 if r == "4k" else 2 if r == "2k" else 1
-        return round(base_usd * mult * 2 * 1000)
+        return round(base_usd * mult * 1.1 * 1000)
     return 0
 
 
